@@ -3,8 +3,8 @@
 
 # History settings
 HISTCONTROL=ignoreboth:erasedups
-HISTSIZE=10000
-HISTFILESIZE=20000
+HISTSIZE=100000
+HISTFILESIZE=200000
 shopt -s histappend
 shopt -s checkwinsize
 
