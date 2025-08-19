@@ -67,7 +67,6 @@ fi
 # Git-aware prompt with colors
 git_branch() {
     local branch
-    # Try to get current branch name
     branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
     [[ -n "$branch" ]] && echo "($branch)"
 }
@@ -93,6 +92,7 @@ alias vim='nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias o='opencode'
+alias lg='lazygit'
 
 # Git aliases
 alias ga='git add'
@@ -118,4 +118,12 @@ if command -v gh >/dev/null 2>&1; then
         fi
         gh codespace ssh --codespace "$1"
     }
+
+    # Bash completion for gh-cs
+    _gh_cs_completion() {
+        local cur="${COMP_WORDS[COMP_CWORD]}"
+        local codespaces=$(gh cs ls --json name -q '.[].name' 2>/dev/null)
+        COMPREPLY=($(compgen -W "${codespaces}" -- "${cur}"))
+    }
+    complete -F _gh_cs_completion gh-cs
 fi

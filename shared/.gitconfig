@@ -1,0 +1,25 @@
+[user]
+  name = Greg Fisher
+  email = greg@gnfisher.com
+  signingkey = BAE0FAEAF7EC7990
+[github]
+  user = gnfisher
+[core]
+  excludesfile = ~/.gitignore
+[alias]
+  uncommit = reset --soft HEAD^
+  unstage = reset
+[color]
+	ui = auto
+[merge]
+  ff = only
+[fetch]
+  prune = true
+[oh-my-zsh]
+  hide-info = 1
+[credential]
+	helper = cache
+[commit]
+  gpgsign = true
+[gpg]
+  program = gpg
