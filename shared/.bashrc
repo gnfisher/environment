@@ -37,7 +37,6 @@ fi
 # Environment variables
 export EDITOR=nvim
 export VISUAL=nvim
-export GPG_TTY=$(tty)
 
 # PATH additions
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
@@ -58,6 +57,7 @@ fi
 
 # GPG agent
 if command -v gpgconf >/dev/null 2>&1; then
+    export GPG_TTY=$(tty)
     gpgconf --launch gpg-agent 2>/dev/null
 fi
 
