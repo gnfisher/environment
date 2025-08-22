@@ -104,6 +104,9 @@ alias gp='git push origin'
 alias gr='git pull --rebase origin'
 alias gs='git status'
 
+# Helpful
+alias dots="cd ~/Development/gnfisher/environment/"
+
 # cd with ls
 cd() {
     builtin cd "${@:-$HOME}" && ls

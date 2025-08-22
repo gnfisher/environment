@@ -20,22 +20,62 @@ return {
       "markdown",
     }
 
+    -- Check if prettier config exists
+    local function has_prettier_config()
+      local config_files = {
+        ".prettierrc",
+        ".prettierrc.json",
+        ".prettierrc.js",
+        ".prettierrc.mjs",
+        ".prettierrc.cjs",
+        ".prettierrc.yaml",
+        ".prettierrc.yml",
+        "prettier.config.js",
+        "prettier.config.mjs",
+        "prettier.config.cjs",
+      }
+      
+      for _, config_file in ipairs(config_files) do
+        if vim.fn.findfile(config_file, ".;") ~= "" then
+          return true
+        end
+      end
+      
+      -- Check package.json for prettier config
+      local package_json = vim.fn.findfile("package.json", ".;")
+      if package_json ~= "" then
+        local success, content = pcall(vim.fn.readfile, package_json)
+        if success then
+          local json_str = table.concat(content, "\n")
+          if json_str:match('"prettier"') then
+            return true
+          end
+        end
+      end
+      
+      return false
+    end
+
     null_ls.setup({
       sources = {
         null_ls.builtins.formatting.prettier.with({
           filetypes = prettier_filetypes,
+          condition = function()
+            return has_prettier_config()
+          end,
         }),
         null_ls.builtins.formatting.gofmt,
         null_ls.builtins.formatting.goimports,
       },
     })
 
-    -- Smart format function that uses prettier when available
+    -- Smart format function that uses prettier when available and configured
     local function smart_format()
       local ft = vim.bo.filetype
-      local has_prettier = vim.tbl_contains(prettier_filetypes, ft)
+      local has_prettier_ft = vim.tbl_contains(prettier_filetypes, ft)
+      local has_config = has_prettier_config()
 
-      if has_prettier then
+      if has_prettier_ft and has_config then
         -- Use null-ls (prettier) formatting
         vim.lsp.buf.format({
           async = false,

@@ -2,9 +2,10 @@
 # font-family = "consolas"
 font-family = "Cascadia Mono SemiLight"
 adjust-cell-width = "-5%"
-font-size = 14
+font-size = 18
 keybind = alt+left=unbind
 keybind = alt+right=unbind
 macos-option-as-alt = true
 keybind = shift+enter=text:\n
-theme = "GruvboxDark"
+# theme = "GruvboxDark"
+theme = "catppuccin-frappe"

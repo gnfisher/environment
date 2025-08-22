@@ -11,12 +11,9 @@ return {
   opts = {
     filters = {
       custom = { ".git", "node_modules", ".vscode" },
-      dotfiles = false,
+      dotfiles = true,
     },
-    git = {
-      enable = true,
-      ignore = false,
-    },
+    git = {},
     view = {
       adaptive_size = true,
       float = {
