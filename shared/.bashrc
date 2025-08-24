@@ -127,12 +127,12 @@ gh-clone() {
         echo "  gh-clone https://github.com/user/repo.git"
         return 1
     fi
-    
+
     local repo_url="$1"
     local repo_path
     local org
     local repo_name
-    
+
     # Extract org/repo from SSH format: git@github.com:org/repo.git
     if [[ "$repo_url" =~ ^git@[^:]+:([^/]+)/([^/]+)(\.git)?$ ]]; then
         org="${BASH_REMATCH[1]}"
@@ -152,12 +152,12 @@ gh-clone() {
         echo "  HTTPS: https://github.com/org/repo.git"
         return 1
     fi
-    
+
     repo_path="$HOME/Development/$org/$repo_name"
-    
+
     # Create directory if it doesn't exist
     mkdir -p "$(dirname "$repo_path")"
-    
+
     # Clone the repository
     echo "Cloning $repo_url into $repo_path"
     if git clone "$repo_url" "$repo_path"; then
@@ -169,21 +169,8 @@ gh-clone() {
     fi
 }
 
-# GitHub Codespaces helper (if gh cli is available)
-if command -v gh >/dev/null 2>&1; then
-    gh-cs() {
-        if [[ $# -eq 0 ]]; then
-            echo "Usage: gh-cs <codespace-name>"
-            return 1
-        fi
-        gh codespace ssh --codespace "$1"
-    }
-
-    # Bash completion for gh-cs
-    _gh_cs_completion() {
-        local cur="${COMP_WORDS[COMP_CWORD]}"
-        local codespaces=$(gh cs ls --json name -q '.[].name' 2>/dev/null)
-        COMPREPLY=($(compgen -W "${codespaces}" -- "${cur}"))
-    }
-    complete -F _gh_cs_completion gh-cs
+# bun
+if [[ -d "$HOME/.bun" ]]; then
+    export BUN_INSTALL="$HOME/.bun"
+    export PATH="$BUN_INSTALL/bin:$PATH"
 fi
