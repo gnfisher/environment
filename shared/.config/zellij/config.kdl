@@ -11,7 +11,7 @@ keybinds clear-defaults=true {
 
         // general stuff
         bind "Alt x" { CloseFocus; }
-        bind "Alt w" { ToggleFloatingPanes; }
+        //bind "Alt w" { ToggleFloatingPanes; }
         bind "Ctrl t" { NewTab; }
 
         // focus movement (lowercase with Alt modifier)
@@ -466,7 +466,7 @@ default_mode "normal"
 //   - true (default)
 //   - false
 //
-// mouse_mode false
+mouse_mode true
 
 // Toggle having pane frames around the panes
 // Options:

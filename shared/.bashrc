@@ -20,6 +20,12 @@ if ! shopt -oq posix; then
     fi
 fi
 
+# Tab completion settings
+bind 'TAB:menu-complete'
+bind '"\e[Z":menu-complete-backward'  # Shift-Tab to go backwards
+bind 'set show-all-if-ambiguous on'
+bind 'set menu-complete-display-prefix on'
+
 # Colors for ls and grep
 if [[ -x /usr/bin/dircolors ]]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
@@ -110,6 +116,57 @@ alias dots="cd ~/Development/gnfisher/environment/"
 # cd with ls
 cd() {
     builtin cd "${@:-$HOME}" && ls
+}
+
+# Clone git repo into ~/Development/$org/$repo
+gh-clone() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: gh-clone <git-repo-url>"
+        echo "Examples:"
+        echo "  gh-clone git@github.com:user/repo.git"
+        echo "  gh-clone https://github.com/user/repo.git"
+        return 1
+    fi
+    
+    local repo_url="$1"
+    local repo_path
+    local org
+    local repo_name
+    
+    # Extract org/repo from SSH format: git@github.com:org/repo.git
+    if [[ "$repo_url" =~ ^git@[^:]+:([^/]+)/([^/]+)(\.git)?$ ]]; then
+        org="${BASH_REMATCH[1]}"
+        repo_name="${BASH_REMATCH[2]}"
+        # Remove .git suffix if present
+        repo_name="${repo_name%.git}"
+    # Extract org/repo from HTTPS format: https://github.com/org/repo.git
+    elif [[ "$repo_url" =~ ^https://[^/]+/([^/]+)/([^/]+)(\.git)?$ ]]; then
+        org="${BASH_REMATCH[1]}"
+        repo_name="${BASH_REMATCH[2]}"
+        # Remove .git suffix if present
+        repo_name="${repo_name%.git}"
+    else
+        echo "Error: Unable to parse repository URL format"
+        echo "Supported formats:"
+        echo "  SSH: git@github.com:org/repo.git"
+        echo "  HTTPS: https://github.com/org/repo.git"
+        return 1
+    fi
+    
+    repo_path="$HOME/Development/$org/$repo_name"
+    
+    # Create directory if it doesn't exist
+    mkdir -p "$(dirname "$repo_path")"
+    
+    # Clone the repository
+    echo "Cloning $repo_url into $repo_path"
+    if git clone "$repo_url" "$repo_path"; then
+        echo "Successfully cloned to $repo_path"
+        cd "$repo_path"
+    else
+        echo "Failed to clone repository"
+        return 1
+    fi
 }
 
 # GitHub Codespaces helper (if gh cli is available)
