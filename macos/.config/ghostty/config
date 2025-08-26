@@ -1,6 +1,6 @@
-# font-family = "Berkeley Mono"
+font-family = "Berkeley Mono"
 # font-family = "consolas"
-font-family = "Cascadia Mono SemiLight"
+# font-family = "Cascadia Mono SemiLight"
 adjust-cell-width = "-5%"
 font-size = 18
 keybind = alt+left=unbind
