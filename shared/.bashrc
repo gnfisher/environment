@@ -174,3 +174,12 @@ if [[ -d "$HOME/.bun" ]]; then
     export BUN_INSTALL="$HOME/.bun"
     export PATH="$BUN_INSTALL/bin:$PATH"
 fi
+
+# pnpm
+if command -v pnpm >/dev/null 2>&1; then
+    export PNPM_HOME="$(pnpm config get global-dir 2>/dev/null || echo "$HOME/.local/share/pnpm")"
+    case ":$PATH:" in
+      *":$PNPM_HOME:"*) ;;
+      *) export PATH="$PNPM_HOME:$PATH" ;;
+    esac
+fi
