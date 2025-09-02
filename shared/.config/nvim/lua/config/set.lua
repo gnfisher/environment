@@ -71,3 +71,20 @@ vim.api.nvim_create_user_command("SendToNextTmuxPane", function(opts)
   -- Todo: actually make this send to open code (e.g. tmux pane)
   print('Hey!', opts.args)
 end, {})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function()
+    vim.opt_local.conceallevel = 2
+    vim.opt_local.concealcursor = ""
+    vim.opt_local.textwidth = 80
+    -- Format options: 
+    -- t = auto-wrap text using textwidth
+    -- c = auto-wrap comments
+    -- q = allow formatting with gq
+    -- l = don't break lines that are already long when entering insert mode
+    -- n = recognize numbered lists
+    -- j = remove comment leader when joining lines (if supported)
+    vim.opt_local.formatoptions = "tcqln"
+  end,
+})

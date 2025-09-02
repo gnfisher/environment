@@ -7,5 +7,5 @@ keybind = alt+left=unbind
 keybind = alt+right=unbind
 macos-option-as-alt = true
 keybind = shift+enter=text:\n
-# theme = "GruvboxDark"
-theme = "catppuccin-frappe"
+theme = "GruvboxDark"
+# theme = "catppuccin-frappe"

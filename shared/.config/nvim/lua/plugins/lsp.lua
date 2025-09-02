@@ -107,7 +107,8 @@ return {
         ['<C-n>'] = { 'select_next', 'fallback' },
         ['<C-u>'] = { 'scroll_documentation_up', 'fallback' },
         ['<C-d>'] = { 'scroll_documentation_down', 'fallback' },
-        ['<CR>'] = { 'accept', 'fallback' },
+        ['<CR>'] = { 'fallback' },
+        ['<C-y>'] = { 'accept' },
       },
       appearance = {
         nerd_font_variant = 'mono'
