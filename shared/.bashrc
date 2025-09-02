@@ -97,8 +97,11 @@ alias l='ls -CF'
 alias vim='nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
-alias o='opencode'
+alias oh='opencode'
 alias lg='lazygit'
+alias ld='lazydocker'
+alias z='zellij'
+
 
 # Git aliases
 alias ga='git add'
