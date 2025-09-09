@@ -1,11 +1,24 @@
+macos-titlebar-style = native
 font-family = "Berkeley Mono"
 # font-family = "consolas"
 # font-family = "Cascadia Mono SemiLight"
 adjust-cell-width = "-5%"
-font-size = 15
+font-size = 16
 keybind = alt+left=unbind
 keybind = alt+right=unbind
 macos-option-as-alt = true
 keybind = shift+enter=text:\n
 theme = "catppuccin-frappe"
+background-opacity =
 # theme = "GruvboxDark"
+
+keybind = ctrl+cmd+left=ignore
+keybind = ctrl+cmd+right=ignore
+keybind = ctrl+cmd+up=ignore
+keybind = ctrl+cmd+down=ignore
+
+
+# Enable background opacity
+background-opacity = 0.9
+background-blur = 40
+macos-titlebar-style = tabs

@@ -6,12 +6,12 @@ return {
     priority = 1000,
     config = function()
       require("catppuccin").setup({
+        transparent_background = true,
         flavour = "frappe",
         background = {
           light = "latte",
           dark = "frappe",
         },
-        transparent_background = false,
         show_end_of_buffer = false,
         term_colors = true,
         dim_inactive = {

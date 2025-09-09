@@ -60,6 +60,10 @@ return {
         },
         handlers = {
           function(server_name)
+            -- Skip golangci_lint_ls to avoid conflicts with v2
+            if server_name == "golangci_lint_ls" then
+              return
+            end
             require("lspconfig")[server_name].setup({})
           end,
           ["lua_ls"] = function()
@@ -74,7 +78,17 @@ return {
             })
           end,
           ["gopls"] = function()
-            require("lspconfig").gopls.setup({})
+            require("lspconfig").gopls.setup({
+              settings = {
+                gopls = {
+                  staticcheck = false,
+                  analyses = {
+                    unusedparams = false,
+                    shadow = false,
+                  },
+                }
+              }
+            })
           end,
           ["vtsls"] = function()
             require("lspconfig").vtsls.setup({})
