@@ -1,14 +1,14 @@
 return {
   {
-    "polirritmico/monokai-nightasty.nvim",
+    "miikanissi/modus-themes.nvim",
     lazy = false,
     priority = 1001,
     config = function()
-      require("monokai-nightasty").setup({
-        dark_style_background = "transparent", -- transparent background with opacity 0
-        light_style_background = "transparent",
+      require("modus-themes").setup({
+        style = "modus_operandi",
+        transparent = true,
       })
-      vim.cmd("colorscheme monokai-nightasty")
+      vim.cmd([[colorscheme modus_operandi]])
     end,
   },
   {
