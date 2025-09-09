@@ -1,9 +1,31 @@
 return {
   {
+    "polirritmico/monokai-nightasty.nvim",
+    lazy = false,
+    priority = 1001,
+    config = function()
+      require("monokai-nightasty").setup({
+        dark_style_background = "transparent", -- transparent background with opacity 0
+        light_style_background = "transparent",
+      })
+      vim.cmd("colorscheme monokai-nightasty")
+    end,
+  },
+  {
+    "ellisonleao/gruvbox.nvim",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("gruvbox").setup({
+        transparent_mode = true,
+      })
+    end,
+  },
+  {
     "catppuccin/nvim",
     name = "catppuccin",
     lazy = false,
-    priority = 1000,
+    priority = 999,
     config = function()
       require("catppuccin").setup({
         transparent_background = true,
@@ -45,7 +67,18 @@ return {
           mini = false,
         },
       })
-      vim.cmd("colorscheme catppuccin")
+    end,
+  },
+  {
+    "projekt0n/github-nvim-theme",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("github-theme").setup({
+        options = {
+          transparent = true,
+        }
+      })
     end,
   },
 }
