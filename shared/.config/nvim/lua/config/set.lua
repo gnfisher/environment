@@ -78,7 +78,7 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.conceallevel = 2
     vim.opt_local.concealcursor = ""
     vim.opt_local.textwidth = 80
-    -- Format options: 
+    -- Format options:
     -- t = auto-wrap text using textwidth
     -- c = auto-wrap comments
     -- q = allow formatting with gq
@@ -88,3 +88,9 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.formatoptions = "tcqln"
   end,
 })
+
+vim.opt.foldmethod = 'expr'
+vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
+vim.opt.foldenable = false
+vim.opt.foldlevel = 99
+

@@ -4,6 +4,9 @@ return {
 		build = ":TSUpdate",
 		config = function()
 			require("nvim-treesitter.configs").setup({
+        fold = {
+          enable = true
+        },
 				highlight = {
 					enable = true,
 				},
