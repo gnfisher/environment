@@ -1,8 +1,17 @@
 return {
+  -- Solarized theme (custom colors file)
+  {
+    "solarized-theme",
+    lazy = false,
+    priority = 1001,
+    dir = vim.fn.stdpath("config") .. "/colors",
+    config = function()
+    end,
+  },
   {
     "miikanissi/modus-themes.nvim",
     lazy = false,
-    priority = 1001,
+    priority = 1000,
     config = function()
       require("modus-themes").setup({
         style = "modus_operandi",
