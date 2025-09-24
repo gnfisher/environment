@@ -51,7 +51,7 @@ vim.api.nvim_create_user_command("ToggleBg", function()
     vim.cmd[[color modus_operandi]]
   else
     vim.o.background = "dark"
-    vim.cmd[[color tango-dark]]
+    vim.cmd[[color solarized-dark]]
   end
 end, {})
 
@@ -94,3 +94,11 @@ vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
 vim.opt.foldenable = false
 vim.opt.foldlevel = 99
 
+-- Ensure Neovim starts a msgpack server so external tools (toggle-theme)
+-- can send remote commands to live sessions without restart.
+-- If no name is provided, Neovim generates a unique path.
+if vim.fn.has('nvim') == 1 and vim.fn.exists('v:servername') == 1 then
+  if vim.v.servername == '' then
+    pcall(vim.fn.serverstart)
+  end
+end

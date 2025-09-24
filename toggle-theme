@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Theme toggle script - switches between light and dark themes
+# for ghostty, neovim, and zellij
+
+# Get the script directory to find the shared config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GHOSTTY_CONFIG="$SCRIPT_DIR/shared/.config/ghostty/config"
+# Update Neovim default theme in plugins/theme.lua
+NVIM_SET="$SCRIPT_DIR/shared/.config/nvim/lua/plugins/theme.lua"
+ZELLIJ_CONFIG="$SCRIPT_DIR/shared/.config/zellij/config.kdl"
+
+# Check current theme state by looking at ghostty config
+current_theme=$(grep "^theme = " "$GHOSTTY_CONFIG" | cut -d' ' -f3- | tr -d '"')
+
+if [[ "$current_theme" == "modus_operandi" ]]; then
+    # Switch to dark mode
+    echo "Switching to dark mode..."
+    
+    # Ghostty: modus_operandi -> Solarized Dark
+    sed -i '' 's/^theme = modus_operandi/theme = "Builtin Solarized Dark"/' "$GHOSTTY_CONFIG"
+    
+    # Neovim: set solarized-dark as default colorscheme
+    sed -i '' 's/vim.g.default_colorscheme = ".*"/vim.g.default_colorscheme = "solarized-dark"/' "$NVIM_SET"
+    
+    # Zellij: keep catppuccin-frappe (already dark)
+    # No change needed
+    
+    echo "Switched to dark mode"
+else
+    # Switch to light mode (Modus Operandi)
+    echo "Switching to light mode (Modus Operandi)..."
+    
+    # Ghostty: Any theme -> modus_operandi
+    sed -i '' 's/^theme = .*/theme = modus_operandi/' "$GHOSTTY_CONFIG"
+    
+    # Neovim: set modus_operandi as default colorscheme
+    sed -i '' 's/vim.g.default_colorscheme = ".*"/vim.g.default_colorscheme = "modus_operandi"/' "$NVIM_SET"
+    
+    # Zellij: could switch to a light theme here if you had one
+    # For now keeping catppuccin-frappe
+    
+    echo "Switched to light mode (Modus Operandi)"
+fi
+
+# Reload applications
+echo "Reloading applications..."
+
+# Ghostty will pick up config changes automatically for new windows
+# For existing windows, you might need to restart ghostty
+
+# Neovim: reload colorscheme in all running instances.
+# Requires each instance to have started a msgpack server.
+# Our config starts one automatically in set.lua.
+servers=$(nvim --serverlist 2>/dev/null)
+if [[ -z "$servers" ]]; then
+    echo "No Neovim servers found. New sessions will pick up the theme automatically."
+else
+    for server in $servers; do
+        if [[ "$current_theme" == "modus_operandi" ]]; then
+            # Switching to dark mode - apply via ThemeApply
+            nvim --server "$server" --remote-send ':ThemeApply solarized-dark<CR>' 2>/dev/null || true
+        else
+            # Switching to light mode - apply via ThemeApply
+            nvim --server "$server" --remote-send ':ThemeApply modus_operandi<CR>' 2>/dev/null || true
+        fi
+    done
+fi
+
+# Zellij: reload config (this will affect new sessions)
+# Existing sessions might need manual reload with Ctrl+s -> r -> Enter
+if pgrep -f zellij >/dev/null; then
+    echo "Zellij is running. You may need to reload manually in existing sessions."
+fi
+
+echo "Theme toggle complete!"

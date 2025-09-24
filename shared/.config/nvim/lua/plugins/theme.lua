@@ -1,13 +1,48 @@
 return {
-  -- Solarized theme (custom colors file)
+  -- Local theme controller (no external package)
   {
-    "solarized-theme",
+    name = "solarized-theme",
+    dir = vim.fn.stdpath("config") .. "/colors",
     lazy = false,
     priority = 1001,
-    dir = vim.fn.stdpath("config") .. "/colors",
+    init = function()
+      vim.o.background = "dark"
+      vim.g.default_colorscheme = "solarized-dark"
+      local function apply_default()
+        local scheme = vim.g.default_colorscheme or "solarized-dark"
+        if scheme == "modus_operandi" then
+          vim.o.background = "light"
+          pcall(require("modus-themes").setup, { style = "modus_operandi", transparent = true })
+          pcall(vim.cmd, "colorscheme modus_operandi")
+        else
+          vim.o.background = "dark"
+          pcall(vim.cmd, "colorscheme " .. scheme)
+        end
+      end
+      local ok = pcall(apply_default)
+      if not ok then
+        vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = apply_default })
+      end
+    end,
     config = function()
+      -- Expose a command so external tools (toggle-theme) can switch live
+      vim.api.nvim_create_user_command("ThemeApply", function(opts)
+        local scheme = (opts.args ~= "" and opts.args) or vim.g.default_colorscheme or "solarized-dark"
+        if scheme == "modus_operandi" then
+          vim.o.background = "light"
+          pcall(require("modus-themes").setup, { style = "modus_operandi", transparent = true })
+          pcall(vim.cmd, "colorscheme modus_operandi")
+        else
+          vim.o.background = "dark"
+          pcall(vim.cmd, "colorscheme " .. scheme)
+        end
+        pcall(function() require("lualine").refresh() end)
+      end, { nargs = "?", complete = function()
+        return { "solarized-dark", "tango-dark", "modus_operandi" }
+      end })
     end,
   },
+  -- Light theme provider (optional)
   {
     "miikanissi/modus-themes.nvim",
     lazy = false,
@@ -17,7 +52,6 @@ return {
         style = "modus_operandi",
         transparent = true,
       })
-      vim.cmd([[colorscheme modus_operandi]])
     end,
   },
   {

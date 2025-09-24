@@ -36,8 +36,14 @@ hi("CursorLineNr",{ fg=colors.orange1, bg=colors.alum7 })
 hi("StatusLine",  { fg=colors.alum1, bg=colors.alum5_5 })
 hi("StatusLineNC",{ fg=colors.alum4, bg=colors.alum6 })
 hi("VertSplit",   { fg=colors.alum5 })
-hi("Pmenu",       { fg=colors.alum1, bg=colors.alum5_5 })
+hi("WinSeparator",{ fg=colors.alum5 })
+hi("NormalFloat", { fg=colors.alum1, bg=colors.alum6 })
+hi("FloatBorder", { fg=colors.alum5,  bg=colors.alum6 })
+hi("FloatTitle",  { fg=colors.butter1, bg=colors.alum6 })
+hi("Pmenu",       { fg=colors.alum1, bg=colors.alum6 })
 hi("PmenuSel",    { fg=colors.alum6, bg=colors.butter2 })
+hi("PmenuSbar",   { bg=colors.alum5 })
+hi("PmenuThumb",  { bg=colors.alum4 })
 hi("Search",      { fg=colors.alum1, bg=colors.orange3 })
 hi("IncSearch",   { fg=colors.alum1, bg=colors.orange3 })
 hi("MatchParen",  { bg=colors.cham0 })
@@ -89,6 +95,38 @@ hi("Link",       { fg=colors.blue1, gui="underline" })
 hi("VisualNOS",  { bg=colors.blue3 })
 
 -- You can add more highlight groups as needed
+
+-- Floating UIs for common plugins
+-- Telescope
+hi("TelescopeNormal",        { fg=colors.alum1, bg=colors.alum6 })
+hi("TelescopeBorder",        { fg=colors.alum5, bg=colors.alum6 })
+hi("TelescopeTitle",         { fg=colors.alum6, bg=colors.butter2 })
+hi("TelescopeSelection",     { fg=colors.butter1, bg=colors.alum5 })
+hi("TelescopeSelectionCaret",{ fg=colors.butter2, bg=colors.alum5 })
+hi("TelescopePromptNormal",  { fg=colors.alum1, bg=colors.alum6 })
+hi("TelescopePromptBorder",  { fg=colors.alum5, bg=colors.alum6 })
+hi("TelescopePromptTitle",   { fg=colors.alum6, bg=colors.butter2 })
+hi("TelescopeResultsNormal", { fg=colors.alum1, bg=colors.alum6 })
+hi("TelescopeResultsBorder", { fg=colors.alum5, bg=colors.alum6 })
+hi("TelescopeResultsTitle",  { fg=colors.alum6, bg=colors.blue2 })
+hi("TelescopePreviewNormal", { fg=colors.alum1, bg=colors.alum6 })
+hi("TelescopePreviewBorder", { fg=colors.alum5, bg=colors.alum6 })
+hi("TelescopePreviewTitle",  { fg=colors.alum6, bg=colors.cham1 })
+
+-- Lazy.nvim
+hi("LazyNormal",  { fg=colors.alum1, bg=colors.alum6 })
+hi("LazyBorder",  { fg=colors.alum5,  bg=colors.alum6 })
+hi("LazyH1",      { fg=colors.alum6,  bg=colors.butter2 })
+hi("LazyButton",  { fg=colors.alum1,  bg=colors.alum6 })
+hi("LazyButtonActive", { fg=colors.alum6, bg=colors.butter2 })
+
+-- nvim-tree floating window
+hi("NvimTreeNormalFloat", { fg=colors.alum1, bg=colors.alum6 })
+hi("NvimTreeWinSeparator",{ fg=colors.alum5,  bg=colors.alum6 })
+
+-- WhichKey
+hi("WhichKeyFloat",  { bg=colors.alum6 })
+hi("WhichKeyBorder", { fg=colors.alum5, bg=colors.alum6 })
 
 -- Creative lualine theme using full tango color palette
 local M = {}

@@ -33,22 +33,30 @@ local function hi(group, opts)
   vim.cmd(cmd)
 end
 
--- UI
+-- Core UI
 hi("Normal",        { fg=colors.base0, bg=colors.base03 })
+hi("NormalNC",      { fg=colors.base0, bg=colors.base03 })
 hi("Cursor",        { fg=colors.base03, bg=colors.base0 })
 hi("CursorLine",    { bg=colors.base02 })
 hi("CursorColumn",  { bg=colors.base02 })
 hi("Visual",        { bg=colors.base02 })
 hi("VisualNOS",     { bg=colors.base02 })
 hi("LineNr",        { fg=colors.base01, bg=colors.base03 })
-hi("CursorLineNr",  { fg=colors.base0, bg=colors.base02 })
-hi("StatusLine",    { fg=colors.base1, bg=colors.base02 })
+hi("CursorLineNr",  { fg=colors.base0,  bg=colors.base02 })
+hi("StatusLine",    { fg=colors.base1,  bg=colors.base02 })
 hi("StatusLineNC",  { fg=colors.base01, bg=colors.base02 })
 hi("VertSplit",     { fg=colors.base01, bg=colors.base01 })
-hi("Pmenu",         { fg=colors.base0, bg=colors.base02 })
-hi("PmenuSel",      { fg=colors.base01, bg=colors.base2 })
+hi("WinSeparator",  { fg=colors.base01 })
+
+-- Floating UI + menus
+hi("NormalFloat",   { fg=colors.base0, bg=colors.base03 })
+hi("FloatBorder",   { fg=colors.base01, bg=colors.base03 })
+hi("FloatTitle",    { fg=colors.base03, bg=colors.yellow })
+hi("Pmenu",         { fg=colors.base0, bg=colors.base03 })
+hi("PmenuSel",      { fg=colors.base03, bg=colors.yellow })
 hi("PmenuSbar",     { bg=colors.base02 })
 hi("PmenuThumb",    { bg=colors.base01 })
+
 hi("Search",        { fg=colors.base03, bg=colors.yellow })
 hi("IncSearch",     { fg=colors.orange, bg=colors.base03, gui="reverse" })
 hi("MatchParen",    { fg=colors.red, bg=colors.base01, gui="bold" })
@@ -107,15 +115,15 @@ hi("DiagnosticUnderlineInfo",  { gui="underline", sp=colors.blue })
 hi("DiagnosticUnderlineHint",  { gui="underline", sp=colors.base01 })
 
 -- Diffs
-hi("DiffAdd",       { fg=colors.green, bg=colors.base02 })
+hi("DiffAdd",       { fg=colors.green,  bg=colors.base02 })
 hi("DiffChange",    { fg=colors.yellow, bg=colors.base02 })
-hi("DiffDelete",    { fg=colors.red, bg=colors.base02 })
-hi("DiffText",      { fg=colors.blue, bg=colors.base02 })
+hi("DiffDelete",    { fg=colors.red,    bg=colors.base02 })
+hi("DiffText",      { fg=colors.blue,   bg=colors.base02 })
 
 -- Git signs
-hi("GitSignsAdd",    { fg=colors.green, bg=colors.base03 })
+hi("GitSignsAdd",    { fg=colors.green,  bg=colors.base03 })
 hi("GitSignsChange", { fg=colors.yellow, bg=colors.base03 })
-hi("GitSignsDelete", { fg=colors.red, bg=colors.base03 })
+hi("GitSignsDelete", { fg=colors.red,    bg=colors.base03 })
 
 -- Directory and links
 hi("Title",         { fg=colors.orange })
@@ -134,47 +142,68 @@ hi("@type",         { fg=colors.yellow })
 hi("@variable",     { fg=colors.base0 })
 hi("@constant",     { fg=colors.cyan })
 
--- Telescope
-hi("TelescopeBorder",         { fg=colors.base01 })
-hi("TelescopePromptBorder",   { fg=colors.cyan })
-hi("TelescopeResultsBorder",  { fg=colors.base01 })
-hi("TelescopePreviewBorder",  { fg=colors.base01 })
-hi("TelescopeSelection",      { bg=colors.base02 })
-hi("TelescopeSelectionCaret", { fg=colors.red })
-hi("TelescopeMultiSelection", { fg=colors.magenta })
-hi("TelescopeNormal",         { fg=colors.base0 })
+-- Telescope (complete float styling)
+hi("TelescopeNormal",         { fg=colors.base0, bg=colors.base03 })
+hi("TelescopeBorder",         { fg=colors.base01, bg=colors.base03 })
+hi("TelescopeTitle",          { fg=colors.base03, bg=colors.yellow })
+hi("TelescopePromptNormal",   { fg=colors.base0, bg=colors.base03 })
+hi("TelescopePromptBorder",   { fg=colors.cyan,  bg=colors.base03 })
+hi("TelescopePromptTitle",    { fg=colors.base03, bg=colors.cyan })
+hi("TelescopeResultsNormal",  { fg=colors.base0, bg=colors.base03 })
+hi("TelescopeResultsBorder",  { fg=colors.base01, bg=colors.base03 })
+hi("TelescopeResultsTitle",   { fg=colors.base03, bg=colors.blue })
+hi("TelescopePreviewNormal",  { fg=colors.base0, bg=colors.base03 })
+hi("TelescopePreviewBorder",  { fg=colors.base01, bg=colors.base03 })
+hi("TelescopePreviewTitle",   { fg=colors.base03, bg=colors.green })
+hi("TelescopeSelection",      { fg=colors.base0, bg=colors.base01 })
+hi("TelescopeSelectionCaret", { fg=colors.red, bg=colors.base01 })
 hi("TelescopeMatching",       { fg=colors.yellow })
+
+-- Lazy.nvim
+hi("LazyNormal",    { fg=colors.base0,  bg=colors.base03 })
+hi("LazyBorder",    { fg=colors.base01, bg=colors.base03 })
+hi("LazyH1",        { fg=colors.base03, bg=colors.yellow })
+hi("LazyButton",    { fg=colors.base0,  bg=colors.base03 })
+hi("LazyButtonActive", { fg=colors.base03, bg=colors.yellow })
+
+-- nvim-tree floating window
+hi("NvimTreeNormalFloat", { fg=colors.base0, bg=colors.base03 })
+hi("NvimTreeWinSeparator",{ fg=colors.base01, bg=colors.base03 })
+
+-- WhichKey
+hi("WhichKeyFloat",  { bg=colors.base03 })
+hi("WhichKeyBorder", { fg=colors.base01, bg=colors.base03 })
 
 -- Lualine theme configuration
 local M = {}
 M.normal = {
   a = { fg = colors.base03, bg = colors.blue, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.insert = {
   a = { fg = colors.base03, bg = colors.green, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.visual = {
   a = { fg = colors.base03, bg = colors.magenta, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.replace = {
   a = { fg = colors.base03, bg = colors.red, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.command = {
   a = { fg = colors.base03, bg = colors.yellow, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.terminal = {
   a = { fg = colors.base03, bg = colors.cyan, gui = 'bold' },
-  b = { fg = colors.base0, bg = colors.base02 },
+  b = { fg = colors.base0,  bg = colors.base02 },
   c = { fg = colors.base01, bg = colors.base03 },
 }
 M.inactive = {
@@ -198,8 +227,3 @@ vim.g.terminal_color_7  = colors.base2
 vim.g.terminal_color_8  = colors.base03
 vim.g.terminal_color_9  = colors.orange
 vim.g.terminal_color_10 = colors.base01
-vim.g.terminal_color_11 = colors.base00
-vim.g.terminal_color_12 = colors.base0
-vim.g.terminal_color_13 = colors.violet
-vim.g.terminal_color_14 = colors.base1
-vim.g.terminal_color_15 = colors.base3
