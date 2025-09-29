@@ -6,40 +6,8 @@ return {
     lazy = false,
     priority = 1001,
     init = function()
-      vim.o.background = "dark"
-      vim.g.default_colorscheme = "solarized-dark"
-      local function apply_default()
-        local scheme = vim.g.default_colorscheme or "solarized-dark"
-        if scheme == "modus_operandi" then
-          vim.o.background = "light"
-          pcall(require("modus-themes").setup, { style = "modus_operandi", transparent = true })
-          pcall(vim.cmd, "colorscheme modus_operandi")
-        else
-          vim.o.background = "dark"
-          pcall(vim.cmd, "colorscheme " .. scheme)
-        end
-      end
-      local ok = pcall(apply_default)
-      if not ok then
-        vim.api.nvim_create_autocmd("VimEnter", { once = true, callback = apply_default })
-      end
     end,
     config = function()
-      -- Expose a command so external tools (toggle-theme) can switch live
-      vim.api.nvim_create_user_command("ThemeApply", function(opts)
-        local scheme = (opts.args ~= "" and opts.args) or vim.g.default_colorscheme or "solarized-dark"
-        if scheme == "modus_operandi" then
-          vim.o.background = "light"
-          pcall(require("modus-themes").setup, { style = "modus_operandi", transparent = true })
-          pcall(vim.cmd, "colorscheme modus_operandi")
-        else
-          vim.o.background = "dark"
-          pcall(vim.cmd, "colorscheme " .. scheme)
-        end
-        pcall(function() require("lualine").refresh() end)
-      end, { nargs = "?", complete = function()
-        return { "solarized-dark", "tango-dark", "modus_operandi" }
-      end })
     end,
   },
   -- Light theme provider (optional)
@@ -71,6 +39,10 @@ return {
     priority = 999,
     config = function()
       require("catppuccin").setup({
+        float = {
+          transparent = true, -- enable transparent floating windows
+          solid = false, -- use solid styling for floating windows, see |winborder|
+        },
         transparent_background = true,
         flavour = "frappe",
         background = {
@@ -110,6 +82,36 @@ return {
           mini = false,
         },
       })
+      vim.o.background = "dark"
+      -- vim.cmd.colorscheme("catppuccin") -- disabled in favor of rose-pine
+    end,
+  },
+  {
+    "rose-pine/neovim",
+    name = "rose-pine",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("rose-pine").setup({
+        variant = "auto", -- auto, main, moon, or dawn
+        dark_variant = "main", -- main, moon, or dawn
+        disable_background = true, -- transparent background
+        disable_float_background = true, -- transparent floating windows
+        highlight_groups = {
+          -- Ensure transparency
+          Normal = { bg = "NONE" },
+          NormalFloat = { bg = "NONE" },
+          SignColumn = { bg = "NONE" },
+          LineNr = { bg = "NONE" },
+          Folded = { bg = "NONE" },
+          NonText = { bg = "NONE" },
+          SpecialKey = { bg = "NONE" },
+          VertSplit = { bg = "NONE" },
+          SignColumn = { bg = "NONE" },
+        },
+      })
+      vim.o.background = "dark"
+      vim.cmd.colorscheme("rose-pine")
     end,
   },
   {
