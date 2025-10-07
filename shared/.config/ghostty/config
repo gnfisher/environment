@@ -16,7 +16,7 @@ keybind = ctrl+cmd+right=ignore
 keybind = ctrl+cmd+up=ignore
 keybind = ctrl+cmd+down=ignore
 
-# background-opacity = 0.9
-# background-blur = 40
+background-opacity = 0.9
+background-blur = 40
 macos-titlebar-style = tabs
 macos-option-as-alt = true
