@@ -1,7 +1,5 @@
-# font-family = "Berkeley Mono"
-# font-family = "Consolas"
-# font-family = "Cascadia Mono SemiLight"
-# font-size = 16
+font-family = "BerkeleyMono Nerd Font"
+font-size = 16
 adjust-cell-width = "-5%"
 
 theme = "One Half Dark"
@@ -14,7 +12,5 @@ keybind = ctrl+cmd+right=ignore
 keybind = ctrl+cmd+up=ignore
 keybind = ctrl+cmd+down=ignore
 
-# background-opacity = 0.9
-# background-blur = 40
 macos-titlebar-style = tabs
 macos-option-as-alt = true

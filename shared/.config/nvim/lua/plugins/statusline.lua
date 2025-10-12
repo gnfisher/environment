@@ -16,6 +16,9 @@ return {
             return "auto"
           end,
         },
+        sections = {
+          lualine_z = { "hostname" },
+        },
       })
       -- Use only a single global status line. When using this, make sure to
       -- also set WinSeparator in your color theme so that the splits aren't
