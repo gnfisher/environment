@@ -40,6 +40,9 @@ else
     export LSCOLORS=ExFxCxDxBxegedabagacad
 fi
 
+# Ripgrep with hidden files but respect gitignore
+alias rg='rg --hidden'
+
 # Environment variables
 export EDITOR=nvim
 export VISUAL=nvim
