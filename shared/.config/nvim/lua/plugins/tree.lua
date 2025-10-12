@@ -6,7 +6,7 @@ return {
   lazy = false,
   keys = {
     { "<C-p>", "<cmd>NvimTreeFindFile<cr>", desc = "Find file in filetree" },
-    { "<C-n>",      "<cmd>NvimTreeToggle<cr>",   desc = "Find file in filetree" },
+    { "<C-n>", "<cmd>NvimTreeToggle<cr>",   desc = "Find file in filetree" },
   },
   opts = {
     filters = {

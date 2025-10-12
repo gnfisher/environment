@@ -128,17 +128,17 @@ return {
         nerd_font_variant = 'mono'
       },
       completion = {
-        trigger = { 
+        trigger = {
           show_on_insert_on_trigger_character = true,
           show_on_x_blocked_trigger_characters = {},
         },
-        menu = { 
+        menu = {
           auto_show = true,
           draw = {
             treesitter = { "lsp" }
           }
         },
-        documentation = { 
+        documentation = {
           auto_show = true,
           auto_show_delay_ms = 200
         },

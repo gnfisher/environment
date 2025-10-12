@@ -4,7 +4,7 @@
   // - claude-3.7-sonnet, claude-3.5-sonnet, claude-opus-4, claude-opus-41, claude-3.7-sonnet-thought
   // - gpt-5, gpt-5-mini, gpt-4.1, gpt-4o, o3
   // - gemini-2.5-pro, gemini-2.0-flash-001
-  "model": "github-copilot/claude-sonnet-4",
+  "model": "github-copilot/claude-sonnet-4.5",
   // "theme": "catppuccin",
   "autoupdate": true,
   "share": "manual",

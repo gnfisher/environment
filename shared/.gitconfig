@@ -11,14 +11,8 @@
   unstage = reset
 [color]
 	ui = auto
-[merge]
-  ff = only
 [fetch]
   prune = true
-[oh-my-zsh]
-  hide-info = 1
-[credential]
-	helper = cache
 [commit]
   gpgsign = true
 [gpg]

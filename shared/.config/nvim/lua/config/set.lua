@@ -10,10 +10,11 @@ vim.o.shiftround = true
 vim.o.mouse = "a"
 vim.o.smartindent = true
 vim.o.wrap = true
-vim.o.foldlevel = 99
-vim.o.foldmethod = "indent"
-vim.o.foldenable = true
 vim.o.hlsearch = false
+vim.opt.foldmethod = 'expr'
+vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
+vim.opt.foldenable = false
+vim.opt.foldlevel = 99
 vim.o.incsearch = true
 vim.o.swapfile = false
 vim.o.backup = false
@@ -25,6 +26,9 @@ vim.o.autoread = true
 vim.o.exrc = true
 vim.o.secure = true
 vim.o.path = "**"
+vim.o.wildmenu = true
+vim.o.wildmode = "longest:full,full"
+vim.o.wildoptions = "pum"
 vim.opt.wildignore = {
   "*/node_modules/*",
   "*/.git/*",
@@ -40,20 +44,18 @@ vim.opt.wildignore = {
 
 vim.opt.isfname:append("@-@")
 
+if vim.fn.executable("rg") == 1 then
+  vim.o.grepprg = "rg --vimgrep --smart-case --hidden --glob '!{node_modules,.git,dist,build}/*'"
+  vim.o.grepformat = "%f:%l:%c:%m"
+elseif vim.fn.executable("ag") == 1 then
+  vim.o.grepprg = "ag --vimgrep --smart-case --hidden --ignore node_modules --ignore .git --ignore dist --ignore build"
+  vim.o.grepformat = "%f:%l:%c:%m"
+end
+
 vim.api.nvim_create_autocmd("BufWritePre", {
   command = [[%s/\s\+$//e]],
   group = vim.api.nvim_create_augroup("trim_whitespace", {}),
 })
-
-vim.api.nvim_create_user_command("ToggleBg", function()
-  if vim.o.background == "dark" then
-    vim.o.background = "light"
-    vim.cmd[[color modus_operandi]]
-  else
-    vim.o.background = "dark"
-    vim.cmd[[color solarized-dark]]
-  end
-end, {})
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "help",
@@ -67,11 +69,7 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-vim.api.nvim_create_user_command("SendToNextTmuxPane", function(opts)
-  -- Todo: actually make this send to open code (e.g. tmux pane)
-  print('Hey!', opts.args)
-end, {})
-
+-- Auto style markdown files
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",
   callback = function()
@@ -89,16 +87,3 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-vim.opt.foldmethod = 'expr'
-vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
-vim.opt.foldenable = false
-vim.opt.foldlevel = 99
-
--- Ensure Neovim starts a msgpack server so external tools (toggle-theme)
--- can send remote commands to live sessions without restart.
--- If no name is provided, Neovim generates a unique path.
-if vim.fn.has('nvim') == 1 and vim.fn.exists('v:servername') == 1 then
-  if vim.v.servername == '' then
-    pcall(vim.fn.serverstart)
-  end
-end
