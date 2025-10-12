@@ -12,7 +12,7 @@ sudo apt update && sudo apt upgrade -y
 
 # Install essential tools
 echo "🔧 Installing essential tools..."
-sudo apt-get install -y stow tmux ripgrep fd-find jq fuse
+sudo apt-get install -y stow tmux ripgrep fd-find jq fuse universal-ctags
 
 # Download and install Neovim
 echo "📝 Installing Neovim..."
