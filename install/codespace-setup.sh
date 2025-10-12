@@ -12,7 +12,7 @@ sudo apt update && sudo apt upgrade -y
 
 # Install essential tools
 echo "🔧 Installing essential tools..."
-sudo apt-get install -y  stow tmux ripgrep fd-find jq fuse
+sudo apt-get install -y stow tmux ripgrep fd-find jq fuse
 
 # Download and install Neovim
 echo "📝 Installing Neovim..."
@@ -50,6 +50,4 @@ stow -d $DOTFILES_DIR -t $HOME shared
 # Source bashrc
 source "$HOME/.bashrc"
 
-echo "✅ Setup complete!"
-echo "🔥 Neovim installed at: $(which nvim)"
-echo "📍 Config files linked from: $DOTFILES_DIR"
+echo "Setup complete!"
