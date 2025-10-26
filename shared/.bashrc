@@ -14,7 +14,7 @@ if ! shopt -oq posix; then
     if [[ -n "$HOMEBREW_PREFIX" && -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]]; then
         . "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
     elif [[ -f /usr/share/bash-completion/bash_completion ]]; then
-        . /usr/share/bash-completion/bash_completion
+        . /usr/share/bash-comoletion/bash_completion
     elif [[ -f /etc/bash_completion ]]; then
         . /etc/bash_completion
     fi
@@ -73,25 +73,32 @@ fi
 # FZF integration
 [[ -f ~/.fzf.bash ]] && source ~/.fzf.bash
 
+# Color codes
+RED="\[\033[0;31m\]"
+GREEN="\[\033[0;32m\]"
+YELLOW="\[\033[0;33m\]"
+BLUE="\[\033[0;34m\]"
+PURPLE="\[\033[0;35m\]"
+CYAN="\[\033[0;36m\]"
+WHITE="\[\033[0;37m\]"
+RESET="\[\033[0m\]"
+
 # Git-aware prompt with colors
 git_branch() {
     local branch
     branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
-    [[ -n "$branch" ]] && echo "($branch)"
+    [[ -n "$branch" ]] && echo $branch
 }
 
-# Color codes
-RED='\[\033[0;31m\]'
-GREEN='\[\033[0;32m\]'
-YELLOW='\[\033[0;33m\]'
-BLUE='\[\033[0;34m\]'
-PURPLE='\[\033[0;35m\]'
-CYAN='\[\033[0;36m\]'
-WHITE='\[\033[0;37m\]'
-RESET='\[\033[0m\]'
+git_sha() {
+    local sha
+    sha=$(git rev-parse --short HEAD 2>/dev/null) || return 0
+    [[ -n "$sha" ]] || return 0
+    printf '\033[0;37m(\033[0;32m%s\033[0;37m)\033[0m' "$sha"
+}
 
 # Set prompt
-PS1="\n${RESET}❯❯❯ ${CYAN}\h${RESET}:${BLUE}\W${RESET}${YELLOW}\$(git_branch)${RESET}\n\$ "
+PS1="${GREEN}\h${RESET}:${WHITE}\W${RESET}\$(git_sha) \$ "
 
 # Basic aliases
 alias ll='ls -alF'
