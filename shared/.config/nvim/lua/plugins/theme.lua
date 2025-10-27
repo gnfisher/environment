@@ -25,8 +25,6 @@ return {
     lazy = false,
     priority = 1002,
     config = function()
-      vim.o.background = "dark"
-      vim.cmd.colorscheme("onehalfdark")
     end,
   },
 }

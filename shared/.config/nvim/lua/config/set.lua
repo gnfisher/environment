@@ -87,3 +87,8 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+vim.o.laststatus = 3
+-- vim.o.statusline = "%F %h%w%m%r%=%l,%c %P"
+
+vim.o.background = "dark"
+vim.cmd.colorscheme("ghostty")

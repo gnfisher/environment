@@ -2,3 +2,4 @@
 # keybind = alt+right=unbind
 keybind = shift+enter=text:\n
 macos-option-as-alt = true
+font-size = 15

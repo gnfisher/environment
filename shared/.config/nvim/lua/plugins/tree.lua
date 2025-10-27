@@ -20,5 +20,16 @@ return {
         enable = true,
       },
     },
+    renderer = {
+      highlight_git = true,
+      highlight_opened_files = "none",
+      icons = {
+        show = {
+          git = true,
+          folder = true,
+          file = true,
+        },
+      },
+    },
   },
 }
