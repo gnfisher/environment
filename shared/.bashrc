@@ -90,15 +90,26 @@ git_branch() {
     [[ -n "$branch" ]] && echo $branch
 }
 
+# Function to get git SHA without colors
 git_sha() {
-    local sha
-    sha=$(git rev-parse --short HEAD 2>/dev/null) || return 0
-    [[ -n "$sha" ]] || return 0
-    printf '\033[0;37m(\033[0;32m%s\033[0;37m)\033[0m' "$sha"
+    git rev-parse --short HEAD 2>/dev/null
 }
 
-# Set prompt
-PS1="${GREEN}\h${RESET}:${WHITE}\W${RESET}\$(git_sha) \$ "
+# Function to set prompt dynamically
+set_prompt() {
+    local git_info=""
+    local sha
+    sha=$(git_sha)
+
+    if [[ -n "$sha" ]]; then
+        git_info="${WHITE}(${GREEN}${sha}${WHITE})${RESET}"
+    fi
+
+    PS1="${GREEN}\h${RESET}:\W${git_info} \$ "
+}
+
+# Set PROMPT_COMMAND to update prompt before each command
+PROMPT_COMMAND=set_prompt
 
 # Basic aliases
 alias ll='ls -alF'
@@ -125,6 +136,7 @@ alias gs='git status'
 
 # Helpful
 alias dots="cd ~/Development/gnfisher/environment/"
+alias dev="cd ~/Development"
 
 # cd with ls
 cd() {
