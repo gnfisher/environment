@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+# Usage: ./parse_debug.rb export.csv [row_number]
+# - row_number is 1-based among data rows (header is ignored). Defaults to 1.
+
+require 'csv'
+require 'json'
+require 'open3'
+
+if ARGV.length < 1 || ARGV.length > 2
+  warn "Usage: #{$0} export.csv [row_number]"
+  exit 1
+end
+
+path = ARGV[0]
+row_idx = (ARGV[1] || "1").to_i
+if row_idx < 1
+  warn "Row number must be >= 1"
+  exit 1
+end
+
+begin
+  io = File.open(path, "rb:bom|utf-8")
+rescue => e
+  warn "Failed to open file: #{e.message}"
+  exit 1
+end
+
+# Read and drop the header line *raw* to avoid strict CSV check on it.
+header_line = io.gets
+if header_line.nil?
+  warn "CSV has no data rows."
+  exit 2
+end
+
+# Auto-detect separator (CSV vs TSV) from header.
+sep = header_line.count("\t") > header_line.count(",") ? "\t" : ","
+
+rows = []
+begin
+  csv = CSV.new(
+    io,
+    headers: false,
+    return_headers: false,
+    liberal_parsing: true,  # tolerate weird quotes
+    row_sep: :auto,
+    col_sep: sep,
+    quote_char: '"'
+  )
+  csv.each { |r| rows << r }
+rescue CSV::MalformedCSVError => e
+  warn "Malformed CSV: #{e.message}"
+  exit 1
+ensure
+  io.close
+end
+
+if rows.empty?
+  warn "CSV has no data rows."
+  exit 2
+end
+
+row = rows[row_idx - 1]
+if row.nil?
+  warn "Row out of range (requested #{row_idx}, have #{rows.size})"
+  exit 3
+end
+
+# Expected columns from your KQL:
+# 0: session_id, 1: job_id, 2: custom_agent_name, 3: messages, 4: duration_ms, 5: error
+def safe_field(row, idx)
+  v = row[idx]
+  v = v.value if v.respond_to?(:value)  # CSV::Field
+  (v || "").to_s
+end
+
+agent        = safe_field(row, 2)
+messages_raw = safe_field(row, 3)
+error_text   = safe_field(row, 5)
+
+puts "Agent:\t#{agent}"
+puts "Error:\t#{error_text}"
+puts "Messages:\n\n"
+
+# jq filter to render role/content neatly
+jq_filter = %q{
+  def to_text:
+    if type=="string" then .
+    elif type=="array" then ( map( if type=="object" then (.text?.value // .text? // .content? // .value? // tostring) else tostring end ) | join("\n") )
+    elif type=="object" then (.text?.value // .text? // .content? // .value? // tostring)
+    else tostring end;
+  ( if type=="array" then . else [.] end )[] as $m
+  | "[\(($m.role // "Unknown"))]"
+  , ( ($m.content | to_text) // "" )
+  , ""
+}
+
+def ruby_fallback(messages_raw)
+  begin
+    msgs = JSON.parse(messages_raw)
+  rescue
+    msgs = [{"role"=>"Unknown", "content"=>messages_raw}]
+  end
+  msgs = [msgs] unless msgs.is_a?(Array)
+  msgs.each do |m|
+    role = m.is_a?(Hash) ? (m['role'] || 'Unknown') : 'Unknown'
+    content = m.is_a?(Hash) ? m['content'] : m.to_s
+
+    # Normalize OpenAI-style content shapes
+    content =
+      if content.is_a?(Array)
+        content.map { |part|
+          if part.is_a?(Hash)
+            part.dig('text','value') || part['text'] || part['content'] || part['value'] || part.to_s
+          else
+            part.to_s
+          end
+        }.join("\n")
+      elsif content.is_a?(Hash)
+        content.dig('text','value') || content['text'] || content['content'] || content['value'] || content.to_s
+      else
+        content.to_s
+      end
+
+    puts "[#{role}]"
+    puts content
+    puts
+  end
+end
+
+# Try jq first; fall back to Ruby-only rendering if jq missing or errors.
+begin
+  out, err, status = Open3.capture3('jq', '-r', jq_filter, stdin_data: messages_raw)
+  if status.success?
+    print out
+  else
+    warn "(jq failed: #{err.strip}) falling back to Ruby JSON parser..."
+    ruby_fallback(messages_raw)
+  end
+rescue Errno::ENOENT
+  warn "jq not found; falling back to Ruby JSON parser..."
+  ruby_fallback(messages_raw)
+end

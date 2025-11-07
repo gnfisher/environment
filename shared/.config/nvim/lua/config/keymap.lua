@@ -1,27 +1,19 @@
 local opts = { noremap = true, silent = true }
 
 vim.g.mapLeader = " "
+
 vim.keymap.set("n", "<Leader>;", ":", opts)
+
+-- Escape terminal with Ctrl-\ or Esc
 vim.keymap.set({"t"}, "<C-\\>", "<C-\\><C-n>", opts)
 vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", opts)
+
 vim.keymap.set("x", "<Leader>p", [["_dP]], opts)
 vim.keymap.set({ "n", "v" }, "<Leader>y", [["+y]], opts)
 vim.keymap.set("n", "<Leader>Y", [["+Y]], opts)
+
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", opts)
 vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", opts)
-vim.keymap.set("n", "<C-j>", "<Cmd>cnext<CR>zz", opts)
-vim.keymap.set("n", "<C-k>", "<Cmd>cprev<CR>zz", opts)
-vim.keymap.set("n", "-", "<Cmd>Ex<CR>", opts)
-vim.keymap.set({ "n", "v", "i" }, "<F6>", ":ToggleBg<CR>", opts)
-vim.keymap.set("n", "<Leader>nn", ":e ~/notes/notes<CR>", opts)
 
-vim.keymap.set("n", "<C-d>", "<C-d>zz", opts)
-vim.keymap.set("n", "<C-u>", "<C-u>zz", opts)
-vim.keymap.set("n", "n", "nzzzv", opts)
-vim.keymap.set("n", "N", "Nzzzv", opts)
-vim.keymap.set("n", "*", "*zzzv", opts)
-vim.keymap.set("n", "#", "#zzzv", opts)
-vim.keymap.set("n", "g*", "g*zzzv", opts)
-vim.keymap.set("n", "g#", "g#zzzv", opts)
-vim.keymap.set("n", "j", "jzz", opts)
-vim.keymap.set("n", "k", "kzz", opts)
+vim.keymap.set("n", "]q", "<Cmd>cnext<CR>zz", opts)
+vim.keymap.set("n", "[q", "<Cmd>cprev<CR>zz", opts)

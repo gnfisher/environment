@@ -20,7 +20,7 @@ return {
       vim.diagnostic.config({
         virtual_text = true,
         signs = true,
-        underline = true,
+        underline = false,
         update_in_insert = false,
         severity_sort = true,
       })
@@ -36,7 +36,7 @@ return {
           vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<cr>", opts)
           vim.keymap.set("n", "go", "<cmd>lua vim.lsp.buf.type_definition()<cr>", opts)
           vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<cr>", opts)
-          vim.keymap.set("i", "<C-p>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
+          vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
           vim.keymap.set(
             "n",
             "<leader>vd",
@@ -91,7 +91,11 @@ return {
             })
           end,
           ["vtsls"] = function()
-            require("lspconfig").vtsls.setup({})
+            require("lspconfig").vtsls.setup({
+              server_capabilities = {
+                documentFormattingProvider = false,
+              },
+            })
           end,
         }
       })

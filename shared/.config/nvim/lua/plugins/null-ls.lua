@@ -34,13 +34,13 @@ return {
         "prettier.config.mjs",
         "prettier.config.cjs",
       }
-      
+
       for _, config_file in ipairs(config_files) do
         if vim.fn.findfile(config_file, ".;") ~= "" then
           return true
         end
       end
-      
+
       -- Check package.json for prettier config
       local package_json = vim.fn.findfile("package.json", ".;")
       if package_json ~= "" then
@@ -52,7 +52,7 @@ return {
           end
         end
       end
-      
+
       return false
     end
 

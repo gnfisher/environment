@@ -16,15 +16,8 @@ return {
     config = function()
       require("modus-themes").setup({
         style = "modus_operandi",
-        transparent = true,
+        transparent = false,
       })
-    end,
-  },
-  {
-    "MarcoKorinth/onehalf.nvim",
-    lazy = false,
-    priority = 1002,
-    config = function()
     end,
   },
 }
