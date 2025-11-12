@@ -1,5 +1,8 @@
 local opt = vim.opt
 
+opt.splitright = true
+opt.splitbelow = true
+
 opt.number = true
 opt.numberwidth = 1
 opt.signcolumn = "yes"
@@ -51,3 +54,7 @@ vim.opt.wildignore = {
   "*.tmp"
 }
 
+opt.title = true
+opt.titlestring = '%t%( %M%)%( (%{expand("%:~:h")})%)%a (nvim)'
+
+opt.autoread = true

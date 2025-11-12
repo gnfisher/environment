@@ -1,9 +1,3 @@
-vim.g.mapleader = " "
-
-vim.o.autoread = true
-
--- vim.opt.isfname:append("@-@")
-
 if vim.fn.executable("rg") == 1 then
   vim.o.grepprg = "rg --vimgrep --smart-case --hidden --glob '!{node_modules,.git,dist,build}/*'"
   vim.o.grepformat = "%f:%l:%c:%m"
@@ -12,18 +6,6 @@ end
 vim.api.nvim_create_autocmd("BufWritePre", {
   command = [[%s/\s\+$//e]],
   group = vim.api.nvim_create_augroup("trim_whitespace", {}),
-})
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "help",
-  callback = function(args)
-    vim.keymap.set("n", "gq", function()
-      vim.cmd("quit")
-    end, {
-      buffer = args.buf,
-      desc = "Close help window"
-    })
-  end,
 })
 
 -- Auto style markdown files
