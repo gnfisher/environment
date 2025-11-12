@@ -1,0 +1,53 @@
+local opt = vim.opt
+
+opt.number = true
+opt.numberwidth = 1
+opt.signcolumn = "yes"
+opt.showtabline = 3
+
+opt.tabstop = 2
+opt.softtabstop = 2
+opt.shiftwidth = 2
+opt.expandtab = true
+
+opt.shiftround = true
+opt.smartindent = true
+opt.wrap = true
+
+opt.mouse = "a"
+opt.smoothscroll = true
+
+opt.hlsearch = true
+opt.incsearch = true
+
+opt.swapfile = false
+opt.backup = false
+opt.undodir = "/tmp/undo-vim-dir/"
+opt.undofile = true
+
+opt.scrolloff = 3
+opt.updatetime = 250
+
+opt.path:append  "**"
+
+opt.wildmenu = true
+opt.wildmode = "longest:full,full"
+opt.wildoptions = "pum"
+
+opt.foldmethod = 'manual'
+opt.foldenable = false
+opt.foldlevel = 99
+
+vim.opt.wildignore = {
+  "*/node_modules/*",
+  "*/.git/*",
+  "*/dist/*",
+  "*/build/*",
+  "*.o",
+  "*.obj",
+  "*.pyc",
+  "*.class",
+  "*.swp",
+  "*.tmp"
+}
+
