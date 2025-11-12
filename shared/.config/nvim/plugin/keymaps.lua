@@ -5,10 +5,6 @@ set("n", "<Leader>;", ":", opts)
 
 set("n", "<C-space>", ":noh<CR>", opts)
 
--- Escape terminal with Ctrl-\ or Esc
-set({"t"}, "<C-\\>", "<C-\\><C-n>", opts)
-set("t", "<Esc>", "<C-\\><C-n>", opts)
-
 set("x", "<Leader>p", [["_dP]], opts)
 set({ "n", "v" }, "<Leader>y", [["+y]], opts)
 set("n", "<Leader>Y", [["+Y]], opts)
