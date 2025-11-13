@@ -1,8 +1,6 @@
 local set = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
-set("n", "<Leader>;", ":", opts)
-
 set("n", "<C-space>", ":noh<CR>", opts)
 
 set("x", "<Leader>p", [["_dP]], opts)
