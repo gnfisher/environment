@@ -102,10 +102,10 @@ set_prompt() {
     sha=$(git_sha)
 
     if [[ -n "$sha" ]]; then
-        git_info="${WHITE}(${GREEN}${sha}${WHITE})${RESET}"
+        git_info="${WHITE}(${RED}${sha}${WHITE})${RESET}"
     fi
 
-    PS1="${PURPLE}\u@\h${RESET} ${BLUE}\W${RESET}\$ "
+    PS1="${BLUE}\u@\h${RESET} ${YELLOW}\$PWD${RESET}\$ "
 }
 
 # Set PROMPT_COMMAND to update prompt before each command

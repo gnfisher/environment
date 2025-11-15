@@ -10,4 +10,4 @@ set.textwidth = 80
 -- l = don't break lines that are already long when entering insert mode
 -- n = recognize numbered lists
 -- j = remove comment leader when joining lines (if supported)
-set.opt_local.formatoptions = "tcqln"
+set.formatoptions = "tcqln"
