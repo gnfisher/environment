@@ -105,7 +105,7 @@ set_prompt() {
         git_info="${WHITE}(${RED}${sha}${WHITE})${RESET}"
     fi
 
-    PS1="${BLUE}\u@\h${RESET} ${YELLOW}\$PWD${RESET}\$ "
+    PS1="${PURPLE}\u@\h${RESET} ${CYAN}\$PWD${RESET}\$ "
 }
 
 # Set PROMPT_COMMAND to update prompt before each command
