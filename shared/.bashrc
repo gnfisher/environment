@@ -105,7 +105,7 @@ set_prompt() {
         git_info="${WHITE}(${GREEN}${sha}${WHITE})${RESET}"
     fi
 
-    PS1="${GREEN}\h${RESET}:\W${git_info} \$ "
+    PS1="${PURPLE}\u@\h${RESET} ${BLUE}\W${RESET}\$ "
 }
 
 # Set PROMPT_COMMAND to update prompt before each command
@@ -115,28 +115,13 @@ PROMPT_COMMAND=set_prompt
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
-# alias vim='nvim'
 alias ..='cd ..'
 alias ...='cd ../..'
-alias oh='opencode'
-alias lg='lazygit'
-alias ld='lazydocker'
-alias z='zellij'
-
-
-# Git aliases
-alias ga='git add'
-alias gb='git branch'
-alias gc='git commit'
-alias gca='git commit --amend'
-alias gch='git checkout'
-alias gp='git push origin'
-alias gr='git pull --rebase origin'
-alias gs='git status'
+alias g='git'
 
 # Helpful
-alias dots="cd ~/Development/gnfisher/environment/"
-alias dev="cd ~/Development"
+alias dots='cd ~/Development/gnfisher/environment/'
+alias dev='cd ~/Development'
 
 # cd with ls
 cd() {
