@@ -3,5 +3,5 @@
 # keybind = shift+enter=text:\n
 macos-option-as-alt = true
 # font-size = 14
-# font-family = Berkeley Mono
+font-family = Berkeley Mono
 # window-padding-balance = true

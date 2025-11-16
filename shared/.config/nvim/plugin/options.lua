@@ -61,8 +61,8 @@ opt.autoread = true
 
 opt.laststatus = 3
 
-opt.background = "dark"
-vim.cmd.colorscheme("retrobox")
+-- opt.background = "dark"
+-- vim.cmd.colorscheme("retrobox")
 
 -- use ripgrep if its installed
 if vim.fn.executable("rg") == 1 then
