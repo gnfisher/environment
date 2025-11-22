@@ -9,6 +9,23 @@
 [alias]
   uncommit = reset --soft HEAD^
   unstage = reset
+  rom = !git fetch origin main && git rebase origin/main
+  rom-i = !git fetch origin main && git rebase -i origin/main
+  sync = !git fetch origin && git rebase origin/$(git branch --show-current)
+  co = checkout
+  cob = checkout -b
+  br = branch
+  brd = branch -D
+  l = log --oneline --decorate --graph -20
+  ll = log --oneline --decorate --graph --all
+  lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+  lv = log --stat --patch
+  s = status -sb
+  d = diff
+  dc = diff --cached
+  amend = commit --amend --no-edit
+  pushf = push --force-with-lease
+  wip = !git add -A && git commit -m 'WIP'
 [color]
 	ui = auto
 [fetch]

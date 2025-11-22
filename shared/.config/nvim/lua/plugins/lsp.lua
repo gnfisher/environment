@@ -39,7 +39,18 @@ return {
           vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<cr>", opts)
           vim.keymap.set("n", "<S-F12>", "<cmd>lua vim.lsp.buf.references()<cr>", opts)
           vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
-          vim.keymap.set( "n", "<leader>vd", "<cmd>lua vim.diagnostic.open_float()<cr>", { desc = "View Diagnostics" })
+          vim.keymap.set( "n", "<leader>vd", function()
+            local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line('.') - 1 })
+            if #diagnostics > 0 then
+              local messages = {}
+              for _, d in ipairs(diagnostics) do
+                table.insert(messages, string.format("[%s] %s", vim.diagnostic.severity[d.severity], d.message))
+              end
+              vim.cmd('echo "' .. table.concat(messages, " | "):gsub('"', '\\"') .. '"')
+            else
+              vim.cmd('echo "No diagnostics on this line"')
+            end
+          end, { desc = "View Diagnostics" })
           vim.keymap.set("n", "<F2>", "<cmd>lua vim.lsp.buf.rename()<cr>", opts)
           vim.keymap.set("n", "<leader>ca", "<cmd>lua vim.lsp.buf.code_action()<cr>", opts)
 
