@@ -46,9 +46,9 @@ return {
               for _, d in ipairs(diagnostics) do
                 table.insert(messages, string.format("[%s] %s", vim.diagnostic.severity[d.severity], d.message))
               end
-              vim.cmd('echo "' .. table.concat(messages, " | "):gsub('"', '\\"') .. '"')
+              vim.notify(table.concat(messages, "\n"))
             else
-              vim.cmd('echo "No diagnostics on this line"')
+              vim.notify("No diagnostics on this line")
             end
           end, { desc = "View Diagnostics" })
           vim.keymap.set("n", "<F2>", "<cmd>lua vim.lsp.buf.rename()<cr>", opts)
@@ -65,13 +65,10 @@ return {
           "vtsls",
           "gopls",
           "lua_ls",
+          "golangci_lint_ls",
         },
         handlers = {
           function(server_name)
-            -- Skip golangci_lint_ls to avoid conflicts with v2
-            if server_name == "golangci_lint_ls" then
-              return
-            end
             require("lspconfig")[server_name].setup({})
           end,
           ["lua_ls"] = function()
@@ -103,6 +100,12 @@ return {
               server_capabilities = {
                 documentFormattingProvider = false,
               },
+            })
+          end,
+          ["golangci_lint_ls"] = function()
+            require("lspconfig").golangci_lint_ls.setup({
+              filetypes = { "go", "gomod" },
+              root_dir = require("lspconfig").util.root_pattern("go.work", "go.mod", ".git"),
             })
           end,
         }
