@@ -66,3 +66,6 @@ if vim.fn.executable("rg") == 1 then
   opt.grepprg = "rg --vimgrep --smart-case --hidden --glob '!{node_modules,.git,dist,build}/*'"
   opt.grepformat = "%f:%l:%c:%m"
 end
+
+-- Set the colorscheme
+vim.cmd.colorscheme "github_modern"
