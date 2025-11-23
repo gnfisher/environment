@@ -40,4 +40,4 @@
 	process = git-lfs filter-process
 	required = true
 [diff]
-    external = difft
+  external = difft --background=light

@@ -98,7 +98,7 @@ Group.new('PmenuThumb', Color.new('pmenuthumb_fg', '#AAAAAA'), Color.new('pmenut
 
 Group.new('TabLine', c.grey_darker, Color.new('tabline_bg', '#DDDDDD'))
 Group.new('TabLineFill', c.grey_darker, c.tabline_bg)
-Group.new('TabLineSel', c.grey_darker, nil, s.bold)
+Group.new('TabLineSel', c.grey_darker, c.background, s.bold)
 
 Group.new('cucumberTags', Color.new('cucumber_fg', '#333333'), Color.new('cucumber_bg', '#FFFF66'), s.bold)
 Group.new('htmlTagN', nil, nil, s.bold)
