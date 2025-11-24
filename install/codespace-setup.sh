@@ -16,7 +16,7 @@ sudo apt-get install -y stow tmux ripgrep fd-find jq fuse universal-ctags
 
 # Download and install Neovim
 echo "📝 Installing Neovim..."
-NVIM_VERSION="v0.9.4"
+NVIM_VERSION="v0.11.5"
 NVIM_URL="https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux64.tar.gz"
 
 # Create temp directory and download
