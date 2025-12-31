@@ -20,3 +20,14 @@ set("v", "K", ":m '<-2<CR>gv=gv", opts)
 -- Quickfix jump
 set("n", "]q", "<Cmd>cnext<CR>zz", opts)
 set("n", "[q", "<Cmd>cprev<CR>zz", opts)
+
+-- Toggle dark/light theme
+set("n", "<F6>", function()
+  if vim.o.background == "light" then
+    vim.o.background = "dark"
+    vim.cmd.colorscheme("gruvbuddy")
+  else
+    vim.o.background = "light"
+    vim.cmd.colorscheme("modus_operandi")
+  end
+end, opts)

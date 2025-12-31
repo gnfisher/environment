@@ -24,3 +24,11 @@ vim.keymap.set("n", "<Leader>st", function()
   vim.cmd.term()
 end)
 
+-- Open a terminal in a vertical split on the right at ~33% width.
+vim.keymap.set("n", "<Leader>vt", function()
+  vim.cmd.vnew()
+  vim.cmd.wincmd "L"
+  vim.api.nvim_win_set_width(0, math.floor(vim.o.columns / 3))
+  vim.wo.winfixwidth = true
+  vim.cmd.term()
+end)

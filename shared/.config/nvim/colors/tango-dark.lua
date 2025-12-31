@@ -1,5 +1,19 @@
 -- tango-dark.lua
--- Neovim colorscheme based on Emacs tango-dark
+-- Neovim colorscheme based on Emacs tango-dark, now powered by colorbuddy
+
+local ok, colorbuddy = pcall(require, "colorbuddy")
+if not ok then
+  return
+end
+
+vim.cmd("highlight clear")
+vim.cmd("set background=dark")
+vim.g.colors_name = "tango-dark"
+
+local Color = colorbuddy.Color
+local Group = colorbuddy.Group
+local s = colorbuddy.styles
+local c = colorbuddy.colors
 
 local colors = {
   butter1 = "#fce94f", butter2 = "#edd400", butter3 = "#c4a000",
@@ -13,122 +27,108 @@ local colors = {
   alum5   = "#555753", alum5_5 = "#41423f", alum6   = "#2e3436", alum7   = "#212526",
 }
 
-vim.cmd("highlight clear")
-vim.cmd("set background=dark")
-vim.g.colors_name = "tango-dark"
-
-local function hi(group, opts)
-  local cmd = "hi " .. group
-  if opts.gui then cmd = cmd .. " gui=" .. opts.gui end
-  if opts.fg then cmd = cmd .. " guifg=" .. opts.fg end
-  if opts.bg then cmd = cmd .. " guibg=" .. opts.bg end
-  if opts.sp then cmd = cmd .. " guisp=" .. opts.sp end
-  vim.cmd(cmd)
+for name, hex in pairs(colors) do
+  Color.new(name, hex)
 end
 
 -- UI
-hi("Normal",      { fg=colors.alum1, bg=colors.alum6 })
-hi("Cursor",      { bg=colors.butter1 })
-hi("CursorLine",  { bg=colors.alum7 })
-hi("Visual",      { bg=colors.alum5 })
-hi("LineNr",      { fg=colors.alum4 })
-hi("CursorLineNr",{ fg=colors.orange1, bg=colors.alum7 })
-hi("StatusLine",  { fg=colors.alum1, bg=colors.alum5_5 })
-hi("StatusLineNC",{ fg=colors.alum4, bg=colors.alum6 })
-hi("VertSplit",   { fg=colors.alum5 })
-hi("WinSeparator",{ fg=colors.alum5 })
-hi("NormalFloat", { fg=colors.alum1, bg=colors.alum6 })
-hi("FloatBorder", { fg=colors.alum5,  bg=colors.alum6 })
-hi("FloatTitle",  { fg=colors.butter1, bg=colors.alum6 })
-hi("Pmenu",       { fg=colors.alum1, bg=colors.alum6 })
-hi("PmenuSel",    { fg=colors.alum6, bg=colors.butter2 })
-hi("PmenuSbar",   { bg=colors.alum5 })
-hi("PmenuThumb",  { bg=colors.alum4 })
-hi("Search",      { fg=colors.alum1, bg=colors.orange3 })
-hi("IncSearch",   { fg=colors.alum1, bg=colors.orange3 })
-hi("MatchParen",  { bg=colors.cham0 })
+Group.new('Normal', c.alum1, c.alum6)
+Group.new('Cursor', nil, c.butter1)
+Group.new('CursorLine', nil, c.alum7)
+Group.new('Visual', c.alum1, c.alum5)
+Group.new('LineNr', c.alum4, nil)
+Group.new('CursorLineNr', c.orange1, c.alum7, s.bold)
+Group.new('StatusLine', c.alum1, c.alum5_5, s.bold)
+Group.new('StatusLineNC', c.alum4, c.alum6, s.italic)
+Group.new('VertSplit', c.alum5, c.alum6)
+Group.new('WinSeparator', c.alum5, c.alum6)
+Group.new('NormalFloat', c.alum1, c.alum6)
+Group.new('FloatBorder', c.alum5, c.alum6)
+Group.new('FloatTitle', c.butter1, c.alum6, s.bold)
+Group.new('Pmenu', c.alum1, c.alum6)
+Group.new('PmenuSel', c.alum6, c.butter2, s.bold)
+Group.new('PmenuSbar', nil, c.alum5)
+Group.new('PmenuThumb', nil, c.alum4)
+Group.new('Search', c.alum1, c.orange3, s.italic)
+Group.new('IncSearch', c.alum1, c.orange3, s.bold)
+Group.new('MatchParen', c.alum7, c.cham0, s.bold)
+Group.new('SignColumn', c.alum4, c.alum6)
 
 -- Syntax
-hi("Comment",     { fg=colors.cham2 })
-hi("Constant",    { fg=colors.plum0 })
-hi("String",      { fg=colors.choc1 })
-hi("Character",   { fg=colors.choc1 })
-hi("Number",      { fg=colors.plum0 })
-hi("Boolean",     { fg=colors.plum0 })
-hi("Identifier",  { fg=colors.orange1 })
-hi("Function",    { fg=colors.butter1 })
-hi("Statement",   { fg=colors.cham0 })
-hi("Conditional", { fg=colors.cham0 })
-hi("Repeat",      { fg=colors.cham0 })
-hi("Label",       { fg=colors.butter1 })
-hi("Operator",    { fg=colors.cham0 })
-hi("Keyword",     { fg=colors.cham0 })
-hi("PreProc",     { fg=colors.plum1 })
-hi("Type",        { fg=colors.blue0 })
-hi("Special",     { fg=colors.orange1 })
-hi("Underlined",  { fg=colors.blue1, gui="underline" })
-hi("Error",       { fg=colors.red0 })
-hi("Todo",        { fg=colors.orange1, bg=colors.alum7 })
+Group.new('Comment', c.cham2, nil, s.italic)
+Group.new('Constant', c.plum0)
+Group.new('String', c.choc1)
+Group.new('Character', c.choc1)
+Group.new('Number', c.plum0)
+Group.new('Boolean', c.plum0)
+Group.new('Identifier', c.orange1)
+Group.new('Function', c.butter1, nil, s.bold)
+Group.new('Statement', c.cham0, nil, s.bold)
+Group.new('Conditional', c.cham0, nil, s.bold)
+Group.new('Repeat', c.cham0, nil, s.bold)
+Group.new('Label', c.butter1, nil, s.bold)
+Group.new('Operator', c.cham0, nil, s.bold)
+Group.new('Keyword', c.cham0, nil, s.bold)
+Group.new('PreProc', c.plum1, nil, s.bold)
+Group.new('Type', c.blue0, nil, s.bold)
+Group.new('Special', c.orange1, nil, s.bold)
+Group.new('Underlined', c.blue1, nil, s.underline)
+Group.new('Error', c.red0, nil, s.bold)
+Group.new('Todo', c.orange1, c.alum7, s.bold)
 
--- Diagnostics (for LSP)
-hi("DiagnosticError", { fg=colors.red0 })
-hi("DiagnosticWarn",  { fg=colors.orange1 })
-hi("DiagnosticInfo",  { fg=colors.blue1 })
-hi("DiagnosticHint",  { fg=colors.cham1 })
+-- Diagnostics
+Group.new('DiagnosticError', c.red0)
+Group.new('DiagnosticWarn', c.orange1)
+Group.new('DiagnosticInfo', c.blue1)
+Group.new('DiagnosticHint', c.cham1)
+Group.new('DiagnosticOk', c.cham0)
 
--- Diagnostic underlines in text
-hi("DiagnosticUnderlineError", { gui="underline", sp=colors.red0 })
-hi("DiagnosticUnderlineWarn",  { gui="NONE" })
-hi("DiagnosticUnderlineInfo",  { gui="NONE" })
-hi("DiagnosticUnderlineHint",  { gui="NONE" })
+vim.api.nvim_set_hl(0, 'DiagnosticUnderlineError', { undercurl = true, sp = colors.red0 })
+vim.api.nvim_set_hl(0, 'DiagnosticUnderlineWarn', { undercurl = true, sp = colors.orange1 })
+vim.api.nvim_set_hl(0, 'DiagnosticUnderlineInfo', { undercurl = true, sp = colors.blue1 })
+vim.api.nvim_set_hl(0, 'DiagnosticUnderlineHint', { undercurl = true, sp = colors.cham1 })
 
 -- Diffs
-hi("DiffAdd",    { bg=colors.cham3 })
-hi("DiffChange", { bg=colors.blue3 })
-hi("DiffDelete", { bg=colors.red3 })
-hi("DiffText",   { bg=colors.butter2 })
+Group.new('DiffAdd', nil, c.cham3)
+Group.new('DiffChange', nil, c.blue3)
+Group.new('DiffDelete', nil, c.red3)
+Group.new('DiffText', nil, c.butter2, s.bold)
 
 -- Links/underlines
-hi("Title",      { fg=colors.butter1 })
-hi("Directory",  { fg=colors.blue1 })
-hi("Link",       { fg=colors.blue1, gui="underline" })
-hi("VisualNOS",  { bg=colors.blue3 })
-
--- You can add more highlight groups as needed
+Group.new('Title', c.butter1, nil, s.bold)
+Group.new('Directory', c.blue1, nil, s.bold)
+Group.new('Hyperlink', c.blue1, nil, s.underline)
+Group.new('VisualNOS', c.alum1, c.blue3)
 
 -- Floating UIs for common plugins
--- Telescope
-hi("TelescopeNormal",        { fg=colors.alum1, bg=colors.alum6 })
-hi("TelescopeBorder",        { fg=colors.alum5, bg=colors.alum6 })
-hi("TelescopeTitle",         { fg=colors.alum6, bg=colors.butter2 })
-hi("TelescopeSelection",     { fg=colors.butter1, bg=colors.alum5 })
-hi("TelescopeSelectionCaret",{ fg=colors.butter2, bg=colors.alum5 })
-hi("TelescopePromptNormal",  { fg=colors.alum1, bg=colors.alum6 })
-hi("TelescopePromptBorder",  { fg=colors.alum5, bg=colors.alum6 })
-hi("TelescopePromptTitle",   { fg=colors.alum6, bg=colors.butter2 })
-hi("TelescopeResultsNormal", { fg=colors.alum1, bg=colors.alum6 })
-hi("TelescopeResultsBorder", { fg=colors.alum5, bg=colors.alum6 })
-hi("TelescopeResultsTitle",  { fg=colors.alum6, bg=colors.blue2 })
-hi("TelescopePreviewNormal", { fg=colors.alum1, bg=colors.alum6 })
-hi("TelescopePreviewBorder", { fg=colors.alum5, bg=colors.alum6 })
-hi("TelescopePreviewTitle",  { fg=colors.alum6, bg=colors.cham1 })
+Group.new('TelescopeNormal', c.alum1, c.alum6)
+Group.new('TelescopeBorder', c.alum5, c.alum6)
+Group.new('TelescopeTitle', c.alum6, c.butter2, s.bold)
+Group.new('TelescopeSelection', c.butter1, c.alum5, s.bold)
+Group.new('TelescopeSelectionCaret', c.butter2, c.alum5, s.bold)
+Group.new('TelescopePromptNormal', c.alum1, c.alum6)
+Group.new('TelescopePromptBorder', c.alum5, c.alum6)
+Group.new('TelescopePromptTitle', c.alum6, c.butter2, s.bold)
+Group.new('TelescopeResultsNormal', c.alum1, c.alum6)
+Group.new('TelescopeResultsBorder', c.alum5, c.alum6)
+Group.new('TelescopeResultsTitle', c.alum6, c.blue2, s.bold)
+Group.new('TelescopePreviewNormal', c.alum1, c.alum6)
+Group.new('TelescopePreviewBorder', c.alum5, c.alum6)
+Group.new('TelescopePreviewTitle', c.alum6, c.cham1, s.bold)
 
--- Lazy.nvim
-hi("LazyNormal",  { fg=colors.alum1, bg=colors.alum6 })
-hi("LazyBorder",  { fg=colors.alum5,  bg=colors.alum6 })
-hi("LazyH1",      { fg=colors.alum6,  bg=colors.butter2 })
-hi("LazyButton",  { fg=colors.alum1,  bg=colors.alum6 })
-hi("LazyButtonActive", { fg=colors.alum6, bg=colors.butter2 })
+Group.new('LazyNormal', c.alum1, c.alum6)
+Group.new('LazyBorder', c.alum5, c.alum6)
+Group.new('LazyH1', c.alum6, c.butter2, s.bold)
+Group.new('LazyButton', c.alum1, c.alum6)
+Group.new('LazyButtonActive', c.alum6, c.butter2, s.bold)
 
--- nvim-tree floating window
-hi("NvimTreeNormalFloat", { fg=colors.alum1, bg=colors.alum6 })
-hi("NvimTreeWinSeparator",{ fg=colors.alum5,  bg=colors.alum6 })
+Group.new('NvimTreeNormalFloat', c.alum1, c.alum6)
+Group.new('NvimTreeWinSeparator', c.alum5, c.alum6)
 
--- WhichKey
-hi("WhichKeyFloat",  { bg=colors.alum6 })
-hi("WhichKeyBorder", { fg=colors.alum5, bg=colors.alum6 })
+Group.new('WhichKeyFloat', nil, c.alum6)
+Group.new('WhichKeyBorder', c.alum5, c.alum6)
 
--- Creative lualine theme using full tango color palette
+-- lualine theme using full tango palette
 local M = {}
 M.normal = {
   a = { fg = colors.alum7, bg = colors.cham1, gui = 'bold' },
@@ -166,10 +166,8 @@ M.inactive = {
   c = { fg = colors.alum4, bg = colors.alum7 },
 }
 
--- Make theme globally available for lualine
 vim.g.tango_dark_lualine_theme = M
 
--- Set terminal colors (optional)
 vim.g.terminal_color_0  = colors.alum7
 vim.g.terminal_color_1  = colors.red0
 vim.g.terminal_color_2  = colors.cham0

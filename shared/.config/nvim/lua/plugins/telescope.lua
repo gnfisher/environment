@@ -35,6 +35,7 @@ return {
 		{ "<leader>ff", "<cmd>Telescope git_files<cr>", desc = "Find in git files" },
 		{ "<leader>fa", "<cmd>Telescope find_files<cr>", desc = "Find all files" },
 		{ "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Find in files" },
+    { "<space>/", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy find in buffer" },
 		{ "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
 		{ "<leader>fd", "<cmd>Telescope diagnostics bufnr=0<cr>", desc = "Find buffer diagnostics" },
 		{ "<leader>fs", "<cmd>Telescope lsp_document_symbols<cr>", desc = "Find buffer symbols" },

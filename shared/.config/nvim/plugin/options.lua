@@ -7,6 +7,7 @@ opt.number = true
 opt.numberwidth = 1
 opt.signcolumn = "yes"
 opt.showtabline = 3
+opt.cursorline = true
 
 opt.tabstop = 2
 opt.softtabstop = 2
@@ -68,4 +69,5 @@ if vim.fn.executable("rg") == 1 then
 end
 
 -- Set the colorscheme
-vim.cmd.colorscheme "github_modern"
+-- vim.cmd.colorscheme "github_modern"
+-- vim.cmd.colorscheme "tango-dark"

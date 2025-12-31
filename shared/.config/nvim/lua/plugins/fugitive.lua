@@ -1,7 +1,12 @@
 return {
-	"tpope/vim-fugitive",
-  dependencies = {
-    "tpope/vim-rhubarb",
+  {
+    "tpope/vim-fugitive",
+    dependencies = {
+      "tpope/vim-rhubarb",
+    },
+    config = function() end,
   },
-	config = function() end,
+  {
+    'sindrets/diffview.nvim'
+  },
 }
