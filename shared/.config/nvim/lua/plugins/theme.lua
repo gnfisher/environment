@@ -14,7 +14,14 @@ return {
     lazy = false,
     priority = 1003,
     config = function()
-      require("tomorrow-night-blue").setup({})
+      require("tomorrow-night-blue").setup({
+        keywords = { bold = true },
+        diagnostics = {
+          -- Inline diagnostics (virtual text)
+          virtual_text = { italic = true },
+        },
+      })
+
       vim.cmd.colorscheme("tomorrow-night-blue")
     end,
   },
