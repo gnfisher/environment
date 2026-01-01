@@ -1,0 +1,2 @@
+# Encrypt everything under resources/ when committed to git
+resources/** filter=git-crypt diff=git-crypt
