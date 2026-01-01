@@ -19,6 +19,7 @@
   "telescope-git-file-history.nvim": { "branch": "master", "commit": "e7d495319f2a04df96402057a6992ea970f8914d" },
   "telescope-undo.nvim": { "branch": "main", "commit": "928d0c2dc9606e01e2cc547196f48d2eaecf58e5" },
   "telescope.nvim": { "branch": "master", "commit": "83a3a713d6b2d2a408491a1b959e55a7fa8678e8" },
+  "tomorrow-night-blue.nvim": { "branch": "master", "commit": "a62af473541263fbfa2bdf3ed8833bb080e28824" },
   "vim-fugitive": { "branch": "master", "commit": "61b51c09b7c9ce04e821f6cf76ea4f6f903e3cf4" },
   "vim-rhubarb": { "branch": "master", "commit": "5496d7c94581c4c9ad7430357449bb57fc59f501" },
   "vim-surround": { "branch": "master", "commit": "3d188ed2113431cf8dac77be61b842acb64433d9" },
