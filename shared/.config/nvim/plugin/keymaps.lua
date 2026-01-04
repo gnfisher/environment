@@ -25,9 +25,9 @@ set("n", "[q", "<Cmd>cprev<CR>zz", opts)
 set("n", "<F6>", function()
   if vim.o.background == "light" then
     vim.o.background = "dark"
-    vim.cmd.colorscheme("gruvbuddy")
+    vim.cmd.colorscheme("tomorrow-night-blue")
   else
     vim.o.background = "light"
-    vim.cmd.colorscheme("modus_operandi")
+    vim.cmd.colorscheme("zellner")
   end
 end, opts)

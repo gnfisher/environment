@@ -1,5 +1,8 @@
 vim.g.mapleader = " "
 
+vim.opt.background = "light"
+vim.cmd.colorscheme("zellner")
+
 if vim.g.vscode then
   -- VSCode extension
   -- I guess you have to grow up and murder the dreams of childhood eventually.

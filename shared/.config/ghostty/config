@@ -2,11 +2,9 @@
 # keybind = alt+right=unbind
 # keybind = shift+enter=text:\n
 macos-option-as-alt = true
-# font-size = 14
 font-family = Berkeley Mono
 window-padding-balance = true
-theme = Builtin Light
 window-theme = light
-# theme = dark:Gruvbox Dark,light:Builtin Light
+theme = dark:Gruvbox Dark,light:Builtin Light
 # adjust-cell-height = 20%
 adjust-cell-width = "-5%"
