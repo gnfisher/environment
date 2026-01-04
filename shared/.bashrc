@@ -73,43 +73,8 @@ fi
 # FZF integration
 [[ -f ~/.fzf.bash ]] && source ~/.fzf.bash
 
-# Color codes
-RED="\[\033[0;31m\]"
-GREEN="\[\033[0;32m\]"
-YELLOW="\[\033[0;33m\]"
-BLUE="\[\033[0;34m\]"
-PURPLE="\[\033[0;35m\]"
-CYAN="\[\033[0;36m\]"
-WHITE="\[\033[0;37m\]"
-RESET="\[\033[0m\]"
-
-# Git-aware prompt with colors
-git_branch() {
-    local branch
-    branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
-    [[ -n "$branch" ]] && echo $branch
-}
-
-# Function to get git SHA without colors
-git_sha() {
-    git rev-parse --short HEAD 2>/dev/null
-}
-
-# Function to set prompt dynamically
-set_prompt() {
-    local git_info=""
-    local sha
-    sha=$(git_sha)
-
-    if [[ -n "$sha" ]]; then
-        git_info="${WHITE}(${RED}${sha}${WHITE})${RESET}"
-    fi
-
-    PS1="${GREEN}\u@\h${RESET} ${YELLOW}\$PWD${RESET}\$ "
-}
-
-# Set PROMPT_COMMAND to update prompt before each command
-PROMPT_COMMAND=set_prompt
+# Simple prompt: folderName$
+PS1='\W\$ '
 
 # Basic aliases
 alias ll='ls -alF'
