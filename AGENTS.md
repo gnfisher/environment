@@ -4,7 +4,7 @@ This repository contains dotfiles managed with [GNU Stow](https://www.gnu.org/so
 
 ## Dotfile Management with Stow
 
-Dotfiles are organized in the `shared/` directory and symlinked to `~` using Stow.
+Dotfiles are symlinked to `~` using Stow.
 
 ### Re-syncing After Changes
 
@@ -19,20 +19,10 @@ stow -R shared
 
 The `-R` (restow) flag is equivalent to `-D` (delete) followed by `-S` (stow), which cleans up removed symlinks and creates new ones.
 
-### Troubleshooting
-
-```bash
-# Dry-run to see what would happen
-stow -n -v shared
-
-# Force restow if conflicts exist
-stow -R --adopt shared  # Careful: --adopt moves existing files INTO the repo
-```
-
 ## Directory Structure
 
-- `shared/` - Dotfiles symlinked to `~` via stow
+- `shared/` - Dotfiles symlinked to `~` via stow, cross platform
 - `linux/` - Linux-specific configuration
 - `macos/` - macOS-specific configuration
-- `install/` - Installation scripts
-- `resources/` - Additional resources
+- `install/` - Installation scripts (don't symlink)
+- `resources/` - Additional resources (don't symlink)
