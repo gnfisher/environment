@@ -2,7 +2,7 @@
 # keybind = alt+right=unbind
 # keybind = shift+enter=text:\n
 macos-option-as-alt = true
-font-family = Berkeley Mono
+font-family = Firacode Mono
 window-padding-balance = true
 window-theme = light
 theme = dark:Gruvbox Dark,light:Builtin Light
