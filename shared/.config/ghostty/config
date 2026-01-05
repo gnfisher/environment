@@ -4,7 +4,6 @@
 macos-option-as-alt = true
 font-family = Firacode Mono
 window-padding-balance = true
-window-theme = light
 theme = dark:Gruvbox Dark,light:Builtin Light
 # adjust-cell-height = 20%
 adjust-cell-width = "-5%"
