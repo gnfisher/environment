@@ -2,6 +2,19 @@
 # keybind = alt+right=unbind
 # keybind = shift+enter=text:\n
 macos-option-as-alt = true
+
+# Split panes (match WezTerm)
+keybind = cmd+d=new_split:right
+keybind = cmd+shift+d=new_split:down
+
+# Navigate panes (match WezTerm)
+keybind = cmd+shift+h=goto_split:left
+keybind = cmd+shift+l=goto_split:right
+keybind = cmd+shift+k=goto_split:top
+keybind = cmd+shift+j=goto_split:bottom
+
+# Close pane
+keybind = cmd+w=close_surface
 font-family = Berkeley Mono Regular
 window-padding-balance = true
 theme = dark:Gruvbox Dark,light:Builtin Light

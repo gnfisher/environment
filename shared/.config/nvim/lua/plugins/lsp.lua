@@ -31,13 +31,13 @@ return {
           local opts = { buffer = event.buf }
 
           vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<cr>", opts)
-          vim.keymap.set("n", "gd", "<cmd>lua vim.lsp.buf.definition()<cr>", opts)
-          vim.keymap.set("n", "<F12>", "<cmd>lua vim.lsp.buf.definition()<cr>", opts)
+          vim.keymap.set("n", "gd", "<cmd>Telescope lsp_definitions<cr>", opts)
+          vim.keymap.set("n", "<F12>", "<cmd>Telescope lsp_definitions<cr>", opts)
           vim.keymap.set("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<cr>", opts)
-          vim.keymap.set("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<cr>", opts)
-          vim.keymap.set("n", "go", "<cmd>lua vim.lsp.buf.type_definition()<cr>", opts)
-          vim.keymap.set("n", "gr", "<cmd>lua vim.lsp.buf.references()<cr>", opts)
-          vim.keymap.set("n", "<S-F12>", "<cmd>lua vim.lsp.buf.references()<cr>", opts)
+          vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations<cr>", opts)
+          vim.keymap.set("n", "go", "<cmd>Telescope lsp_type_definitions<cr>", opts)
+          vim.keymap.set("n", "gr", "<cmd>Telescope lsp_references<cr>", opts)
+          vim.keymap.set("n", "<S-F12>", "<cmd>Telescope lsp_references<cr>", opts)
           vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
           vim.keymap.set( "n", "<leader>vd", function()
             local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line('.') - 1 })
@@ -65,7 +65,6 @@ return {
           "vtsls",
           "gopls",
           "lua_ls",
-          "golangci_lint_ls",
         },
         handlers = {
           function(server_name)
@@ -100,12 +99,6 @@ return {
               server_capabilities = {
                 documentFormattingProvider = false,
               },
-            })
-          end,
-          ["golangci_lint_ls"] = function()
-            require("lspconfig").golangci_lint_ls.setup({
-              filetypes = { "go", "gomod" },
-              root_dir = require("lspconfig").util.root_pattern("go.work", "go.mod", ".git"),
             })
           end,
         }

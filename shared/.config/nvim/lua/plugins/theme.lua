@@ -1,16 +1,18 @@
 return {
   {
     "gnfisher/tomorrow-night-blue.nvim",
+    lazy = true,
+  },
+  {
+    "catppuccin/nvim",
+    name = "catppuccin",
     lazy = false,
     priority = 1000,
     config = function()
-      require("tomorrow-night-blue").setup({
-        keywords = { bold = true },
-        diagnostics = {
-          virtual_text = { italic = true },
-        },
+      require("catppuccin").setup({
+        flavour = "mocha",
       })
-      -- vim.cmd.colorscheme("tomorrow-night-blue")
+      vim.cmd.colorscheme("catppuccin")
     end,
   },
 }

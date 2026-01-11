@@ -6,7 +6,6 @@ return {
 		"isak102/telescope-git-file-history.nvim",
 		{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 	},
-	lazy = false,
 	opts = {
 		pickers = {
 			find_files = {

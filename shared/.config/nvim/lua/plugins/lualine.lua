@@ -5,7 +5,7 @@ return {
     lazy = false,
     opts = {
       options = {
-        theme = "tomorrow-night-blue",
+        theme = "catppuccin",
         component_separators = { left = "", right = "" },
         section_separators = { left = "", right = "" },
       },

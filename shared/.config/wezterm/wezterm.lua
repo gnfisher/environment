@@ -37,6 +37,9 @@ config.keys = {
 
   -- Close pane
   { key = "w", mods = "CMD", action = wezterm.action.CloseCurrentPane({ confirm = true }) },
+
+  -- Zoom/toggle pane
+  { key = "Enter", mods = "CMD|SHIFT", action = wezterm.action.TogglePaneZoomState },
 }
 
 return config

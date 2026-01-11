@@ -1,14 +1,15 @@
+vim.loader.enable()
+
 vim.g.mapleader = " "
 
-vim.opt.background = "light"
-vim.cmd.colorscheme("zellner")
+vim.opt.background = "dark"
 
 if vim.g.vscode then
   -- VSCode extension
   -- I guess you have to grow up and murder the dreams of childhood eventually.
 else
   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-  if not vim.loop.fs_stat(lazypath) then
+  if not vim.uv.fs_stat(lazypath) then
     vim.fn.system({
       "git",
       "clone",
