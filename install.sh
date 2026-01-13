@@ -78,6 +78,11 @@ if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
     ln -sf "$(which fdfind)" "$HOME/.local/bin/fd"
 fi
 
+# Disable GPG signing in codespaces (no GPG key available)
+# See README.md for info on setting up SSH signing if needed
+echo "🔐 Disabling GPG commit signing (no key in codespace)..."
+git config --global commit.gpgsign false
+
 echo ""
 echo "✅ Installation complete!"
 echo ""
