@@ -40,6 +40,9 @@ config.keys = {
 
   -- Zoom/toggle pane
   { key = "Enter", mods = "CMD|SHIFT", action = wezterm.action.TogglePaneZoomState },
+
+  -- Shift+Enter sends newline for TUI multi-line input (Claude Code, Copilot CLI)
+  { key = "Enter", mods = "SHIFT", action = wezterm.action.SendString("\n") },
 }
 
 return config
