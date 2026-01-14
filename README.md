@@ -1,5 +1,7 @@
 # Environment
 
+*[English](README.md) | [Français](README.fr.md)*
+
 Personal development environment managed with GNU Stow.
 
 ## Quick Start
