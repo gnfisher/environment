@@ -1,54 +1,54 @@
-# Environment
+# environment
 
-*[English](README.md) | [Français](README.fr.md)*
+*[english](README.md) | [français](README.fr.md)*
 
-Personal development environment managed with GNU Stow.
+personal development environment managed with gnu stow.
 
-## Quick Start
+## quick start
 
-### macOS
+### macos
 
 ```bash
-# Clone
+# clone
 git clone git@github.com:gnfisher/environment.git ~/Development/gnfisher/environment
 
-# Apply shared configs
+# apply shared configs
 stow -d ~/Development/gnfisher/environment -t ~ shared
 
-# Apply macOS-specific configs
+# apply macos-specific configs
 stow -d ~/Development/gnfisher/environment -t ~ macos
 ```
 
-### Ubuntu / Codespaces
+### ubuntu / codespaces
 
 ```bash
-# Clone and run install script
+# clone and run install script
 git clone https://github.com/gnfisher/environment.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh
 ```
 
-## Repository Layout
+## repository layout
 
-- `shared/` - Cross-platform configs (stowed to `~`)
-- `macos/` - macOS-specific configs
-- `linux/` - Linux-specific configs
-- `install/` - Setup scripts
-- `resources/` - Fonts and other resources
+- `shared/` - cross-platform configs (stowed to `~`)
+- `macos/` - macos-specific configs
+- `linux/` - linux-specific configs
+- `install/` - setup scripts
+- `resources/` - fonts and other resources
 
-## Notes
+## notes
 
-### Commit Signing in Codespaces
+### commit signing in codespaces
 
-The `install.sh` script disables GPG commit signing because codespaces don't have access to your GPG key. If you want signed commits in codespaces, you can set up SSH signing:
+the `install.sh` script disables gpg commit signing because codespaces don't have access to your gpg key. if you want signed commits in codespaces, you can set up ssh signing:
 
 ```bash
-# Use SSH key for signing instead of GPG
+# use ssh key for signing instead of gpg
 git config --global gpg.format ssh
 git config --global user.signingkey ~/.ssh/id_ed25519.pub
 git config --global commit.gpgsign true
 ```
 
-You'll also need to add your SSH key as a **Signing Key** (not just Authentication) in GitHub Settings → SSH and GPG keys.
+you'll also need to add your ssh key as a **signing key** (not just authentication) in github settings → ssh and gpg keys.
 
-Note: Codespaces use credential forwarding, so you may need to generate a dedicated key in the codespace or explore using `gh` as a signing helper.
+note: codespaces use credential forwarding, so you may need to generate a dedicated key in the codespace or explore using `gh` as a signing helper.
