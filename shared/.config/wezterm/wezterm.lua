@@ -88,6 +88,17 @@ config.audible_bell = "Disabled"
 config.default_cursor_style = "SteadyBlock"
 config.cursor_blink_rate = 0
 
+-- Tab title: show CWD name
+wezterm.on("format-tab-title", function(tab)
+  local cwd = tab.active_pane.current_working_dir
+  if cwd then
+    -- Extract just the folder name from the path
+    local folder = cwd.file_path:match("([^/]+)/?$") or cwd.file_path
+    return " " .. folder .. " "
+  end
+  return tab.active_pane.title
+end)
+
 -- Keys (keep defaults, add a few conveniences)
 config.keys = {
   -- Split panes (similar to tmux with C-s)
