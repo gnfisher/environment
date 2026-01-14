@@ -1,8 +1,8 @@
-# Entorno
+# Entorno 🇪🇸
 
-Entorno de desarrollo personal gestionado con GNU Stow.
+Entorno de desarrollo personal gestionado con GNU Stow. 💃
 
-## Inicio Rápido
+## Inicio Rápido 🚀
 
 ### macOS
 
@@ -26,7 +26,7 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-## Estructura del Repositorio
+## Estructura del Repositorio 📂
 
 - `shared/` - Configuraciones multiplataforma (enlazadas a `~`)
 - `macos/` - Configuraciones específicas de macOS
@@ -34,9 +34,9 @@ cd ~/dotfiles
 - `install/` - Scripts de configuración
 - `resources/` - Fuentes y otros recursos
 
-## Notas
+## Notas 📝
 
-### Firma de Commits en Codespaces
+### Firma de Commits en Codespaces 🔐
 
 El script `install.sh` desactiva la firma de commits con GPG porque los codespaces no tienen acceso a tu clave GPG. Si deseas commits firmados en codespaces, puedes configurar la firma con SSH:
 
