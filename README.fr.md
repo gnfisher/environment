@@ -49,6 +49,6 @@ git config --global user.signingkey ~/.ssh/id_ed25519.pub
 git config --global commit.gpgsign true
 ```
 
-Vous devrez également ajouter votre clé SSH en tant que **Clé de Signature** (pas seulement Authentification) dans Paramètres GitHub → Clés SSH et GPG.
+Vous devrez également ajouter votre clé SSH en tant que **Clé de Signature** (pas seulement authentification) dans Paramètres GitHub → Clés SSH et GPG.
 
 Note : Les Codespaces utilisent le transfert d'identifiants, vous devrez donc peut-être générer une clé dédiée dans le codespace ou explorer l'utilisation de `gh` comme assistant de signature.
