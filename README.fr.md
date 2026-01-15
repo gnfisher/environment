@@ -52,3 +52,7 @@ git config --global commit.gpgsign true
 vous devrez également ajouter votre clé ssh en tant que **clé de signature** (pas seulement authentification) dans paramètres github → clés ssh et gpg.
 
 note : les codespaces utilisent le transfert d'identifiants, vous devrez donc peut-être générer une clé dédiée dans le codespace ou explorer l'utilisation de `gh` comme assistant de signature.
+
+---
+
+© 2026 gnfisher. tous droits réservés.

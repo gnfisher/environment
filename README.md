@@ -52,3 +52,7 @@ git config --global commit.gpgsign true
 you'll also need to add your ssh key as a **signing key** (not just authentication) in github settings → ssh and gpg keys.
 
 note: codespaces use credential forwarding, so you may need to generate a dedicated key in the codespace or explore using `gh` as a signing helper.
+
+---
+
+© 2026 gnfisher. all rights reserved.
