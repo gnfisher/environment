@@ -1,3 +1,5 @@
+_Why do programmers prefer dark mode? Because light attracts bugs!_ 🐛
+
 # Environment
 
 Personal development environment managed with GNU Stow.
