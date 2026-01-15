@@ -1,4 +1,4 @@
-_Why do programmers prefer dark mode? Because light attracts bugs!_ 🐛
+_There are only 10 types of people in the world: those who understand binary and those who don't._ 😄
 
 # Environment
 
