@@ -37,6 +37,11 @@ end
 set -gx CLICOLOR 1
 set -gx LSCOLORS ExFxCxDxBxegedabagacad
 
+# Set terminal title to hostname when in SSH session (for WezTerm tab titles)
+if set -q SSH_CONNECTION
+    printf "\033]0;%s\007" (hostname)
+end
+
 # Aliases
 alias ls='ls -G'
 alias ll='ls -alF'

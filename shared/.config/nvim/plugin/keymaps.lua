@@ -3,7 +3,7 @@ local opts = { noremap = true, silent = true }
 
 set("n", "<C-space>", ":noh<CR>", opts)
 
-set({"i", "v"}, "<C-space>", "<Esc>", opts)
+set({ "i", "v" }, "<C-space>", "<Esc>", opts)
 
 
 -- Paste from clipboard
@@ -25,9 +25,7 @@ set("n", "[q", "<Cmd>cprev<CR>zz", opts)
 set("n", "<F6>", function()
   if vim.o.background == "light" then
     vim.o.background = "dark"
-    vim.cmd.colorscheme("tomorrow-night-blue")
   else
     vim.o.background = "light"
-    vim.cmd.colorscheme("zellner")
   end
 end, opts)

@@ -76,6 +76,11 @@ fi
 # Simple prompt: folderName$
 PS1='\W\$ '
 
+# Set terminal title to hostname when in SSH session (for WezTerm tab titles)
+if [[ -n "$SSH_CONNECTION" ]]; then
+    echo -ne "\033]0;$(hostname)\007"
+fi
+
 # Basic aliases
 alias ll='ls -alF'
 alias la='ls -A'

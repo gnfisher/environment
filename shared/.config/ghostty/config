@@ -13,9 +13,9 @@ keybind = cmd+shift+j=goto_split:bottom
 
 # Close pane
 keybind = cmd+w=close_surface
-font-family = Berkeley Mono
-window-padding-balance = true
-theme = dark:Catppuccin Mocha,light:Builtin Light
+font-family = Consolas
+font-size = 16
+theme = dark:campbell,light:Builtin Light
 
 # adjust-cell-height = 20%
-adjust-cell-width = "-5%"
+# adjust-cell-width = "-5%"

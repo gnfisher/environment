@@ -4,6 +4,13 @@ vim.g.mapleader = " "
 
 vim.opt.background = "dark"
 
+-- Folding (treesitter-based, LazyVim style)
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevel = 99
+vim.opt.foldlevelstart = 99
+vim.opt.foldenable = true
+
 if vim.g.vscode then
   -- VSCode extension
   -- I guess you have to grow up and murder the dreams of childhood eventually.
