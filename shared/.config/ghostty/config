@@ -1,3 +1,4 @@
+macos-titlebar-style = native
 keybind = shift+enter=text:\n
 macos-option-as-alt = true
 
@@ -13,9 +14,9 @@ keybind = cmd+shift+j=goto_split:bottom
 
 # Close pane
 keybind = cmd+w=close_surface
-font-family = Consolas
+font-family = Consola
 font-size = 16
-theme = dark:campbell,light:Builtin Light
+theme = campbell
 
 # adjust-cell-height = 20%
 # adjust-cell-width = "-5%"

@@ -50,10 +50,22 @@ export VISUAL=nvim
 # PATH additions
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 
-# Homebrew (macOS)
-if [[ -d "/opt/homebrew/bin" ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+# Homebrew (macOS/Linux) - cached shellenv for faster startup
+__brew_bin=""
+if [[ -x "/opt/homebrew/bin/brew" ]]; then
+    __brew_bin="/opt/homebrew/bin/brew"
+elif [[ -x "/home/linuxbrew/.linuxbrew/bin/brew" ]]; then
+    __brew_bin="/home/linuxbrew/.linuxbrew/bin/brew"
 fi
+if [[ -n "$__brew_bin" ]]; then
+    __brew_cache="${HOME}/.cache/brew-shellenv.sh"
+    [[ -d "${HOME}/.cache" ]] || mkdir -p "${HOME}/.cache"
+    if [[ ! -s "$__brew_cache" || "$__brew_bin" -nt "$__brew_cache" ]]; then
+        "$__brew_bin" shellenv > "$__brew_cache"
+    fi
+    . "$__brew_cache"
+fi
+unset __brew_bin __brew_cache
 
 # Go environment
 if command -v go >/dev/null 2>&1; then
@@ -70,11 +82,36 @@ if command -v gpgconf >/dev/null 2>&1; then
     gpgconf --launch gpg-agent 2>/dev/null
 fi
 
-# FZF integration
-[[ -f ~/.fzf.bash ]] && source ~/.fzf.bash
+# FZF integration (lazy load)
+if [[ -f ~/.fzf.bash ]]; then
+    __fzf_lazy_loaded=0
+    __fzf_lazy_load() {
+        [[ $__fzf_lazy_loaded -eq 1 ]] && return
+        __fzf_lazy_loaded=1
+        source ~/.fzf.bash
+    }
+    fzf() { __fzf_lazy_load; command fzf "$@"; }
+    fzf-tmux() { __fzf_lazy_load; command fzf-tmux "$@"; }
+fi
 
-# Simple prompt: folderName$
-PS1='\W\$ '
+# Prompt: full path + git branch
+__git_prompt() {
+    command -v git >/dev/null 2>&1 || return
+    local branch dirty
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+    if [[ "$branch" == "HEAD" ]]; then
+        branch=$(git rev-parse --short HEAD 2>/dev/null) || return
+    fi
+    if ! git diff --quiet --ignore-submodules -- 2>/dev/null || \
+       ! git diff --cached --quiet --ignore-submodules -- 2>/dev/null; then
+        dirty="*"
+    fi
+    printf '[⎇ %s%s]' "$branch" "$dirty"
+}
+
+PS1='\[\e[1;36m\]\w'
+PS1+='\[\e[90m\]$(__git_prompt)'
+PS1+='\[\e[1;36m\]\$ \[\e[0m\]'
 
 # Set terminal title to hostname when in SSH session (for WezTerm tab titles)
 if [[ -n "$SSH_CONNECTION" ]]; then
@@ -158,15 +195,30 @@ fi
 
 # pnpm
 if command -v pnpm >/dev/null 2>&1; then
-    export PNPM_HOME="$(pnpm config get global-dir 2>/dev/null || echo "$HOME/.local/share/pnpm")"
+    __pnpm_cache="${HOME}/.cache/pnpm_home"
+    [[ -d "${HOME}/.cache" ]] || mkdir -p "${HOME}/.cache"
+    if [[ -s "$__pnpm_cache" ]]; then
+        export PNPM_HOME="$(<"$__pnpm_cache")"
+    else
+        export PNPM_HOME="$(pnpm config get global-dir 2>/dev/null || echo "$HOME/.local/share/pnpm")"
+        printf '%s' "$PNPM_HOME" > "$__pnpm_cache"
+    fi
     case ":$PATH:" in
       *":$PNPM_HOME:"*) ;;
       *) export PATH="$PNPM_HOME:$PATH" ;;
     esac
 fi
+unset __pnpm_cache
 
 export NVM_DIR="$HOME/.nvm"
-if [[ -e "$NVM_DIR/nvm.sh" ]]; then
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+if [[ -d "$NVM_DIR" && -z "$(type -t nvm)" ]]; then
+    __nvm_lazy_load() {
+        unset -f nvm node npm npx __nvm_lazy_load
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    }
+    nvm() { __nvm_lazy_load; nvm "$@"; }
+    node() { __nvm_lazy_load; node "$@"; }
+    npm() { __nvm_lazy_load; npm "$@"; }
+    npx() { __nvm_lazy_load; npx "$@"; }
 fi

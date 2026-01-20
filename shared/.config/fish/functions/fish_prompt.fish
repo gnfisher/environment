@@ -1,4 +1,24 @@
-# Simple prompt: folderName$
+# Prompt: full path + git branch
+function __git_prompt
+    command -sq git; or return
+    set -l branch (command git rev-parse --abbrev-ref HEAD 2>/dev/null); or return
+    if test "$branch" = "HEAD"
+        set branch (command git rev-parse --short HEAD 2>/dev/null); or return
+    end
+    set -l dirty ""
+    if not command git diff --quiet --ignore-submodules -- 2>/dev/null; or not command git diff --cached --quiet --ignore-submodules -- 2>/dev/null
+        set dirty "*"
+    end
+    echo -n "[⎇ $branch$dirty]"
+end
+
 function fish_prompt
-    echo -n (basename $PWD)'$ '
+    set -l path (string replace -r "^$HOME" "~" (pwd))
+    set_color --bold cyan
+    echo -n $path
+    set_color brblack
+    echo -n (__git_prompt)
+    set_color --bold cyan
+    echo -n '$ '
+    set_color normal
 end
