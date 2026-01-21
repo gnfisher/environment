@@ -1,10 +1,10 @@
-# Environment
+# 🛠️ Environment
 
 Personal development environment managed with GNU Stow.
 
-## Quick Start
+## 🚀 Quick Start
 
-### macOS
+### 🍎 macOS
 
 ```bash
 # Clone
@@ -17,7 +17,7 @@ stow -d ~/Development/gnfisher/environment -t ~ shared
 stow -d ~/Development/gnfisher/environment -t ~ macos
 ```
 
-### Ubuntu / Codespaces
+### 🐧 Ubuntu / Codespaces
 
 ```bash
 # Clone and run install script
@@ -26,17 +26,17 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-## Repository Layout
+## 📁 Repository Layout
 
-- `shared/` - Cross-platform configs (stowed to `~`)
-- `macos/` - macOS-specific configs
-- `linux/` - Linux-specific configs
-- `install/` - Setup scripts
-- `resources/` - Fonts and other resources
+- `shared/` - 🔗 Cross-platform configs (stowed to `~`)
+- `macos/` - 🍎 macOS-specific configs
+- `linux/` - 🐧 Linux-specific configs
+- `install/` - 📜 Setup scripts
+- `resources/` - 🎨 Fonts and other resources
 
-## Notes
+## 📝 Notes
 
-### Commit Signing in Codespaces
+### 🔐 Commit Signing in Codespaces
 
 The `install.sh` script disables GPG commit signing because codespaces don't have access to your GPG key. If you want signed commits in codespaces, you can set up SSH signing:
 
