@@ -23,10 +23,6 @@ test_fail() {
     ((TESTS_FAILED++))
 }
 
-test_skip() {
-    echo -e "${YELLOW}⊘${NC} $1 (skipped)"
-}
-
 echo "🧪 Running environment tests..."
 echo ""
 
@@ -51,16 +47,16 @@ else
     test_fail "~/.gitconfig is not symlinked"
 fi
 
-if [ -d "$HOME/.config/nvim" ]; then
-    test_pass "~/.config/nvim exists"
+if [ -L "$HOME/.config/nvim" ]; then
+    test_pass "~/.config/nvim is symlinked"
 else
-    test_fail "~/.config/nvim does not exist"
+    test_fail "~/.config/nvim is not symlinked"
 fi
 
-if [ -d "$HOME/.config/fish" ]; then
-    test_pass "~/.config/fish exists"
+if [ -L "$HOME/.config/fish" ]; then
+    test_pass "~/.config/fish is symlinked"
 else
-    test_fail "~/.config/fish does not exist"
+    test_fail "~/.config/fish is not symlinked"
 fi
 
 echo ""
@@ -152,7 +148,7 @@ if [ -f "$HOME/.bashrc" ]; then
         test_fail "bash alias 'll' is not defined"
     fi
     
-    if grep -q "alias g=" "$HOME/.bashrc" || grep -q 'alias g="git"' "$HOME/.bashrc"; then
+    if grep -q "alias g=" "$HOME/.bashrc"; then
         test_pass "bash alias 'g' is defined"
     else
         test_fail "bash alias 'g' is not defined"
