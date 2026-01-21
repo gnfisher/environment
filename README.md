@@ -34,6 +34,21 @@ cd ~/dotfiles
 - `install/` - Setup scripts
 - `resources/` - Fonts and other resources
 
+## Testing
+
+To verify that your environment is set up correctly, run the test script:
+
+```bash
+./test.sh
+```
+
+This will check:
+- All config files are properly symlinked
+- Required tools are installed (stow, tmux, nvim, ripgrep, fd, jq, fzf)
+- Git configuration is set up correctly
+- Bash aliases are configured
+- Tmux prefix is set to C-s
+
 ## Notes
 
 ### Commit Signing in Codespaces
