@@ -14,7 +14,7 @@ keybind = cmd+shift+j=goto_split:bottom
 
 # Close pane
 keybind = cmd+w=close_surface
-font-family = Consola
+font-family = Consolas
 font-size = 16
 theme = campbell
 

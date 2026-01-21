@@ -38,7 +38,6 @@ stow -n -v -d ~/Development/gnfisher/environment -t ~ shared
 - `git l` - log (oneline, last 20)
 - `git rom` - fetch and rebase on origin/main
 - `git amend` - amend without editing message
-- `git pushf` - push force with lease
 
 ## Shell Aliases (bash & fish)
 
@@ -52,5 +51,4 @@ stow -n -v -d ~/Development/gnfisher/environment -t ~ shared
 ## Guidelines
 
 - Keep shared configs cross-platform (macOS + Linux)
-- Update AGENTS.md when modifying structure or adding notable features
 - Prompt is simple: `folderName$ ` in both bash and fish
