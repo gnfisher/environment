@@ -87,9 +87,9 @@ git config --global commit.gpgsign false
 # Set fish as the default shell
 if command -v fish &>/dev/null; then
     echo "🐚 Setting fish as default shell..."
-    FISH_PATH=$(which fish)
+    FISH_PATH=$(command -v fish)
     # Add fish to /etc/shells if not already present
-    if ! grep -q "$FISH_PATH" /etc/shells; then
+    if ! grep -Fx "$FISH_PATH" /etc/shells; then
         echo "$FISH_PATH" | sudo tee -a /etc/shells
     fi
     # Change default shell to fish
