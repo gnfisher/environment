@@ -26,6 +26,7 @@ sudo apt-get install -y \
     fd-find \
     jq \
     fzf \
+    fish \
     universal-ctags \
     build-essential \
     curl \
@@ -83,9 +84,25 @@ fi
 echo "🔐 Disabling GPG commit signing (no key in codespace)..."
 git config --global commit.gpgsign false
 
+# Set fish as the default shell
+if command -v fish &>/dev/null; then
+    echo "🐚 Setting fish as default shell..."
+    FISH_PATH=$(which fish)
+    # Add fish to /etc/shells if not already present
+    if ! grep -q "$FISH_PATH" /etc/shells; then
+        echo "$FISH_PATH" | sudo tee -a /etc/shells
+    fi
+    # Change default shell to fish
+    sudo chsh -s "$FISH_PATH" "$USER"
+    echo "✅ Fish shell set as default"
+else
+    echo "⚠️  Fish shell not found, skipping default shell change"
+fi
+
 echo ""
 echo "✅ Installation complete!"
 echo ""
 echo "To apply changes, run: source ~/.bashrc"
+echo "Fish shell will be the default on next login."
 echo ""
 echo "Neovim plugins will install on first launch."
