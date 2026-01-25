@@ -68,6 +68,22 @@ else
     echo "✅ lazygit already installed"
 fi
 
+# Install lazydocker
+echo "🐳 Installing lazydocker..."
+LAZYDOCKER_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazydocker/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+if ! command -v lazydocker &>/dev/null; then
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    curl -Lo lazydocker.tar.gz "https://github.com/jesseduffield/lazydocker/releases/latest/download/lazydocker_${LAZYDOCKER_VERSION}_Linux_x86_64.tar.gz"
+    tar -xzf lazydocker.tar.gz lazydocker
+    sudo install lazydocker /usr/local/bin
+    cd "$SCRIPT_DIR"
+    rm -rf "$TEMP_DIR"
+    echo "✅ lazydocker ${LAZYDOCKER_VERSION} installed"
+else
+    echo "✅ lazydocker already installed"
+fi
+
 # Backup existing configs
 echo "📁 Backing up existing configs..."
 for file in .bashrc .tmux.conf .gitconfig; do
