@@ -23,6 +23,7 @@ sudo apt-get install -y \
     stow \
     tmux \
     ripgrep \
+    fish \
     fd-find \
     jq \
     fzf \
