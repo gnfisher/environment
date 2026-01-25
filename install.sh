@@ -52,6 +52,22 @@ else
     echo "✅ Neovim already installed"
 fi
 
+# Install lazygit
+echo "📝 Installing lazygit..."
+LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+if ! command -v lazygit &>/dev/null || [[ "$(lazygit --version | grep -oP 'version=\K[^,]+')" != "$LAZYGIT_VERSION" ]]; then
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar -xzf lazygit.tar.gz lazygit
+    sudo install lazygit /usr/local/bin
+    cd "$SCRIPT_DIR"
+    rm -rf "$TEMP_DIR"
+    echo "✅ lazygit ${LAZYGIT_VERSION} installed"
+else
+    echo "✅ lazygit already installed"
+fi
+
 # Backup existing configs
 echo "📁 Backing up existing configs..."
 for file in .bashrc .tmux.conf .gitconfig; do
