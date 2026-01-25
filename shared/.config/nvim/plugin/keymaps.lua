@@ -1,7 +1,7 @@
 local set = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
-set("n", "<C-space>", ":noh<CR>", opts)
+set("n", "<BS>", ":noh<CR>", opts)
 
 set({ "i", "v" }, "<C-space>", "<Esc>", opts)
 

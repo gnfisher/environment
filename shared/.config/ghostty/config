@@ -1,6 +1,33 @@
-macos-titlebar-style = native
-keybind = shift+enter=text:\n
+# Theme
+theme = Catppuccin Mocha
+
+# Font
+font-family = Monolisa
+font-size = 14
+
+# macOS options
+macos-titlebar-style = tabs
+macos-titlebar-proxy-icon = hidden
 macos-option-as-alt = true
+title = ghostty
+
+# Shell behavior
+quit-after-last-window-closed = true
+
+# Window settings
+window-padding-x = 8
+window-padding-y = 8
+window-padding-balance = true
+window-padding-color = background
+background-opacity = 1.0
+unfocused-split-opacity = 0.97
+
+# Cursor
+cursor-style-blink = false
+
+# Clipboard
+clipboard-read = allow
+clipboard-write = allow
 
 # Split panes (match WezTerm)
 keybind = cmd+d=new_split:right
@@ -14,9 +41,6 @@ keybind = cmd+shift+j=goto_split:bottom
 
 # Close pane
 keybind = cmd+w=close_surface
-font-family = Consolas
-font-size = 16
-theme = campbell
 
-# adjust-cell-height = 20%
-# adjust-cell-width = "-5%"
+# Shift+Enter for multi-line input in TUIs
+keybind = shift+enter=text:\n
