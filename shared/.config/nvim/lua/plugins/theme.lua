@@ -1,11 +1,36 @@
 return {
+  -- Modus themes - primary theme (light: operandi, dark: vivendi)
   {
-    "catppuccin/nvim",
-    name = "catppuccin",
+    "miikanissi/modus-themes.nvim",
     lazy = false,
     priority = 1000,
     opts = {
-      flavour = "mocha", -- latte, frappe, macchiato, mocha
+      -- Style can be "auto", "modus_operandi", "modus_vivendi"
+      -- "auto" follows vim.o.background
+      style = "auto",
+      variant = "default", -- "default", "tinted", "deuteranopia", "tritanopia"
+      transparent = false,
+      dim_inactive = false,
+      styles = {
+        comments = { italic = true },
+        keywords = { italic = false },
+        functions = {},
+        variables = {},
+      },
+    },
+    config = function(_, opts)
+      require("modus-themes").setup(opts)
+      vim.cmd.colorscheme("modus")
+    end,
+  },
+
+  -- Keep catppuccin available as fallback
+  {
+    "catppuccin/nvim",
+    name = "catppuccin",
+    lazy = true,
+    opts = {
+      flavour = "mocha",
       transparent_background = false,
       term_colors = true,
       integrations = {
@@ -31,11 +56,8 @@ return {
         which_key = true,
       },
     },
-    config = function(_, opts)
-      require("catppuccin").setup(opts)
-      vim.cmd.colorscheme("catppuccin")
-    end,
   },
+
   {
     "gnfisher/tomorrow-night-blue.nvim",
     lazy = true,

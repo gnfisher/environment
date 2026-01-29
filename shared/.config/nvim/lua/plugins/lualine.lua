@@ -5,7 +5,7 @@ return {
     lazy = false,
     opts = {
       options = {
-        theme = "catppuccin",
+        theme = "auto", -- follows colorscheme
         component_separators = { left = "", right = "" },
         section_separators = { left = "", right = "" },
       },

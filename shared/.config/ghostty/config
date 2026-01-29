@@ -1,9 +1,9 @@
-# Theme
-theme = Catppuccin Mocha
+# Theme - managed by `theme` command (modus_operandi for light, modus_vivendi for dark)
+theme = modus_vivendi
 
 # Font
-font-family = Monolisa
-font-size = 14
+font-family = Consolas
+font-size = 16
 
 # macOS options
 macos-titlebar-style = tabs
