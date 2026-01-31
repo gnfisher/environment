@@ -2,7 +2,8 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
-vim.opt.background = "dark"
+vim.opt.background = "light"
+vim.cmd.colorscheme("zellner")
 
 -- Folding (treesitter-based, LazyVim style)
 vim.opt.foldmethod = "expr"

@@ -1,0 +1,249 @@
+#!/usr/bin/env bash
+#
+# Unified theme switcher for light/dark mode
+# Switches: Ghostty, Neovim, Tmux, FZF, OpenCode
+#
+# Usage:
+#   theme light    - Switch to light mode (modus-operandi)
+#   theme dark     - Switch to dark mode (modus-vivendi)
+#   theme toggle   - Toggle between light and dark
+#   theme status   - Show current theme
+#
+# Can be triggered from Raycast, CLI, or macOS appearance change
+
+set -euo pipefail
+
+THEME_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/theme-mode"
+
+# Ensure state directory exists
+mkdir -p "$(dirname "$THEME_STATE_FILE")"
+
+# Resolve symlinks to get the real file path (sed -i doesn't work on symlinks)
+resolve_path() {
+    local path="$1"
+    if [[ -L "$path" ]]; then
+        readlink -f "$path"
+    else
+        echo "$path"
+    fi
+}
+
+get_current_theme() {
+    if [[ -f "$THEME_STATE_FILE" ]]; then
+        cat "$THEME_STATE_FILE"
+    else
+        echo "dark"
+    fi
+}
+
+set_theme_state() {
+    echo "$1" > "$THEME_STATE_FILE"
+}
+
+# Switch Ghostty theme
+switch_ghostty() {
+    local mode="$1"
+    local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config"
+    
+    if [[ ! -e "$config_file" ]]; then
+        return
+    fi
+    
+    # Resolve symlink to edit the actual file
+    config_file=$(resolve_path "$config_file")
+    
+    if [[ "$mode" == "light" ]]; then
+        sed -i '' 's/^theme = .*/theme = modus_operandi/' "$config_file"
+    else
+        sed -i '' 's/^theme = .*/theme = modus_vivendi/' "$config_file"
+    fi
+    
+    # Ghostty auto-reloads config on file change
+}
+
+# Switch Neovim theme in all running instances
+switch_neovim() {
+    local mode="$1"
+    
+    # Find all Neovim server sockets
+    local nvim_sockets=()
+    
+    # Check common socket locations
+    if [[ -d "${XDG_RUNTIME_DIR:-/tmp}" ]]; then
+        while IFS= read -r -d '' socket; do
+            nvim_sockets+=("$socket")
+        done < <(find "${XDG_RUNTIME_DIR:-/tmp}" -name 'nvim.*' -type s 2>/dev/null | tr '\n' '\0')
+    fi
+    
+    # Also check /tmp for nvim sockets
+    while IFS= read -r -d '' socket; do
+        nvim_sockets+=("$socket")
+    done < <(find /tmp -name 'nvim*' -type s 2>/dev/null | tr '\n' '\0')
+    
+    local bg_mode
+    if [[ "$mode" == "light" ]]; then
+        bg_mode="light"
+    else
+        bg_mode="dark"
+    fi
+    
+    # Send commands to all running Neovim instances
+    # modus-themes with style="auto" follows vim.o.background
+    for socket in "${nvim_sockets[@]}"; do
+        if [[ -S "$socket" ]]; then
+            nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR>" 2>/dev/null || true
+        fi
+    done
+}
+
+# Switch Tmux theme
+switch_tmux() {
+    local mode="$1"
+    
+    if ! command -v tmux &>/dev/null || ! tmux list-sessions &>/dev/null; then
+        return
+    fi
+    
+    if [[ "$mode" == "light" ]]; then
+        # Modus operandi colors
+        tmux set -g status-style "bg=#f2f2f2,fg=#000000"
+        tmux set -g status-left "#[bg=#0031a9,fg=#ffffff,bold] #S #[default] "
+        tmux set -g status-right "#[fg=#595959]#H"
+        tmux set -g window-status-format "#[fg=#595959] #I:#W "
+        tmux set -g window-status-current-format "#[bg=#c6daff,fg=#000000,bold] #I:#W "
+        tmux set -g pane-border-style "fg=#9f9f9f"
+        tmux set -g pane-active-border-style "fg=#0031a9"
+        tmux set -g message-style "bg=#c6daff,fg=#000000"
+        tmux set -g message-command-style "bg=#c6daff,fg=#000000"
+        tmux set -g mode-style "bg=#dfa0f0,fg=#000000"
+    else
+        # Modus vivendi colors
+        tmux set -g status-style "bg=#1e1e1e,fg=#ffffff"
+        tmux set -g status-left "#[bg=#2fafff,fg=#000000,bold] #S #[default] "
+        tmux set -g status-right "#[fg=#989898]#H"
+        tmux set -g window-status-format "#[fg=#989898] #I:#W "
+        tmux set -g window-status-current-format "#[bg=#7030af,fg=#ffffff,bold] #I:#W "
+        tmux set -g pane-border-style "fg=#505050"
+        tmux set -g pane-active-border-style "fg=#2fafff"
+        tmux set -g message-style "bg=#7030af,fg=#ffffff"
+        tmux set -g message-command-style "bg=#7030af,fg=#ffffff"
+        tmux set -g mode-style "bg=#7030af,fg=#ffffff"
+    fi
+}
+
+# Update FZF colors via environment variable
+switch_fzf() {
+    local mode="$1"
+    local fish_theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/fzf-theme.fish"
+    
+    if [[ "$mode" == "light" ]]; then
+        # Modus operandi colors for FZF
+        local fzf_opts="--color=bg+:#c6daff,bg:#ffffff,spinner:#721045,hl:#a60000 \
+--color=fg:#000000,header:#0031a9,info:#721045,pointer:#0031a9 \
+--color=marker:#006800,fg+:#000000,prompt:#721045,hl+:#a60000 \
+--color=selected-bg:#dfa0f0 \
+--color=border:#9f9f9f,label:#000000"
+    else
+        # Modus vivendi colors for FZF
+        local fzf_opts="--color=bg+:#7030af,bg:#000000,spinner:#feacd0,hl:#ff5f59 \
+--color=fg:#ffffff,header:#2fafff,info:#feacd0,pointer:#2fafff \
+--color=marker:#44bc44,fg+:#ffffff,prompt:#feacd0,hl+:#ff5f59 \
+--color=selected-bg:#7030af \
+--color=border:#505050,label:#ffffff"
+    fi
+    
+    # Update fish config file (resolve symlink first)
+    if [[ -e "$fish_theme_file" ]]; then
+        fish_theme_file=$(resolve_path "$fish_theme_file")
+        cat > "$fish_theme_file" << EOF
+# FZF theme - auto-generated by theme switcher
+# Current mode: $mode
+status is-interactive; or return
+
+set -Ux FZF_DEFAULT_OPTS "$fzf_opts"
+EOF
+    fi
+    
+    # Export for current shell session
+    export FZF_DEFAULT_OPTS="$fzf_opts"
+}
+
+# Switch OpenCode theme
+switch_opencode() {
+    local mode="$1"
+    local config_file="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.jsonc"
+    
+    if [[ ! -e "$config_file" ]]; then
+        return
+    fi
+    
+    # Resolve symlink to edit the actual file
+    config_file=$(resolve_path "$config_file")
+    
+    if [[ "$mode" == "light" ]]; then
+        sed -i '' 's/"theme": "[^"]*"/"theme": "modus_operandi"/' "$config_file"
+    else
+        sed -i '' 's/"theme": "[^"]*"/"theme": "modus_vivendi"/' "$config_file"
+    fi
+}
+
+# Detect macOS appearance
+detect_macos_appearance() {
+    if command -v defaults &>/dev/null; then
+        local appearance
+        appearance=$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo "Light")
+        if [[ "$appearance" == "Dark" ]]; then
+            echo "dark"
+        else
+            echo "light"
+        fi
+    else
+        echo "dark"
+    fi
+}
+
+switch_all() {
+    local mode="$1"
+    
+    echo "Switching to $mode mode..."
+    
+    switch_ghostty "$mode"
+    switch_neovim "$mode"
+    switch_tmux "$mode"
+    switch_fzf "$mode"
+    switch_opencode "$mode"
+    
+    set_theme_state "$mode"
+    
+    echo "Done! Theme set to $mode"
+}
+
+case "${1:-status}" in
+    light)
+        switch_all "light"
+        ;;
+    dark)
+        switch_all "dark"
+        ;;
+    toggle)
+        current=$(get_current_theme)
+        if [[ "$current" == "light" ]]; then
+            switch_all "dark"
+        else
+            switch_all "light"
+        fi
+        ;;
+    sync)
+        # Sync with macOS appearance
+        mode=$(detect_macos_appearance)
+        switch_all "$mode"
+        ;;
+    status)
+        current=$(get_current_theme)
+        echo "Current theme: $current"
+        ;;
+    *)
+        echo "Usage: theme [light|dark|toggle|sync|status]"
+        exit 1
+        ;;
+esac

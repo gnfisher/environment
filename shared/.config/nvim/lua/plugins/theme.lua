@@ -20,7 +20,7 @@ return {
     },
     config = function(_, opts)
       require("modus-themes").setup(opts)
-      vim.cmd.colorscheme("modus")
+      -- modus available but not default; using zellner
     end,
   },
 
