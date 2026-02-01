@@ -18,6 +18,12 @@ if ! shopt -oq posix; then
     elif [[ -f /etc/bash_completion ]]; then
         . /etc/bash_completion
     fi
+    # Load user completions
+    if [[ -d ~/.local/share/bash-completion/completions ]]; then
+        for f in ~/.local/share/bash-completion/completions/*; do
+            [[ -f "$f" ]] && . "$f"
+        done
+    fi
 fi
 
 # Tab completion settings

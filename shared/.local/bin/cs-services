@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Service definitions
+declare -A SERVICE_DIRS=(
+    [github]="/workspaces/github"
+    [sweagentd]="/workspaces/sweagentd"
+    [capi]="/workspaces/copilot-api"
+    [mission-control]="/workspaces/copilot-mission-control"
+)
+
+declare -A SERVICE_PORTS=(
+    [github]="80 8152"
+    [sweagentd]="2208 2209"
+    [capi]="3000"
+    [mission-control]="8080"
+)
+
+show_help() {
+    cat << 'EOF'
+cs-services - Unified service management for GitHub Codespaces
+
+Usage: cs-services <command> [service]
+
+Commands:
+  status              Show status of all services
+  start <service>     Start a specific service
+  stop <service>      Stop a specific service
+  restart <service>   Restart a specific service (stop then start)
+  logs <service>      Tail logs for a service
+
+Services:
+  github              Main GitHub monolith (ports 80, 8152)
+  sweagentd           SWE Agent daemon (ports 2208, 2209)
+  capi                Copilot API
+  mission-control     Copilot Mission Control
+
+Options:
+  -h, --help          Show this help message
+
+Examples:
+  cs-services status
+  cs-services start github
+  cs-services logs sweagentd
+  cs-services restart capi
+EOF
+}
+
+# Check if a port is listening, return 0 if up
+port_is_up() {
+    local port="$1"
+    if ss -tln 2>/dev/null | grep -q ":${port} " || \
+       netstat -tln 2>/dev/null | grep -q ":${port} " || \
+       lsof -i ":${port}" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+# Get PID listening on a port
+get_port_pid() {
+    local port="$1"
+    local pid=""
+    # Try lsof first
+    pid=$(lsof -ti ":${port}" 2>/dev/null | head -1) || true
+    if [[ -z "$pid" ]]; then
+        # Try ss
+        pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K\d+' | head -1) || true
+    fi
+    echo "$pid"
+}
+
+# Get current git branch for a directory
+get_branch() {
+    local dir="$1"
+    if [[ -d "$dir/.git" ]] || [[ -f "$dir/.git" ]]; then
+        git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"
+    else
+        echo "N/A"
+    fi
+}
+
+# Check if service directory exists
+service_exists() {
+    local service="$1"
+    local dir="${SERVICE_DIRS[$service]:-}"
+    [[ -n "$dir" && -d "$dir" ]]
+}
+
+# Validate service name
+validate_service() {
+    local service="$1"
+    if [[ -z "${SERVICE_DIRS[$service]:-}" ]]; then
+        echo "Error: Unknown service '$service'" >&2
+        echo "Valid services: ${!SERVICE_DIRS[*]}" >&2
+        exit 1
+    fi
+    if ! service_exists "$service"; then
+        echo "Error: Service '$service' directory not found (${SERVICE_DIRS[$service]})" >&2
+        exit 1
+    fi
+}
+
+# Check service status (returns UP or DOWN)
+get_service_status() {
+    local service="$1"
+    local ports="${SERVICE_PORTS[$service]:-}"
+    local first_port
+    first_port=$(echo "$ports" | awk '{print $1}')
+    
+    if [[ -n "$first_port" ]] && port_is_up "$first_port"; then
+        echo "UP"
+    else
+        echo "DOWN"
+    fi
+}
+
+# Show status for all services
+cmd_status() {
+    printf "%-16s %-8s %-15s %-20s %s\n" "SERVICE" "STATUS" "PORTS" "BRANCH" "PID"
+    printf "%-16s %-8s %-15s %-20s %s\n" "-------" "------" "-----" "------" "---"
+    
+    for service in github sweagentd capi mission-control; do
+        local dir="${SERVICE_DIRS[$service]}"
+        local ports="${SERVICE_PORTS[$service]}"
+        local status branch pid port_list
+        
+        if [[ ! -d "$dir" ]]; then
+            printf "%-16s %-8s %-15s %-20s %s\n" "$service" "N/A" "-" "(not installed)" "-"
+            continue
+        fi
+        
+        # Get status from first port
+        local first_port
+        first_port=$(echo "$ports" | awk '{print $1}')
+        if port_is_up "$first_port"; then
+            status="UP"
+            pid=$(get_port_pid "$first_port")
+        else
+            status="DOWN"
+            pid="-"
+        fi
+        
+        branch=$(get_branch "$dir")
+        port_list=$(echo "$ports" | tr ' ' ',')
+        
+        printf "%-16s %-8s %-15s %-20s %s\n" "$service" "$status" "$port_list" "$branch" "${pid:-"-"}"
+    done
+}
+
+# Start a service
+cmd_start() {
+    local service="$1"
+    validate_service "$service"
+    
+    local dir="${SERVICE_DIRS[$service]}"
+    
+    echo "Starting $service..."
+    cd "$dir"
+    
+    case "$service" in
+        github)
+            if [[ -x "script/dx/server-start" ]]; then
+                script/dx/server-start --ui
+            else
+                echo "Error: script/dx/server-start not found" >&2
+                exit 1
+            fi
+            ;;
+        sweagentd)
+            if [[ -x "script/server" ]]; then
+                script/server
+            else
+                echo "Error: script/server not found" >&2
+                exit 1
+            fi
+            ;;
+        capi)
+            if [[ -x "script/server" ]]; then
+                script/server
+            else
+                echo "Error: script/server not found" >&2
+                exit 1
+            fi
+            ;;
+        mission-control)
+            if [[ -x "script/server" ]]; then
+                script/server --type all
+            elif [[ -f "Makefile" ]] && grep -q "^run:" Makefile 2>/dev/null; then
+                make run
+            else
+                echo "Error: No start script found" >&2
+                exit 1
+            fi
+            ;;
+    esac
+    
+    echo "$service started."
+}
+
+# Stop a service
+cmd_stop() {
+    local service="$1"
+    validate_service "$service"
+    
+    local dir="${SERVICE_DIRS[$service]}"
+    
+    echo "Stopping $service..."
+    
+    case "$service" in
+        github)
+            cd "$dir"
+            if [[ -x "script/dx/server-stop" ]]; then
+                script/dx/server-stop
+            else
+                echo "Error: script/dx/server-stop not found" >&2
+                exit 1
+            fi
+            ;;
+        sweagentd)
+            local socket="/tmp/overmind-sweagentd.sock"
+            if [[ -S "$socket" ]]; then
+                overmind quit -s "$socket" 2>/dev/null || true
+            fi
+            # Give overmind a moment to clean up
+            sleep 1
+            # Check if still running and force kill if needed
+            local pid
+            pid=$(get_port_pid 2208)
+            if [[ -n "$pid" ]]; then
+                echo "Force killing remaining processes..."
+                kill "$pid" 2>/dev/null || true
+            fi
+            ;;
+        capi)
+            local pid
+            pid=$(get_port_pid 3000)
+            if [[ -n "$pid" ]]; then
+                kill "$pid" 2>/dev/null || true
+            else
+                echo "No running process found for capi"
+            fi
+            ;;
+        mission-control)
+            cd "$dir"
+            if [[ -x "script/stop" ]]; then
+                script/stop --type all
+            else
+                # Fallback: kill by port
+                local pid
+                pid=$(get_port_pid 8080)
+                if [[ -n "$pid" ]]; then
+                    kill "$pid" 2>/dev/null || true
+                else
+                    echo "No running process found for mission-control"
+                fi
+            fi
+            ;;
+    esac
+    
+    echo "$service stopped."
+}
+
+# Restart a service
+cmd_restart() {
+    local service="$1"
+    validate_service "$service"
+    
+    cmd_stop "$service"
+    sleep 2
+    cmd_start "$service"
+}
+
+# Tail logs for a service
+cmd_logs() {
+    local service="$1"
+    validate_service "$service"
+    
+    local dir="${SERVICE_DIRS[$service]}"
+    
+    case "$service" in
+        github)
+            cd "$dir"
+            if [[ -x "script/dx/server-logs" ]]; then
+                exec script/dx/server-logs
+            elif command -v overmind &>/dev/null; then
+                exec overmind echo
+            else
+                echo "Error: No log viewer available" >&2
+                exit 1
+            fi
+            ;;
+        sweagentd)
+            local socket="/tmp/overmind-sweagentd.sock"
+            if [[ -S "$socket" ]]; then
+                exec overmind echo -s "$socket"
+            else
+                echo "Error: Overmind socket not found at $socket" >&2
+                echo "Is sweagentd running?" >&2
+                exit 1
+            fi
+            ;;
+        capi)
+            cd "$dir"
+            if [[ -d "log" ]]; then
+                exec tail -f log/*.log
+            elif [[ -f ".env" ]]; then
+                echo "No log directory found. Service may log to stdout." >&2
+                exit 1
+            fi
+            ;;
+        mission-control)
+            cd "$dir"
+            if [[ -d "log" ]]; then
+                exec tail -f log/*.log
+            else
+                echo "No log directory found. Service may log to stdout." >&2
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+# Main
+if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+fi
+
+case "${1:-}" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    status)
+        cmd_status
+        ;;
+    start)
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: Service name required" >&2
+            echo "Usage: cs-services start <service>" >&2
+            exit 1
+        fi
+        cmd_start "$2"
+        ;;
+    stop)
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: Service name required" >&2
+            echo "Usage: cs-services stop <service>" >&2
+            exit 1
+        fi
+        cmd_stop "$2"
+        ;;
+    restart)
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: Service name required" >&2
+            echo "Usage: cs-services restart <service>" >&2
+            exit 1
+        fi
+        cmd_restart "$2"
+        ;;
+    logs)
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: Service name required" >&2
+            echo "Usage: cs-services logs <service>" >&2
+            exit 1
+        fi
+        cmd_logs "$2"
+        ;;
+    *)
+        echo "Error: Unknown command '${1:-}'" >&2
+        echo "Run 'cs-services --help' for usage" >&2
+        exit 1
+        ;;
+esac

@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+show_help() {
+    cat << 'EOF'
+cs-status - Monitor GitHub Codespace status
+
+Usage: cs-status [-h|--help]
+
+Displays:
+  - Services status (ports 80, 8152, 2208, 2209)
+  - Repository branches for workspaces
+  - Disk usage information
+  - Docker container count
+
+Options:
+  -h, --help    Show this help message
+EOF
+}
+
+# Parse arguments
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# Check if a port is listening
+check_port() {
+    local port="$1"
+    local name="$2"
+    if ss -tln 2>/dev/null | grep -q ":${port} " || \
+       netstat -tln 2>/dev/null | grep -q ":${port} " || \
+       lsof -i ":${port}" >/dev/null 2>&1; then
+        echo "  [UP]   $name (port $port)"
+    else
+        echo "  [DOWN] $name (port $port)"
+    fi
+}
+
+# Get current git branch for a directory
+get_branch() {
+    local dir="$1"
+    local name
+    name=$(basename "$dir")
+    if [[ -d "$dir/.git" || -d "$dir" && -f "$dir/.git" ]]; then
+        local branch
+        branch=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        echo "  $name: $branch"
+    fi
+}
+
+# Get directory size
+get_size() {
+    local dir="$1"
+    if [[ -d "$dir" ]]; then
+        du -sh "$dir" 2>/dev/null | cut -f1
+    else
+        echo "N/A"
+    fi
+}
+
+echo "=== Codespace Status ==="
+echo
+
+# Services status
+echo "## Services"
+check_port 80 "github web"
+check_port 8152 "Rails"
+check_port 2208 "sweagentd http"
+check_port 2209 "sweagentd twirp"
+echo
+
+# Repository branches
+echo "## Repository Branches"
+repos=(
+    "/workspaces/github"
+    "/workspaces/sweagentd"
+    "/workspaces/copilot-mission-control"
+    "/workspaces/copilot-api"
+)
+found_repos=0
+for repo in "${repos[@]}"; do
+    if [[ -d "$repo" ]]; then
+        get_branch "$repo"
+        found_repos=1
+    fi
+done
+if [[ $found_repos -eq 0 ]]; then
+    echo "  (no workspaces found)"
+fi
+echo
+
+# Disk usage
+echo "## Disk Usage"
+echo "  Total:"
+df -h / 2>/dev/null | awk 'NR==2 {printf "    Used: %s / %s (%s)\n", $3, $2, $5}' || echo "    (unable to determine)"
+
+log_dir="/workspaces/github/log"
+if [[ -d "$log_dir" ]]; then
+    echo "  github/log: $(get_size "$log_dir")"
+fi
+
+# Check for tmp directories
+tmp_dirs=()
+for tmp_dir in /workspaces/*/tmp; do
+    if [[ -d "$tmp_dir" ]]; then
+        tmp_dirs+=("$tmp_dir")
+    fi
+done
+if [[ ${#tmp_dirs[@]} -gt 0 ]]; then
+    tmp_size=$(du -shc "${tmp_dirs[@]}" 2>/dev/null | tail -1 | cut -f1)
+    echo "  */tmp dirs: $tmp_size (${#tmp_dirs[@]} directories)"
+fi
+echo
+
+# Docker status
+echo "## Docker"
+if command -v docker &>/dev/null; then
+    container_count=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ')
+    echo "  Running containers: $container_count"
+else
+    echo "  (docker not available)"
+fi

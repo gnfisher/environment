@@ -46,8 +46,6 @@ brew "gh"
 brew "ghostscript"
 # Enable transparent encryption/decryption of files in a git repo
 brew "git-crypt"
-# Syntax-highlighting pager for git and diff output
-brew "git-delta"
 # Git extension for versioning large files
 brew "git-lfs"
 # GNU Privacy Guard (OpenPGP)

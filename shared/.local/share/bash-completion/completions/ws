@@ -1,0 +1,50 @@
+# Bash completion for ws (worktree manager)
+
+_ws_completions() {
+    local cur prev words cword
+    _init_completion || return
+
+    local commands="new list switch delete sync"
+    local repos="github sweagentd copilot-mission-control copilot-api"
+
+    # First argument: command
+    if [[ $cword -eq 1 ]]; then
+        COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+        return
+    fi
+
+    local cmd="${words[1]}"
+
+    case "$cmd" in
+        new|switch|delete|sync)
+            # Second argument: repo name
+            if [[ $cword -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "$repos" -- "$cur"))
+                return
+            fi
+
+            # Third argument: worktree name (for switch, delete, sync)
+            if [[ $cword -eq 3 && "$cmd" != "new" ]]; then
+                local repo="${words[2]}"
+                local worktrees=""
+                local wt_dir="/workspaces/worktrees/${repo}"
+                
+                if [[ -d "$wt_dir" ]]; then
+                    worktrees=$(ls -1 "$wt_dir" 2>/dev/null | tr '\n' ' ')
+                fi
+                
+                COMPREPLY=($(compgen -W "$worktrees" -- "$cur"))
+                return
+            fi
+            ;;
+        list)
+            # Optional repo filter
+            if [[ $cword -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "$repos" -- "$cur"))
+                return
+            fi
+            ;;
+    esac
+}
+
+complete -F _ws_completions ws

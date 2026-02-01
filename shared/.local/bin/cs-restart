@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+show_help() {
+    cat << 'EOF'
+cs-restart - Restart services in a GitHub Codespace
+
+Usage: cs-restart [OPTIONS]
+
+Modes:
+  -m, --minimal     Just github/github (default)
+  -s, --sweagent    Full sweagentd stack (github + sweagentd + cosmos)
+  -f, --full        Everything (github + sweagentd + capi + mission-control + actions)
+
+Options:
+  -w, --wait        Wait for services to be healthy before continuing
+  -h, --help        Show this help message
+
+Services started per mode:
+  minimal:   github (script/dx/server-start --ui)
+  sweagent:  minimal + sweagentd (cosmos-dev + script/server)
+  full:      sweagent + copilot-api + mission-control + actions runner
+
+Examples:
+  cs-restart              # Start github only
+  cs-restart --sweagent   # Start github + sweagentd stack
+  cs-restart -f --wait    # Start everything and wait for health
+EOF
+}
+
+# Logging helpers
+info() { echo -e "${BLUE}[INFO]${NC} $*"; }
+success() { echo -e "${GREEN}[OK]${NC} $*"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; }
+
+# Check if a port is listening
+port_listening() {
+    local port="$1"
+    if ss -tln 2>/dev/null | grep -q ":${port} " || \
+       netstat -tln 2>/dev/null | grep -q ":${port} " || \
+       lsof -i ":${port}" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+# Wait for a port to be ready
+wait_for_port() {
+    local port="$1"
+    local name="$2"
+    local timeout="${3:-120}"
+    local elapsed=0
+
+    info "Waiting for $name (port $port)..."
+    while ! port_listening "$port"; do
+        if [[ $elapsed -ge $timeout ]]; then
+            error "Timeout waiting for $name (port $port) after ${timeout}s"
+            return 1
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    success "$name is ready (port $port)"
+}
+
+# Check if directory exists, print helpful message if not
+check_directory() {
+    local dir="$1"
+    local name="$2"
+    if [[ ! -d "$dir" ]]; then
+        error "Directory $dir does not exist"
+        echo "  Hint: You may need to run the setup script for $name"
+        echo "  For sweagentd: script/setup-sweagentd"
+        echo "  For copilot-api: script/setup-copilot-api"
+        echo "  For mission-control: script/setup-mission-control"
+        return 1
+    fi
+    return 0
+}
+
+# Start github/github
+start_github() {
+    local dir="/workspaces/github"
+    
+    if ! check_directory "$dir" "github"; then
+        return 1
+    fi
+    
+    # Check if already running (port 80 for web, 8152 for rails)
+    if port_listening 80 && port_listening 8152; then
+        warn "github appears to be running (ports 80 and 8152 in use), skipping"
+        return 0
+    fi
+    
+    info "Starting github (script/dx/server-start --ui)..."
+    (cd "$dir" && script/dx/server-start --ui &) 2>/dev/null
+    success "github start initiated"
+}
+
+# Start sweagentd (cosmos + server)
+start_sweagentd() {
+    local dir="/workspaces/sweagentd"
+    
+    if ! check_directory "$dir" "sweagentd"; then
+        return 1
+    fi
+    
+    # Check if already running (ports 2208 http, 2209 twirp)
+    if port_listening 2208 && port_listening 2209; then
+        warn "sweagentd appears to be running (ports 2208 and 2209 in use), skipping"
+        return 0
+    fi
+    
+    info "Starting sweagentd cosmos-dev..."
+    (cd "$dir" && script/cosmos-dev start &) 2>/dev/null
+    
+    # Give cosmos a moment to start
+    sleep 3
+    
+    info "Starting sweagentd server..."
+    (cd "$dir" && script/server &) 2>/dev/null
+    success "sweagentd start initiated"
+}
+
+# Start copilot-api (real, not fauxpilot)
+start_copilot_api() {
+    local dir="/workspaces/copilot-api"
+    
+    if ! check_directory "$dir" "copilot-api"; then
+        return 1
+    fi
+    
+    info "Stopping mock copilot-api (fauxpilot)..."
+    (cd "$dir" && script/manage-overmind-capi stop 2>/dev/null) || true
+    
+    info "Starting copilot-api server..."
+    (cd "$dir" && script/server &) 2>/dev/null
+    success "copilot-api start initiated"
+}
+
+# Start mission-control
+start_mission_control() {
+    local dir="/workspaces/copilot-mission-control"
+    
+    if ! check_directory "$dir" "copilot-mission-control"; then
+        return 1
+    fi
+    
+    info "Starting mission-control..."
+    (cd "$dir" && make run &) 2>/dev/null
+    success "mission-control start initiated"
+}
+
+# Start actions runner
+start_actions() {
+    local dir="/workspaces/sweagentd"
+    
+    if ! check_directory "$dir" "sweagentd (for actions runner)"; then
+        return 1
+    fi
+    
+    # Check if start-actions alias/command exists
+    if command -v start-actions &>/dev/null; then
+        info "Starting actions (via start-actions)..."
+        start-actions &
+    else
+        info "Starting actions runner..."
+        (cd "$dir" && script/docker-self-hosted-runner &) 2>/dev/null
+    fi
+    success "actions runner start initiated"
+}
+
+# Main
+main() {
+    local mode="minimal"
+    local wait_for_health=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -m|--minimal)
+                mode="minimal"
+                shift
+                ;;
+            -s|--sweagent)
+                mode="sweagent"
+                shift
+                ;;
+            -f|--full)
+                mode="full"
+                shift
+                ;;
+            -w|--wait)
+                wait_for_health=true
+                shift
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Use -h or --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+
+    echo "=== cs-restart (mode: $mode) ==="
+    echo
+
+    # Always start github
+    start_github
+    
+    if [[ "$wait_for_health" == true ]]; then
+        wait_for_port 80 "github web" 180
+        wait_for_port 8152 "github rails" 180
+    fi
+
+    # sweagent and full modes include sweagentd
+    if [[ "$mode" == "sweagent" || "$mode" == "full" ]]; then
+        echo
+        start_sweagentd
+        
+        if [[ "$wait_for_health" == true ]]; then
+            wait_for_port 2208 "sweagentd http" 120
+            wait_for_port 2209 "sweagentd twirp" 120
+        fi
+    fi
+
+    # full mode includes capi, mission-control, and actions
+    if [[ "$mode" == "full" ]]; then
+        echo
+        start_copilot_api
+        
+        echo
+        start_mission_control
+        
+        echo
+        start_actions
+        
+        if [[ "$wait_for_health" == true ]]; then
+            # Give services more time to start in full mode
+            info "Waiting for additional services to start..."
+            sleep 10
+        fi
+    fi
+
+    echo
+    success "Service startup complete for mode: $mode"
+    echo "Run 'cs-status' to check service health"
+}
+
+main "$@"

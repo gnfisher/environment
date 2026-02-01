@@ -1,0 +1,520 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ws - Git worktree manager with Draft PR integration
+# Manages worktrees tied to draft PRs for isolated feature development
+
+WORKTREE_BASE="/workspaces/worktrees"
+WORKSPACE_BASE="/workspaces"
+BRANCH_PREFIX="gnfisher"
+
+# Supported repositories
+SUPPORTED_REPOS=(github sweagentd copilot-mission-control copilot-api)
+
+show_help() {
+    cat << 'EOF'
+ws - Git worktree manager with Draft PR integration
+
+Usage: ws <command> [arguments]
+
+Commands:
+  new <repo> <name>       Create worktree, branch, and draft PR
+  list [repo]             List worktrees (optionally filtered by repo)
+  switch <repo> <name>    Show path and hints for switching to worktree
+  delete <repo> <name>    Remove worktree and optionally close PR
+  sync <repo> <name>      Rebase worktree on origin/main and push
+
+Arguments:
+  repo    Repository name (github, sweagentd, copilot-mission-control, copilot-api)
+  name    Worktree/feature name (used in branch: gnfisher-{name})
+
+Paths:
+  Main checkouts:   /workspaces/{repo}/
+  Worktrees:        /workspaces/worktrees/{repo}/{name}/
+
+Options:
+  -h, --help    Show this help message
+
+Examples:
+  ws new github fix-login
+  ws list
+  ws list github
+  ws switch github fix-login
+  ws sync github fix-login
+  ws delete github fix-login
+EOF
+}
+
+# Logging helpers
+log() {
+    echo "==> $*"
+}
+
+error() {
+    echo "Error: $*" >&2
+}
+
+# Validate repo name
+validate_repo() {
+    local repo="$1"
+    local valid=false
+    for r in "${SUPPORTED_REPOS[@]}"; do
+        if [[ "$r" == "$repo" ]]; then
+            valid=true
+            break
+        fi
+    done
+    if ! $valid; then
+        error "Unknown repository '$repo'"
+        echo "Supported repos: ${SUPPORTED_REPOS[*]}" >&2
+        exit 1
+    fi
+}
+
+# Check if repo exists at /workspaces/{repo}
+repo_exists() {
+    local repo="$1"
+    [[ -d "${WORKSPACE_BASE}/${repo}/.git" ]]
+}
+
+# Get worktree path
+worktree_path() {
+    local repo="$1"
+    local name="$2"
+    echo "${WORKTREE_BASE}/${repo}/${name}"
+}
+
+# Get branch name from worktree name
+branch_name() {
+    local name="$1"
+    echo "${BRANCH_PREFIX}-${name}"
+}
+
+# Map repo name to cs-services service name
+service_name_for_repo() {
+    local repo="$1"
+    case "$repo" in
+        github|sweagentd)
+            echo "$repo"
+            ;;
+        copilot-api)
+            echo "capi"
+            ;;
+        copilot-mission-control)
+            echo "mission-control"
+            ;;
+        *)
+            echo "$repo"
+            ;;
+    esac
+}
+
+# Check if worktree exists
+worktree_exists() {
+    local repo="$1"
+    local name="$2"
+    local wt_path
+    wt_path=$(worktree_path "$repo" "$name")
+    [[ -d "$wt_path" ]]
+}
+
+# Get default branch for a repo
+get_default_branch() {
+    local repo_dir="$1"
+    git -C "$repo_dir" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
+}
+
+# ============================================================================
+# ws new <repo> <name>
+# ============================================================================
+cmd_new() {
+    if [[ $# -lt 2 ]]; then
+        error "Usage: ws new <repo> <name>"
+        exit 1
+    fi
+
+    local repo="$1"
+    local name="$2"
+    local repo_dir="${WORKSPACE_BASE}/${repo}"
+    local wt_path
+    wt_path=$(worktree_path "$repo" "$name")
+    local branch
+    branch=$(branch_name "$name")
+
+    validate_repo "$repo"
+
+    # 1. Validate repo exists
+    if ! repo_exists "$repo"; then
+        error "Repository not found at ${repo_dir}"
+        exit 1
+    fi
+
+    # Check worktree doesn't already exist
+    if worktree_exists "$repo" "$name"; then
+        error "Worktree already exists at ${wt_path}"
+        exit 1
+    fi
+
+    log "Creating worktree for '$name' in $repo..."
+
+    # 2. Fetch and get latest main
+    log "Fetching latest from origin..."
+    git -C "$repo_dir" fetch origin --quiet
+
+    local default_branch
+    default_branch=$(get_default_branch "$repo_dir")
+
+    # 3. Create branch from origin/main (or default branch)
+    log "Creating branch '$branch' from origin/${default_branch}..."
+    git -C "$repo_dir" branch "$branch" "origin/${default_branch}"
+
+    # 4. Create worktree
+    log "Creating worktree at ${wt_path}..."
+    mkdir -p "${WORKTREE_BASE}/${repo}"
+    git -C "$repo_dir" worktree add "$wt_path" "$branch"
+
+    # 5. Push branch to origin
+    log "Pushing branch to origin..."
+    git -C "$wt_path" push -u origin "$branch" --quiet
+
+    # 6. Create Draft PR
+    log "Creating draft PR..."
+    local pr_url
+    pr_url=$(gh pr create \
+        --repo "github/${repo}" \
+        --head "$branch" \
+        --draft \
+        --title "$name" \
+        --body "WIP" \
+        --base "$default_branch" \
+        2>&1) || {
+        error "Failed to create PR: $pr_url"
+        exit 1
+    }
+
+    echo
+    echo "✓ Worktree created successfully!"
+    echo
+    echo "  Repository:  $repo"
+    echo "  Name:        $name"
+    echo "  Branch:      $branch"
+    echo "  Path:        $wt_path"
+    echo "  PR:          $pr_url"
+    echo
+    echo "To start working:"
+    echo "  cd $wt_path"
+}
+
+# ============================================================================
+# ws list [repo]
+# ============================================================================
+cmd_list() {
+    local filter_repo="${1:-}"
+
+    if [[ -n "$filter_repo" ]]; then
+        validate_repo "$filter_repo"
+    fi
+
+    # Collect all worktrees
+    local worktrees=()
+    for repo in "${SUPPORTED_REPOS[@]}"; do
+        if [[ -n "$filter_repo" && "$filter_repo" != "$repo" ]]; then
+            continue
+        fi
+        local repo_dir="${WORKSPACE_BASE}/${repo}"
+        local wt_dir="${WORKTREE_BASE}/${repo}"
+
+        if [[ ! -d "$repo_dir" ]]; then
+            continue
+        fi
+
+        if [[ ! -d "$wt_dir" ]]; then
+            continue
+        fi
+
+        # List worktrees from git
+        while IFS= read -r line; do
+            # Parse git worktree list output: path hash [branch]
+            local wt_path wt_branch
+            wt_path=$(echo "$line" | awk '{print $1}')
+            wt_branch=$(echo "$line" | grep -oP '\[.*\]' | tr -d '[]' || echo "")
+
+            # Skip if it's the main worktree
+            if [[ "$wt_path" == "$repo_dir" ]]; then
+                continue
+            fi
+
+            # Skip if not in our worktree directory
+            if [[ "$wt_path" != "${WORKTREE_BASE}/${repo}/"* ]]; then
+                continue
+            fi
+
+            local wt_name
+            wt_name=$(basename "$wt_path")
+            worktrees+=("${repo}|${wt_name}|${wt_branch}|${wt_path}")
+        done < <(git -C "$repo_dir" worktree list 2>/dev/null || true)
+    done
+
+    if [[ ${#worktrees[@]} -eq 0 ]]; then
+        echo "No worktrees found."
+        return 0
+    fi
+
+    # Get PR info for all repos we care about
+    declare -A pr_info
+    for repo in "${SUPPORTED_REPOS[@]}"; do
+        if [[ -n "$filter_repo" && "$filter_repo" != "$repo" ]]; then
+            continue
+        fi
+        local repo_dir="${WORKSPACE_BASE}/${repo}"
+        if [[ ! -d "$repo_dir" ]]; then
+            continue
+        fi
+
+        # Fetch PRs authored by current user
+        local pr_json
+        pr_json=$(gh pr list \
+            --repo "github/${repo}" \
+            --author "@me" \
+            --state all \
+            --json number,title,state,isDraft,headRefName \
+            --limit 100 2>/dev/null || echo "[]")
+
+        # Parse PR info and store by branch name
+        while IFS= read -r pr_line; do
+            local pr_branch pr_number pr_state pr_is_draft pr_status
+            pr_branch=$(echo "$pr_line" | jq -r '.headRefName // empty')
+            pr_number=$(echo "$pr_line" | jq -r '.number // empty')
+            pr_state=$(echo "$pr_line" | jq -r '.state // empty')
+            pr_is_draft=$(echo "$pr_line" | jq -r '.isDraft // false')
+
+            if [[ -z "$pr_branch" || -z "$pr_number" ]]; then
+                continue
+            fi
+
+            # Determine status
+            if [[ "$pr_state" == "MERGED" ]]; then
+                pr_status="merged"
+            elif [[ "$pr_state" == "CLOSED" ]]; then
+                pr_status="closed"
+            elif [[ "$pr_is_draft" == "true" ]]; then
+                pr_status="draft"
+            else
+                pr_status="open"
+            fi
+
+            pr_info["${repo}:${pr_branch}"]="${pr_number}:${pr_status}"
+        done < <(echo "$pr_json" | jq -c '.[]' 2>/dev/null || true)
+    done
+
+    # Print table header
+    printf "%-20s %-20s %-30s %-10s %-8s\n" "REPO" "NAME" "BRANCH" "PR#" "STATUS"
+    printf "%-20s %-20s %-30s %-10s %-8s\n" "----" "----" "------" "---" "------"
+
+    # Print each worktree
+    for wt in "${worktrees[@]}"; do
+        IFS='|' read -r repo name branch _ <<< "$wt"
+        local pr_key="${repo}:${branch}"
+        local pr_data="${pr_info[$pr_key]:-}"
+        local pr_display="-"
+        local pr_status="-"
+
+        if [[ -n "$pr_data" ]]; then
+            local pr_num
+            pr_num=$(echo "$pr_data" | cut -d: -f1)
+            pr_status=$(echo "$pr_data" | cut -d: -f2)
+            pr_display="#${pr_num}"
+        fi
+
+        printf "%-20s %-20s %-30s %-10s %-8s\n" "$repo" "$name" "$branch" "$pr_display" "$pr_status"
+    done
+
+    echo
+    echo "Paths: ${WORKTREE_BASE}/{repo}/{name}/"
+}
+
+# ============================================================================
+# ws switch <repo> <name>
+# ============================================================================
+cmd_switch() {
+    if [[ $# -lt 2 ]]; then
+        error "Usage: ws switch <repo> <name>"
+        exit 1
+    fi
+
+    local repo="$1"
+    local name="$2"
+    local wt_path
+    wt_path=$(worktree_path "$repo" "$name")
+    local service_name
+    service_name=$(service_name_for_repo "$repo")
+
+    validate_repo "$repo"
+
+    # 1. Validate worktree exists
+    if ! worktree_exists "$repo" "$name"; then
+        error "Worktree not found at ${wt_path}"
+        exit 1
+    fi
+
+    # 2. Print path
+    echo "Worktree path: $wt_path"
+    echo
+    echo "Run: cd $wt_path"
+    echo
+    echo "To restart service: cs-services restart $service_name"
+}
+
+# ============================================================================
+# ws delete <repo> <name>
+# ============================================================================
+cmd_delete() {
+    if [[ $# -lt 2 ]]; then
+        error "Usage: ws delete <repo> <name>"
+        exit 1
+    fi
+
+    local repo="$1"
+    local name="$2"
+    local repo_dir="${WORKSPACE_BASE}/${repo}"
+    local wt_path
+    wt_path=$(worktree_path "$repo" "$name")
+    local branch
+    branch=$(branch_name "$name")
+
+    validate_repo "$repo"
+
+    # 1. Validate worktree exists
+    if ! worktree_exists "$repo" "$name"; then
+        error "Worktree not found at ${wt_path}"
+        exit 1
+    fi
+
+    log "Removing worktree '$name' from $repo..."
+
+    # 2. Remove git worktree
+    log "Removing worktree..."
+    git -C "$repo_dir" worktree remove "$wt_path" --force
+
+    # 3. Ask about closing PR
+    local pr_number
+    pr_number=$(gh pr list \
+        --repo "github/${repo}" \
+        --author "@me" \
+        --head "$branch" \
+        --json number \
+        --jq '.[0].number // empty' 2>/dev/null || true)
+
+    if [[ -n "$pr_number" ]]; then
+        echo
+        read -rp "Close PR #${pr_number}? [y/N] " close_pr
+        if [[ "$close_pr" =~ ^[Yy]$ ]]; then
+            log "Closing PR #${pr_number}..."
+            gh pr close "$pr_number" --repo "github/${repo}"
+
+            # 4. Clean up remote branch
+            log "Deleting remote branch..."
+            git -C "$repo_dir" push origin --delete "$branch" --quiet 2>/dev/null || true
+        fi
+    fi
+
+    # Delete local branch if it exists
+    if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+        log "Deleting local branch..."
+        git -C "$repo_dir" branch -D "$branch" 2>/dev/null || true
+    fi
+
+    echo
+    echo "✓ Worktree '$name' deleted."
+}
+
+# ============================================================================
+# ws sync <repo> <name>
+# ============================================================================
+cmd_sync() {
+    if [[ $# -lt 2 ]]; then
+        error "Usage: ws sync <repo> <name>"
+        exit 1
+    fi
+
+    local repo="$1"
+    local name="$2"
+    local repo_dir="${WORKSPACE_BASE}/${repo}"
+    local wt_path
+    wt_path=$(worktree_path "$repo" "$name")
+
+    validate_repo "$repo"
+
+    # Validate worktree exists
+    if ! worktree_exists "$repo" "$name"; then
+        error "Worktree not found at ${wt_path}"
+        exit 1
+    fi
+
+    log "Syncing worktree '$name' in $repo..."
+
+    # 1. cd to worktree
+    cd "$wt_path"
+
+    # 2. Fetch origin
+    log "Fetching origin..."
+    git fetch origin --quiet
+
+    # 3. Get default branch
+    local default_branch
+    default_branch=$(get_default_branch "$repo_dir")
+
+    # 4. Rebase on origin/main (or default branch)
+    log "Rebasing on origin/${default_branch}..."
+    if ! git rebase "origin/${default_branch}"; then
+        error "Rebase failed. Resolve conflicts and run 'git rebase --continue'"
+        exit 1
+    fi
+
+    # 5. Push with --force-with-lease
+    log "Pushing with --force-with-lease..."
+    git push --force-with-lease --quiet
+
+    echo
+    echo "✓ Worktree '$name' synced with origin/${default_branch}."
+}
+
+# ============================================================================
+# Main
+# ============================================================================
+if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+fi
+
+case "${1:-}" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    new)
+        shift
+        cmd_new "$@"
+        ;;
+    list)
+        shift
+        cmd_list "$@"
+        ;;
+    switch)
+        shift
+        cmd_switch "$@"
+        ;;
+    delete)
+        shift
+        cmd_delete "$@"
+        ;;
+    sync)
+        shift
+        cmd_sync "$@"
+        ;;
+    *)
+        error "Unknown command '${1:-}'"
+        echo "Run 'ws --help' for usage" >&2
+        exit 1
+        ;;
+esac

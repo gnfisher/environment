@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+DRY_RUN=false
+CONTINUE_ON_ERROR=false
+TARGET_REPO=""
+
+# Repositories to update
+REPOS=(
+    "github"
+    "sweagentd"
+    "copilot-mission-control"
+    "copilot-api"
+)
+
+show_help() {
+    cat << 'EOF'
+cs-update - Update repositories in a GitHub Codespace
+
+Usage: cs-update [OPTIONS]
+
+Safely updates all repositories by stashing changes, fetching, and rebasing.
+
+Options:
+  -h, --help              Show this help message
+  --dry-run               Show what would happen without making changes
+  --repo=<name>           Update only a specific repo (github, sweagentd, etc.)
+  --continue-on-error     Continue updating other repos if one fails
+
+Repositories updated:
+  - github
+  - sweagentd
+  - copilot-mission-control
+  - copilot-api
+
+For github/github specifically:
+  - Runs db:migrate if schema changes are detected
+  - Shows how many commits were pulled
+
+Examples:
+  cs-update                    # Update all repos
+  cs-update --dry-run          # Preview what would happen
+  cs-update --repo=github      # Update only github/github
+  cs-update --continue-on-error # Don't stop on first failure
+EOF
+}
+
+# Logging helpers
+info() { echo -e "  ${BLUE}${NC} $*"; }
+success() { echo -e "  ${GREEN}✓${NC} $*"; }
+warn() { echo -e "  ${YELLOW}⚠${NC} $*"; }
+error() { echo -e "  ${RED}✗${NC} $*"; }
+
+# Get the default branch for a repo
+get_default_branch() {
+    local dir="$1"
+    local remote_head
+    remote_head=$(git -C "$dir" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || true)
+    if [[ -n "$remote_head" ]]; then
+        basename "$remote_head"
+    else
+        # Fallback: try main, then master
+        if git -C "$dir" rev-parse --verify origin/main &>/dev/null; then
+            echo "main"
+        elif git -C "$dir" rev-parse --verify origin/master &>/dev/null; then
+            echo "master"
+        else
+            echo "main"
+        fi
+    fi
+}
+
+# Check if there are uncommitted changes
+has_uncommitted_changes() {
+    local dir="$1"
+    ! git -C "$dir" diff --quiet 2>/dev/null || ! git -C "$dir" diff --cached --quiet 2>/dev/null
+}
+
+# Check if there are untracked files
+has_untracked_files() {
+    local dir="$1"
+    [[ -n "$(git -C "$dir" ls-files --others --exclude-standard 2>/dev/null)" ]]
+}
+
+# Count commits behind origin
+commits_behind() {
+    local dir="$1"
+    local branch="$2"
+    git -C "$dir" rev-list --count HEAD..origin/"$branch" 2>/dev/null || echo "0"
+}
+
+# Check if schema changed in the pulled commits
+schema_changed() {
+    local dir="$1"
+    local old_head="$2"
+    local new_head="$3"
+    
+    if [[ "$old_head" == "$new_head" ]]; then
+        return 1
+    fi
+    
+    git -C "$dir" diff --name-only "$old_head" "$new_head" 2>/dev/null | grep -q "db/schema\|db/migrate" || return 1
+}
+
+# Update a single repository
+update_repo() {
+    local name="$1"
+    local dir="/workspaces/$name"
+    local stashed=false
+    local old_head
+    local new_head
+    local default_branch
+    local behind_count
+    
+    echo
+    echo -e "${BLUE}${name}:${NC}"
+    
+    # Check if directory exists
+    if [[ ! -d "$dir" ]]; then
+        warn "Directory $dir does not exist, skipping"
+        return 0
+    fi
+    
+    # Check if it's a git repo
+    if [[ ! -d "$dir/.git" ]]; then
+        warn "Not a git repository, skipping"
+        return 0
+    fi
+    
+    # Get default branch
+    default_branch=$(get_default_branch "$dir")
+    
+    # Check for uncommitted changes
+    if has_uncommitted_changes "$dir"; then
+        if $DRY_RUN; then
+            info "[DRY RUN] Would stash local changes"
+        else
+            info "Stashing local changes..."
+            if ! git -C "$dir" stash push -m "cs-update auto-stash" --quiet; then
+                error "Failed to stash changes"
+                return 1
+            fi
+            stashed=true
+        fi
+    fi
+    
+    # Warn about untracked files
+    if has_untracked_files "$dir"; then
+        warn "Untracked files present (will not be affected)"
+    fi
+    
+    # Fetch origin
+    if $DRY_RUN; then
+        info "[DRY RUN] Would fetch origin"
+    else
+        info "Fetching origin..."
+        if ! git -C "$dir" fetch origin --quiet 2>/dev/null; then
+            error "Failed to fetch origin"
+            if $stashed; then
+                git -C "$dir" stash pop --quiet 2>/dev/null || true
+            fi
+            return 1
+        fi
+    fi
+    
+    # Check how many commits behind
+    behind_count=$(commits_behind "$dir" "$default_branch")
+    
+    if [[ "$behind_count" -eq 0 ]]; then
+        info "Already up to date"
+        if $stashed; then
+            info "Restoring stashed changes..."
+            git -C "$dir" stash pop --quiet 2>/dev/null || warn "Failed to pop stash"
+        fi
+        success "No changes needed"
+        return 0
+    fi
+    
+    # Record old HEAD for schema change detection
+    old_head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+    
+    # Pull with rebase
+    if $DRY_RUN; then
+        info "[DRY RUN] Would pull $behind_count new commit(s) from origin/$default_branch"
+    else
+        info "Pulling $behind_count new commit(s)..."
+        if ! git -C "$dir" pull --rebase origin "$default_branch" --quiet 2>/dev/null; then
+            error "Failed to pull (rebase conflict?)"
+            warn "You may need to resolve conflicts manually"
+            if $stashed; then
+                warn "Stashed changes were NOT restored due to pull failure"
+            fi
+            return 1
+        fi
+    fi
+    
+    new_head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+    
+    # For github/github: run migrations if schema changed
+    if [[ "$name" == "github" ]] && ! $DRY_RUN; then
+        if schema_changed "$dir" "$old_head" "$new_head"; then
+            info "Schema changes detected, running migrations..."
+            if ! (cd "$dir" && bin/rake db:migrate 2>/dev/null); then
+                warn "Migration failed (may need manual intervention)"
+            else
+                info "Migrations completed"
+            fi
+        fi
+    elif [[ "$name" == "github" ]] && $DRY_RUN; then
+        info "[DRY RUN] Would check for schema changes and run migrations if needed"
+    fi
+    
+    # Restore stash
+    if $stashed; then
+        if $DRY_RUN; then
+            info "[DRY RUN] Would restore stashed changes"
+        else
+            info "Restoring stashed changes..."
+            if ! git -C "$dir" stash pop --quiet 2>/dev/null; then
+                warn "Failed to pop stash (may have conflicts)"
+            fi
+        fi
+    fi
+    
+    if $DRY_RUN; then
+        success "Would update successfully"
+    else
+        success "Updated successfully"
+    fi
+    return 0
+}
+
+main() {
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            --continue-on-error)
+                CONTINUE_ON_ERROR=true
+                shift
+                ;;
+            --repo=*)
+                TARGET_REPO="${1#--repo=}"
+                shift
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Use -h or --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+    
+    echo "Updating repositories..."
+    
+    if $DRY_RUN; then
+        echo -e "${YELLOW}[DRY RUN MODE - No changes will be made]${NC}"
+    fi
+    
+    local failed=false
+    
+    # If targeting a specific repo
+    if [[ -n "$TARGET_REPO" ]]; then
+        # Validate repo name
+        local valid=false
+        for repo in "${REPOS[@]}"; do
+            if [[ "$repo" == "$TARGET_REPO" ]]; then
+                valid=true
+                break
+            fi
+        done
+        
+        if ! $valid; then
+            error "Unknown repository: $TARGET_REPO"
+            echo "Valid repositories: ${REPOS[*]}"
+            exit 1
+        fi
+        
+        if ! update_repo "$TARGET_REPO"; then
+            failed=true
+        fi
+    else
+        # Update all repos
+        for repo in "${REPOS[@]}"; do
+            if ! update_repo "$repo"; then
+                failed=true
+                if ! $CONTINUE_ON_ERROR; then
+                    error "Stopping due to failure (use --continue-on-error to continue)"
+                    exit 1
+                fi
+            fi
+        done
+    fi
+    
+    echo
+    if $failed; then
+        warn "Some repositories failed to update"
+        exit 1
+    else
+        if $DRY_RUN; then
+            echo -e "${GREEN}Dry run complete - no changes made${NC}"
+        else
+            echo -e "${GREEN}All repositories updated successfully${NC}"
+        fi
+    fi
+}
+
+main "$@"
