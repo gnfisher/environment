@@ -13,4 +13,4 @@ alias grep='grep --color=auto'
 # Helpful
 alias dots='cd ~/Development/gnfisher/environment/'
 alias dev='cd ~/Development'
-alias copilot='copilot --disable-builtin-mcps'
+alias copilot='copilot --yolo'

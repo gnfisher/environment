@@ -129,7 +129,7 @@ alias g='git'
 # Helpful
 alias dots='cd ~/Development/gnfisher/environment/'
 alias dev='cd ~/Development'
-alias copilot='copilot --disable-builtin-mcps'
+alias copilot='copilot --disable-builtin-mcp=github'
 
 # cd with ls
 cd() {

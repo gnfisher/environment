@@ -1,0 +1,133 @@
+tap "blakewilliams/remote-development-manager", "https://github.com/BlakeWilliams/remote-development-manager"
+tap "d12frosted/emacs-plus"
+tap "epk/epk"
+tap "github/bootstrap"
+tap "gnfisher/local-tmux"
+tap "gnfisher/tap"
+tap "homebrew/autoupdate"
+tap "homebrew/core"
+tap "jesseduffield/lazygit"
+tap "jnsahaj/lumen"
+tap "nikitabobko/tap"
+
+# Distributed revision control system
+brew "git"
+# Extendable version manager with support for Ruby, Node.js, Erlang & more
+brew "asdf"
+# Code searching, linting, rewriting
+brew "ast-grep"
+# Bourne-Again SHell, a UNIX command interpreter
+brew "bash"
+# Programmable completion for Bash 3.2
+brew "bash-completion"
+# Clone of cat(1) with syntax highlighting and Git integration
+brew "bat"
+# Versatile and fast Unicode/ASCII/ANSI graphics renderer
+brew "chafa"
+# GNU File, Shell, and Text utilities
+brew "coreutils"
+# Diff that understands syntax
+brew "difftastic"
+# AST-based pattern checker for JavaScript
+brew "eslint"
+# Simple, fast and user-friendly alternative to find
+brew "fd"
+# User-friendly command-line shell for UNIX-like operating systems
+brew "fish"
+# Libraries to talk to Microsoft SQL Server and Sybase databases
+brew "freetds"
+# Command-line fuzzy finder written in Go
+brew "fzf"
+# GNU compiler collection
+brew "gcc"
+# GitHub command-line tool
+brew "gh"
+# Interpreter for PostScript and PDF
+brew "ghostscript"
+# Enable transparent encryption/decryption of files in a git repo
+brew "git-crypt"
+# Syntax-highlighting pager for git and diff output
+brew "git-delta"
+# Git extension for versioning large files
+brew "git-lfs"
+# GNU Privacy Guard (OpenPGP)
+brew "gnupg"
+# Open source programming language to build simple/reliable/efficient software
+brew "go"
+# Graph visualization software from AT&T and Bell Labs
+brew "graphviz"
+# Get events and tasks from the macOS calendar database
+brew "ical-buddy"
+# Lightweight and flexible command-line JSON processor
+brew "jq"
+# Lazier way to manage everything docker
+brew "lazydocker"
+# Simple terminal UI for git commands
+brew "lazygit"
+# Pager program similar to more
+brew "less"
+# JIT library for the GNU compiler collection
+brew "libgccjit"
+# Language Server for the Lua language
+brew "lua-language-server"
+# 'traceroute' and 'ping' in a single tool
+brew "mtr"
+# Ambitious Vim-fork focused on extensibility and agility
+brew "neovim"
+# Terminal multiplexer
+brew "tmux"
+# Process manager for Procfile-based applications and tmux
+brew "overmind"
+# Swiss-army knife of markup format conversion
+brew "pandoc"
+# Pinentry for GPG on Mac
+brew "pinentry-mac"
+# Protocol buffers (Google's data interchange format)
+brew "protobuf"
+# Reattach process (e.g., tmux) to background
+brew "reattach-to-user-namespace"
+# Search tool like grep and The Silver Searcher
+brew "ripgrep"
+# Cross-shell prompt for astronauts
+brew "starship"
+# Organize software neatly under a single directory tree (e.g. /usr/local)
+brew "stow"
+# Symbolic link maintenance utility
+brew "symlinks"
+# Tool to build, change, and version infrastructure
+brew "terraform"
+# Simplified and community-driven man pages
+brew "tldr"
+# Display directories as trees (with optional color/HTML output)
+brew "tree"
+# Language Server Protocol implementation for TypeScript wrapping tsserver
+brew "typescript-language-server"
+# Maintained ctags implementation
+brew "universal-ctags"
+# Extremely fast Python package installer and resolver, written in Rust
+brew "uv"
+# Language servers for HTML, CSS, JavaScript, and JSON extracted from vscode
+brew "vscode-langservers-extracted"
+# Internet file retriever
+brew "wget"
+# Process YAML, JSON, XML, CSV and properties documents from the CLI
+brew "yq"
+# Pluggable terminal workspace, with terminal multiplexer as the base feature
+brew "zellij"
+# Additional completion definitions for zsh
+brew "zsh-completions"
+# GNU Emacs text editor
+brew "d12frosted/emacs-plus/emacs-plus@31"
+# macOS menu bar app for GitHub Codespaces status
+brew "gnfisher/tap/space-tray"
+# AI-powered diff, commit messages, summaries
+brew "jnsahaj/lumen/lumen"
+
+# Command-line interface for 1Password
+cask "1password-cli"
+# Terminal emulator that uses platform-native UI and GPU acceleration
+cask "ghostty"
+# Control your tools with a few keystrokes
+cask "raycast"
+# Centralises all remote connections on a single platform
+cask "remote-desktop-manager"

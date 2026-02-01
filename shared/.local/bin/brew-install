@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# brew-install: Install brew packages and update Brewfile in dotfiles
+#
+# Usage:
+#   brew-install <formula>           # Install a formula
+#   brew-install --cask <cask>       # Install a cask
+#   brew-install --tap <tap>         # Add a tap
+#
+set -euo pipefail
+
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Development/gnfisher/environment}"
+BREWFILE="$DOTFILES_DIR/macos/Brewfile"
+
+usage() {
+    echo "Usage: brew-install [--cask|--tap] <package>"
+    echo ""
+    echo "Options:"
+    echo "  --cask    Install a cask"
+    echo "  --tap     Add a tap"
+    echo "  --help    Show this help"
+    exit 1
+}
+
+update_brewfile() {
+    echo "Updating Brewfile..."
+    brew bundle dump --describe --force --file="$BREWFILE"
+    # Remove vscode and go entries (managed separately)
+    sed -i '' '/^vscode /d' "$BREWFILE"
+    sed -i '' '/^go "/d' "$BREWFILE"
+    echo "Brewfile updated: $BREWFILE"
+}
+
+if [[ $# -lt 1 ]]; then
+    usage
+fi
+
+case "$1" in
+    --help|-h)
+        usage
+        ;;
+    --cask)
+        [[ $# -lt 2 ]] && usage
+        echo "Installing cask: $2"
+        brew install --cask "$2"
+        update_brewfile
+        ;;
+    --tap)
+        [[ $# -lt 2 ]] && usage
+        echo "Tapping: $2"
+        brew tap "$2"
+        update_brewfile
+        ;;
+    --*)
+        echo "Unknown option: $1"
+        usage
+        ;;
+    *)
+        echo "Installing formula: $1"
+        brew install "$1"
+        update_brewfile
+        ;;
+esac
