@@ -15,6 +15,7 @@ Commands:
   clean       Free disk space
   restart     Restart services
   update      Update repositories safely
+  bootstrap   Bootstrap codespace services
   services    Manage services (status/start/stop/logs)
   forward     Forward ports from a codespace
   ws          Worktree + PR management
@@ -24,6 +25,7 @@ Examples:
   cs clean --dry-run
   cs restart --full --wait
   cs update --dry-run
+  cs bootstrap
   cs services status
   cs forward -c my-codespace
   cs ws list
@@ -44,7 +46,7 @@ case "$1" in
         usage
         exit 0
         ;;
-    status|clean|restart|update|services|forward|ws)
+    status|clean|restart|update|services|forward|bootstrap|ws)
         cmd="$1"
         shift
         ;;

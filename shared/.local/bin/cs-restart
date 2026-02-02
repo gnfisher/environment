@@ -46,7 +46,7 @@ port_listening() {
     local port="$1"
     if ss -tln 2>/dev/null | grep -q ":${port} " || \
        netstat -tln 2>/dev/null | grep -q ":${port} " || \
-       lsof -i ":${port}" >/dev/null 2>&1; then
+       lsof -iTCP:"${port}" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
         return 0
     fi
     return 1
@@ -126,7 +126,7 @@ start_sweagentd() {
     sleep 3
     
     info "Starting sweagentd server..."
-    (cd "$dir" && script/server &) 2>/dev/null
+    (cd "$dir" && OVERMIND_DAEMONIZE=1 script/server &) 2>/dev/null
     success "sweagentd start initiated"
 }
 
@@ -155,7 +155,11 @@ start_mission_control() {
     fi
     
     info "Starting mission-control..."
-    (cd "$dir" && make run &) 2>/dev/null
+    if [[ -x "$dir/script/server" ]]; then
+        (cd "$dir" && script/server --type all --background &) 2>/dev/null
+    else
+        (cd "$dir" && make run &) 2>/dev/null
+    fi
     success "mission-control start initiated"
 }
 

@@ -12,7 +12,7 @@ declare -A SERVICE_DIRS=(
 declare -A SERVICE_PORTS=(
     [github]="80 8152"
     [sweagentd]="2208 2209"
-    [capi]="3000"
+    [capi]="2206"
     [mission-control]="8080"
 )
 
@@ -29,7 +29,7 @@ Usage: cs-services <command> [service]
 Commands:
   status              Show status of all services
   start <service>     Start a specific service (prompts for worktree if available)
-  stop <service>      Stop a specific service
+  stop <service|all>  Stop a service, or "all" to stop all services
   restart <service>   Restart a specific service (stop then start)
   logs <service>      Tail logs for a service
 
@@ -42,6 +42,7 @@ Services:
 Options:
   -h, --help          Show this help message
   --worktree <name>   Use a specific worktree (default: main)
+  --background        Start service in background when supported
 
 Examples:
   cs-services status
@@ -56,7 +57,7 @@ port_is_up() {
     local port="$1"
     if ss -tln 2>/dev/null | grep -q ":${port} " || \
        netstat -tln 2>/dev/null | grep -q ":${port} " || \
-       lsof -i ":${port}" >/dev/null 2>&1; then
+       lsof -iTCP:"${port}" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
         return 0
     fi
     return 1
@@ -67,7 +68,7 @@ get_port_pid() {
     local port="$1"
     local pid=""
     # Try lsof first
-    pid=$(lsof -ti ":${port}" 2>/dev/null | head -1) || true
+    pid=$(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null | head -1) || true
     if [[ -z "$pid" ]]; then
         # Try ss
         pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K\d+' | head -1) || true
@@ -272,7 +273,7 @@ get_service_status() {
     local ports="${SERVICE_PORTS[$service]:-}"
     local first_port
     first_port=$(echo "$ports" | awk '{print $1}')
-    
+
     if [[ -n "$first_port" ]] && port_is_up "$first_port"; then
         echo "UP"
     else
@@ -285,13 +286,13 @@ cmd_status() {
     read_state
     printf "%-16s %-8s %-15s %-20s %s\n" "SERVICE" "STATUS" "PORTS" "BRANCH" "PID"
     printf "%-16s %-8s %-15s %-20s %s\n" "-------" "------" "-----" "------" "---"
-    
+
     for service in github sweagentd capi mission-control; do
         local dir="${SERVICE_DIRS[$service]}"
         local ports="${SERVICE_PORTS[$service]}"
         local status branch pid port_list
         local active_dir="$dir"
-        
+
         if [[ ! -d "$dir" ]]; then
             printf "%-16s %-8s %-15s %-20s %s\n" "$service" "N/A" "-" "(not installed)" "-"
             continue
@@ -302,7 +303,7 @@ cmd_status() {
         if [[ -n "$state_dir" && -d "$state_dir" ]]; then
             active_dir="$state_dir"
         fi
-        
+
         # Get status from first port
         local first_port
         first_port=$(echo "$ports" | awk '{print $1}')
@@ -313,10 +314,10 @@ cmd_status() {
             status="DOWN"
             pid="-"
         fi
-        
+
         branch=$(get_branch "$active_dir")
         port_list=$(echo "$ports" | tr ' ' ',')
-        
+
         printf "%-16s %-8s %-15s %-20s %s\n" "$service" "$status" "$port_list" "$branch" "${pid:-"-"}"
     done
 }
@@ -326,6 +327,7 @@ cmd_start() {
     local service="$1"
     shift
     local worktree=""
+    local background=false
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --worktree)
@@ -336,6 +338,10 @@ cmd_start() {
                 worktree="${1#--worktree=}"
                 shift
                 ;;
+            --background)
+                background=true
+                shift
+                ;;
             *)
                 echo "Error: Unknown option '$1'" >&2
                 exit 1
@@ -343,33 +349,55 @@ cmd_start() {
         esac
     done
     validate_service "$service"
-    
+
     local dir
     dir=$(resolve_service_dir "$service" "$worktree" "prompt")
-    
+
     echo "Starting $service (dir: $dir)..."
     cd "$dir"
-    
+
     case "$service" in
         github)
             if [[ -x "script/dx/server-start" ]]; then
-                script/dx/server-start --ui
+                if [[ "$background" == "true" ]]; then
+                    script/dx/server-start --ui >/dev/null 2>&1 &
+                else
+                    script/dx/server-start --ui
+                fi
             else
                 echo "Error: script/dx/server-start not found" >&2
                 exit 1
             fi
             ;;
         sweagentd)
+            local socket="/tmp/overmind-sweagentd.sock"
+            if [[ -S "$socket" ]]; then
+                echo "Overmind is already running for sweagentd."
+                echo "Use 'cs-services logs sweagentd' to view logs."
+                echo "Use 'cs-services stop sweagentd' first if you want to restart."
+                exit 0
+            fi
             if [[ -x "script/server" ]]; then
-                script/server
+                if [[ "$background" == "true" ]]; then
+                    OVERMIND_DAEMONIZE=1 script/server >/dev/null 2>&1 &
+                else
+                    OVERMIND_DAEMONIZE=1 script/server
+                fi
             else
                 echo "Error: script/server not found" >&2
                 exit 1
             fi
             ;;
         capi)
+            if [[ -x "script/manage-overmind-capi" ]]; then
+                script/manage-overmind-capi stop || true
+            fi
             if [[ -x "script/server" ]]; then
-                script/server
+                if [[ "$background" == "true" ]]; then
+                    script/server >/dev/null 2>&1 &
+                else
+                    script/server
+                fi
             else
                 echo "Error: script/server not found" >&2
                 exit 1
@@ -377,23 +405,44 @@ cmd_start() {
             ;;
         mission-control)
             if [[ -x "script/server" ]]; then
-                script/server --type all
+                if [[ "$background" == "true" ]]; then
+                    script/server --type all --background >/dev/null 2>&1 &
+                else
+                    script/server --type all --background
+                fi
             elif [[ -f "Makefile" ]] && grep -q "^run:" Makefile 2>/dev/null; then
-                make run
+                if [[ "$background" == "true" ]]; then
+                    make run >/dev/null 2>&1 &
+                else
+                    make run
+                fi
             else
                 echo "Error: No start script found" >&2
                 exit 1
             fi
             ;;
     esac
-    
+
     echo "$service started."
     set_state_dir "$service" "$dir"
 }
 
-# Stop a service
+# Stop a service (or all services if "all" specified)
 cmd_stop() {
     local service="$1"
+    
+    # If "all" specified, stop all services
+    if [[ "$service" == "all" ]]; then
+        echo "Stopping all services..."
+        for svc in sweagentd capi mission-control github; do
+            if service_exists "$svc" && [[ "$(get_service_status "$svc")" == "UP" ]]; then
+                cmd_stop "$svc"
+            fi
+        done
+        echo "All services stopped."
+        return 0
+    fi
+    
     shift
     local worktree=""
     while [[ $# -gt 0 ]]; do
@@ -413,13 +462,13 @@ cmd_stop() {
         esac
     done
     validate_service "$service"
-    
+
     read_state
     local dir
     dir=$(resolve_service_dir "$service" "$worktree" "state")
-    
+
     echo "Stopping $service..."
-    
+
     case "$service" in
         github)
             cd "$dir"
@@ -447,7 +496,7 @@ cmd_stop() {
             ;;
         capi)
             local pid
-            pid=$(get_port_pid 3000)
+            pid=$(get_port_pid 2206)
             if [[ -n "$pid" ]]; then
                 kill "$pid" 2>/dev/null || true
             else
@@ -470,7 +519,7 @@ cmd_stop() {
             fi
             ;;
     esac
-    
+
     echo "$service stopped."
 }
 
@@ -496,7 +545,7 @@ cmd_restart() {
         esac
     done
     validate_service "$service"
-    
+
     if [[ -n "$worktree" ]]; then
         cmd_stop "$service" --worktree "$worktree"
         sleep 2
@@ -531,11 +580,11 @@ cmd_logs() {
         esac
     done
     validate_service "$service"
-    
+
     read_state
     local dir
     dir=$(resolve_service_dir "$service" "$worktree" "state")
-    
+
     case "$service" in
         github)
             cd "$dir"
@@ -606,7 +655,7 @@ case "${1:-}" in
         shift
         if [[ -z "${1:-}" ]]; then
             echo "Error: Service name required" >&2
-            echo "Usage: cs-services stop <service>" >&2
+            echo "Usage: cs-services stop <service|all>" >&2
             exit 1
         fi
         cmd_stop "$@"

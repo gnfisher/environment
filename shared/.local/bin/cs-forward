@@ -8,11 +8,15 @@ DRY_RUN=false
 PORTS_OVERRIDE=""
 RUN_IN_BACKGROUND=true
 MODE="forward"
+MAX_PORTS=10  # gh CLI has issues with too many ports
 
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cs-forward"
 PID_FILE="${STATE_DIR}/forward.pid"
 INFO_FILE="${STATE_DIR}/forward.info"
 LOG_FILE="${STATE_DIR}/forward.log"
+
+# Priority ports to forward first (common dev ports)
+PRIORITY_PORTS="80 2206 2208 2209 3000 3003 3306 4000 5432 8080 8000 9000"
 
 usage() {
     cat <<EOF
@@ -29,6 +33,7 @@ Options:
   -c, --codespace <name>   Codespace name (if omitted, auto-select when possible)
   --devcontainer <path>    devcontainer.json path in codespace
   --ports <list>           Override ports (comma/space-separated, supports ranges like 3000-3002)
+  --max-ports <n>          Maximum ports to forward (default: $MAX_PORTS, gh CLI has issues with many)
   --dry-run                Print what would happen without forwarding
   --foreground             Run in foreground (blocks until stopped)
   -h, --help               Show this help message
@@ -40,6 +45,7 @@ Examples:
   $SCRIPT_NAME status
   $SCRIPT_NAME -c my-cs --ports 3000,8080
   $SCRIPT_NAME --ports 3000-3002 --dry-run
+  $SCRIPT_NAME --max-ports 5
 EOF
 }
 
@@ -65,17 +71,17 @@ read_state() {
 }
 
 write_state() {
-    local pid="$1"
+    local pids="$1"
     local codespace="$2"
     local ports="$3"
     ensure_state_dir
     cat <<EOF > "$INFO_FILE"
 codespace="$codespace"
 ports="$ports"
-pid="$pid"
+pids="$pids"
 log_file="$LOG_FILE"
 EOF
-    echo "$pid" > "$PID_FILE"
+    echo "$pids" > "$PID_FILE"
 }
 
 cleanup_state() {
@@ -87,17 +93,26 @@ status_forwarding() {
         echo "No active port forwarding."
         return 0
     fi
-    local pid
-    pid=$(cat "$PID_FILE" 2>/dev/null || true)
-    if [[ -z "$pid" ]]; then
+    local pids_str
+    pids_str=$(cat "$PID_FILE" 2>/dev/null || true)
+    if [[ -z "$pids_str" ]]; then
         echo "No active port forwarding."
         cleanup_state
         return 0
     fi
-    if kill -0 "$pid" 2>/dev/null; then
+    
+    # Check if any PID is still running
+    local running_pids=()
+    for pid in $pids_str; do
+        if kill -0 "$pid" 2>/dev/null; then
+            running_pids+=("$pid")
+        fi
+    done
+    
+    if [[ ${#running_pids[@]} -gt 0 ]]; then
         read_state
         echo "Forwarding is running."
-        echo "  PID:       $pid"
+        echo "  PIDs:      ${running_pids[*]}"
         if [[ -n "${codespace:-}" ]]; then
             echo "  Codespace: $codespace"
         fi
@@ -119,25 +134,51 @@ stop_forwarding() {
         echo "No forwarding process found."
         return 0
     fi
-    local pid
-    pid=$(cat "$PID_FILE" 2>/dev/null || true)
-    if [[ -z "$pid" ]]; then
+    local pids_str
+    pids_str=$(cat "$PID_FILE" 2>/dev/null || true)
+    if [[ -z "$pids_str" ]]; then
         echo "No forwarding process found."
         cleanup_state
         return 0
     fi
-    if ! kill -0 "$pid" 2>/dev/null; then
-        echo "Forwarding process not running."
+    
+    local any_running=false
+    for pid in $pids_str; do
+        if kill -0 "$pid" 2>/dev/null; then
+            any_running=true
+            break
+        fi
+    done
+    
+    if [[ "$any_running" == "false" ]]; then
+        echo "Forwarding processes not running."
         cleanup_state
         return 0
     fi
-    log "Stopping forwarding (pid $pid)..."
-    kill "$pid" 2>/dev/null || true
+    
+    log "Stopping forwarding processes..."
+    for pid in $pids_str; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+    
+    # Wait for all to stop
     local attempts=0
-    while kill -0 "$pid" 2>/dev/null; do
+    while true; do
+        local still_running=false
+        for pid in $pids_str; do
+            if kill -0 "$pid" 2>/dev/null; then
+                still_running=true
+                break
+            fi
+        done
+        if [[ "$still_running" == "false" ]]; then
+            break
+        fi
         attempts=$((attempts + 1))
         if [[ $attempts -ge 10 ]]; then
-            error "Unable to stop forwarding process (pid $pid)"
+            error "Unable to stop all forwarding processes"
             return 1
         fi
         sleep 1
@@ -157,6 +198,56 @@ detect_python() {
     fi
     error "python3 is required to parse devcontainer.json"
     exit 1
+}
+
+# Check if a port is in use locally (listening)
+is_local_port_in_use() {
+    local port="$1"
+    lsof -iTCP:"$port" -sTCP:LISTEN -P -n >/dev/null 2>&1
+}
+
+# Get list of ports actually listening in the codespace
+get_remote_listening_ports() {
+    # Returns space-separated list of listening ports
+    # Use netstat as it's more portable and has simpler output
+    remote_exec "netstat -tln 2>/dev/null | grep LISTEN | sed 's/.*:\\([0-9]*\\) .*/\\1/' | sort -n -u | tr '\\n' ' '" 2>/dev/null || true
+}
+
+# Filter ports to only those listening remotely; error on local conflicts
+filter_available_ports() {
+    local requested_ports="$1"
+    local remote_listening="$2"
+    local available=()
+    local skipped_remote=()
+    local conflicts=()
+
+    for port in $requested_ports; do
+        # Check if port is listening in codespace
+        if ! echo "$remote_listening" | grep -qw "$port"; then
+            skipped_remote+=("$port")
+            continue
+        fi
+        # Check if port is in use locally - this is an error
+        if is_local_port_in_use "$port"; then
+            conflicts+=("$port")
+            continue
+        fi
+        available+=("$port")
+    done
+
+    # Error if any local port conflicts
+    if [[ ${#conflicts[@]} -gt 0 ]]; then
+        error "Local port conflict: ${conflicts[*]}"
+        error "Free these ports or use --ports to specify different ones"
+        exit 1
+    fi
+
+    # Report skipped ports
+    if [[ ${#skipped_remote[@]} -gt 0 ]]; then
+        echo "Skipping (not listening in codespace): ${skipped_remote[*]}" >&2
+    fi
+
+    echo "${available[*]}"
 }
 
 resolve_codespace() {
@@ -179,13 +270,15 @@ resolve_codespace() {
 
 resolve_repo_name() {
     local repo
+    # API returns repository as "owner/repo" string, extract just the repo name
     repo=$(gh codespace list --json name,repository \
-        --jq ".[] | select(.name==\"${CODESPACE}\") | .repository.name" 2>/dev/null | head -1)
+        --jq ".[] | select(.name==\"${CODESPACE}\") | .repository" 2>/dev/null | head -1)
     if [[ -z "$repo" ]]; then
         error "Unable to determine repository for codespace '$CODESPACE'"
         exit 1
     fi
-    echo "$repo"
+    # Extract repo name from "owner/repo" format
+    echo "${repo##*/}"
 }
 
 remote_exec() {
@@ -394,6 +487,14 @@ while [[ $# -gt 0 ]]; do
             PORTS_OVERRIDE="${1#--ports=}"
             shift
             ;;
+        --max-ports)
+            MAX_PORTS="${2:-}"
+            shift 2
+            ;;
+        --max-ports=*)
+            MAX_PORTS="${1#--max-ports=}"
+            shift
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -454,10 +555,48 @@ else
     fi
 fi
 
+# Filter to only available ports (listening remotely, available locally)
+if [[ "$DRY_RUN" == "false" ]]; then
+    log "Checking which ports are available..."
+    remote_listening=$(get_remote_listening_ports)
+    ports_list=$(filter_available_ports "$ports_list" "$remote_listening")
+fi
+
 read -r -a ports <<< "$ports_list"
 if [[ ${#ports[@]} -eq 0 ]]; then
-    error "No ports to forward"
+    error "No ports to forward (all filtered out)"
     exit 1
+fi
+
+# Sort ports: priority ports first, then rest numerically
+# This ensures common dev ports are forwarded even if we hit the limit
+sorted_ports=()
+for pport in $PRIORITY_PORTS; do
+    for port in "${ports[@]}"; do
+        if [[ "$port" == "$pport" ]]; then
+            sorted_ports+=("$port")
+            break
+        fi
+    done
+done
+for port in "${ports[@]}"; do
+    is_priority=false
+    for pport in $PRIORITY_PORTS; do
+        if [[ "$port" == "$pport" ]]; then
+            is_priority=true
+            break
+        fi
+    done
+    if [[ "$is_priority" == "false" ]]; then
+        sorted_ports+=("$port")
+    fi
+done
+ports=("${sorted_ports[@]}")
+
+# Limit number of ports (gh CLI has issues with too many)
+if [[ ${#ports[@]} -gt $MAX_PORTS ]]; then
+    echo "Limiting to $MAX_PORTS ports (use --max-ports to change)"
+    ports=("${ports[@]:0:$MAX_PORTS}")
 fi
 
 forward_args=()
@@ -481,16 +620,38 @@ log "Forwarding ports..."
 if [[ "$RUN_IN_BACKGROUND" == "true" ]]; then
     ensure_state_dir
     if [[ -f "$PID_FILE" ]]; then
-        if status_forwarding >/dev/null; then
-            error "Forwarding already running. Use '$SCRIPT_NAME stop' first."
-            exit 1
-        fi
+        # Check if any processes are still running
+        existing_pids=$(cat "$PID_FILE" 2>/dev/null || true)
+        for pid in $existing_pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                error "Forwarding already running. Use '$SCRIPT_NAME stop' first."
+                exit 1
+            fi
+        done
+        cleanup_state
     fi
-    nohup gh codespace ports forward -c "$CODESPACE" "${forward_args[@]}" > "$LOG_FILE" 2>&1 &
-    pid=$!
-    write_state "$pid" "$CODESPACE" "${ports[*]}"
-    echo "Forwarding started (pid $pid)."
+    
+    # Start one gh process per port to avoid concurrent map writes bug
+    pids=()
+    : > "$LOG_FILE"  # Clear log file
+    for port in "${ports[@]}"; do
+        nohup gh codespace ports forward -c "$CODESPACE" "${port}:${port}" >> "$LOG_FILE" 2>&1 &
+        pids+=($!)
+        sleep 0.5  # Small delay between starts
+    done
+    
+    write_state "${pids[*]}" "$CODESPACE" "${ports[*]}"
+    echo "Forwarding started (${#pids[@]} processes)."
     echo "Use '$SCRIPT_NAME stop' to stop forwarding."
 else
-    gh codespace ports forward -c "$CODESPACE" "${forward_args[@]}"
+    # Foreground mode - still need to start separately but wait for ctrl-c
+    trap 'echo "Stopping..."; for p in "${pids[@]}"; do kill $p 2>/dev/null; done; exit 0' INT TERM
+    pids=()
+    for port in "${ports[@]}"; do
+        gh codespace ports forward -c "$CODESPACE" "${port}:${port}" &
+        pids+=($!)
+        sleep 0.5
+    done
+    echo "Forwarding ${#pids[@]} ports. Press Ctrl-C to stop."
+    wait
 fi

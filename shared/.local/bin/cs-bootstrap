@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_NAME="$(basename "$0")"
+WAIT_SECONDS=30
+SKIP_SETUP=false
+
+usage() {
+    cat <<EOF
+cs-bootstrap - Bootstrap a new codespace for Copilot E2E development
+
+Usage: $SCRIPT_NAME [OPTIONS]
+
+Options:
+  --skip-setup       Skip setup-codespaces-copilot-swe-agent-v2
+  --wait <seconds>   Seconds to wait after starting github (default: $WAIT_SECONDS)
+  -h, --help         Show this help message
+
+EOF
+}
+
+log() { echo "==> $*"; }
+error() { echo "Error: $*" >&2; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-setup)
+            SKIP_SETUP=true
+            shift
+            ;;
+        --wait)
+            WAIT_SECONDS="${2:-}"
+            shift 2
+            ;;
+        --wait=*)
+            WAIT_SECONDS="${1#--wait=}"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$SKIP_SETUP" == "false" ]]; then
+    log "Running setup (this can take a while)..."
+    cd /workspaces/github && script/setup-codespaces-copilot-swe-agent-v2 --capi
+fi
+
+log "Starting github..."
+cs services start github --background
+log "Waiting ${WAIT_SECONDS}s for github to boot..."
+sleep "$WAIT_SECONDS"
+
+log "Enabling feature flags..."
+fm feature enable --create -n copilot_mission_control_service_proxy
+fm feature enable --create -n repo_agents_view
+fm feature enable --create -n copilot_mission_control_link_to_sessions_in_repo
+fm feature enable --create -n coding_agent_pull_request_toggle
+fm feature enable --create -n copilot_swe_agent_ai_name_generation
+fm feature enable --create -n copilot_swe_agent_skip_agent_job_concurrency_limit
+
+log "Stopping fauxpilot CAPI (overmind)..."
+cd /workspaces/copilot-api && script/manage-overmind-capi stop
+
+log "Starting CAPI..."
+cs services start capi --background
+
+log "Starting sweagentd..."
+cs services start sweagentd --background
+
+log "Starting mission-control dependencies (docker compose)..."
+cd /workspaces/copilot-mission-control && make dev-start
+
+log "Starting mission-control..."
+cs services start mission-control --background
+
+log "Bootstrap complete."
+echo "Run 'cs services status' to check service health."

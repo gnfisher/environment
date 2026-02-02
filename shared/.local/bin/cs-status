@@ -8,7 +8,7 @@ cs-status - Monitor GitHub Codespace status
 Usage: cs-status [-h|--help]
 
 Displays:
-  - Services status (ports 80, 8152, 2208, 2209)
+  - Services status (ports 80, 8152, 2206, 2208, 2209)
   - Repository branches for workspaces
   - Disk usage information
   - Docker container count
@@ -30,7 +30,7 @@ check_port() {
     local name="$2"
     if ss -tln 2>/dev/null | grep -q ":${port} " || \
        netstat -tln 2>/dev/null | grep -q ":${port} " || \
-       lsof -i ":${port}" >/dev/null 2>&1; then
+       lsof -iTCP:"${port}" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
         echo "  [UP]   $name (port $port)"
     else
         echo "  [DOWN] $name (port $port)"
@@ -66,6 +66,7 @@ echo
 echo "## Services"
 check_port 80 "github web"
 check_port 8152 "Rails"
+check_port 2206 "capi"
 check_port 2208 "sweagentd http"
 check_port 2209 "sweagentd twirp"
 echo
