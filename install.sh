@@ -116,6 +116,21 @@ fi
 echo "🔐 Disabling GPG commit signing (no key in codespace)..."
 git config --global commit.gpgsign false
 
+# Set fish as the default shell
+echo "🐟 Setting fish as default shell..."
+if command -v fish &>/dev/null; then
+    FISH_PATH=$(which fish)
+    # Add fish to /etc/shells if not present
+    if ! grep -q "^${FISH_PATH}$" /etc/shells; then
+        echo "$FISH_PATH" | sudo tee -a /etc/shells >/dev/null
+    fi
+    # Change default shell to fish (use sudo since chsh may require it in codespaces)
+    sudo chsh -s "$FISH_PATH" "$(whoami)" 2>/dev/null || chsh -s "$FISH_PATH" 2>/dev/null || echo "⚠️  Could not change shell automatically"
+    echo "✅ Fish set as default shell"
+else
+    echo "⚠️  Fish not found, skipping shell change"
+fi
+
 # Inject Codespaces-specific Copilot instructions (cs/ws helpers)
 if [[ -n "${CODESPACE_NAME:-}" || "${CODESPACES:-}" == "true" ]]; then
     instructions_file="$SCRIPT_DIR/shared/.copilot/copilot-instructions.md"

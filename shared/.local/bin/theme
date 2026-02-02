@@ -71,7 +71,7 @@ switch_ghostty() {
     config_file=$(resolve_path "$config_file")
     
     if [[ "$mode" == "light" ]]; then
-        local theme="modus_vivendi"
+        local theme="modus_operandi"
         if grep -q '^theme[[:space:]]*=' "$config_file"; then
             sed_inplace "s/^theme[[:space:]]*=.*/theme = $theme/" "$config_file"
         else
