@@ -14,11 +14,12 @@ end
 
 function fish_prompt
     set -l path (string replace -r "^$HOME" "~" (pwd))
-    set_color --bold cyan
+    # Orangeish-red path color (works in dark and light themes)
+    set_color --bold ff8700
     echo -n $path
-    set_color brblack
+    set_color 626262
     echo -n (__git_prompt)
-    set_color --bold cyan
+    set_color --bold ff8700
     echo -n '$ '
     set_color normal
 end

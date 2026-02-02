@@ -115,14 +115,27 @@ __git_prompt() {
     printf '[⎇ %s%s]' "$branch" "$dirty"
 }
 
-PS1='\[\e[1;36m\]\w'
-PS1+='\[\e[90m\]$(__git_prompt)'
-PS1+='\[\e[1;36m\]\$ \[\e[0m\]'
+__is_light_theme() {
+    local theme_file="$HOME/.local/state/theme-mode"
+    [[ -f "$theme_file" && "$(cat "$theme_file")" == "light" ]]
+}
 
-# Set terminal title to hostname when in SSH session (for WezTerm tab titles)
-if [[ -n "$SSH_CONNECTION" ]]; then
-    echo -ne "\033]0;$(hostname)\007"
-fi
+# Tango Sky Blue - classic GNOME/Emacs feel
+PS1='\[\e[0m\]\[\e[1;38;5;74m\]\w\[\e[0;38;5;245m\]$(__git_prompt)\[\e[1;38;5;74m\]\$ \[\e[0m\]'
+
+# Dynamic terminal title for Ghostty/WezTerm tabs
+__set_title() {
+    local title dir="${PWD##*/}"
+    if [[ -n "$CODESPACES" ]]; then
+        title="☁️ ${CODESPACE_NAME%%-*}:$dir"
+    elif [[ -n "$SSH_CONNECTION" ]]; then
+        title="$(hostname -s):$dir"
+    else
+        title="$dir"
+    fi
+    printf '\033]0;%s\007' "$title"
+}
+PROMPT_COMMAND="__set_title${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 
 # Basic aliases
 alias ll='ls -alF'

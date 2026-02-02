@@ -116,6 +116,27 @@ fi
 echo "🔐 Disabling GPG commit signing (no key in codespace)..."
 git config --global commit.gpgsign false
 
+# Inject Codespaces-specific Copilot instructions (cs/ws helpers)
+if [[ -n "${CODESPACE_NAME:-}" || "${CODESPACES:-}" == "true" ]]; then
+    instructions_file="$SCRIPT_DIR/shared/.copilot/copilot-instructions.md"
+    if [[ -f "$instructions_file" ]]; then
+        cs_instructions=$(cat <<'EOF'
+<!-- CODESPACES_CS_INSTRUCTIONS_BEGIN -->
+## Codespaces
+
+You're operating in a Codespace. Use `cs` for Codespaces operations (status/clean/restart/update/services/forward), and `cs ws` for worktrees and draft PR workflows. Use `ws` directly when you want the full worktree manager interface.
+<!-- CODESPACES_CS_INSTRUCTIONS_END -->
+EOF
+)
+        awk -v block="$cs_instructions" '
+            BEGIN {in_block=0}
+            /<!-- CODESPACES_CS_INSTRUCTIONS_BEGIN -->/ {print block; in_block=1; next}
+            /<!-- CODESPACES_CS_INSTRUCTIONS_END -->/ {if (in_block) {in_block=0}; next}
+            !in_block {print}
+        ' "$instructions_file" > "${instructions_file}.tmp" && mv "${instructions_file}.tmp" "$instructions_file"
+    fi
+fi
+
 echo ""
 echo "✅ Installation complete!"
 echo ""

@@ -17,21 +17,12 @@ end
 function fish_prompt
     set -l path (string replace -r "^$HOME" "~" (pwd))
     
-    # Use different colors for light vs dark theme
-    if __is_light_theme
-        set_color --bold blue
-        echo -n $path
-        set_color bryellow  # visible on light background
-        echo -n (__git_prompt)
-        set_color --bold blue
-    else
-        set_color --bold cyan
-        echo -n $path
-        set_color brblack
-        echo -n (__git_prompt)
-        set_color --bold cyan
-    end
-    
+    # Tango Sky Blue - classic GNOME/Emacs feel
+    set_color --bold 729fcf
+    echo -n $path
+    set_color 888a85
+    echo -n (__git_prompt)
+    set_color --bold 729fcf
     echo -n '$ '
     set_color normal
 end
