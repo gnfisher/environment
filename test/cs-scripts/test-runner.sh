@@ -25,7 +25,7 @@ Usage: $(basename "$0") [OPTIONS] [test-name]
 Run tests for cs-* scripts.
 
 Arguments:
-    test-name    Run only tests for specified script (e.g., cs-status, cs-clean)
+    test-name    Run only tests for specified script (e.g., cs-status, cs-clean, cs-forward)
 
 Options:
     -h, --help          Show this help message

@@ -25,7 +25,13 @@ set("n", "[q", "<Cmd>cprev<CR>zz", opts)
 set("n", "<F6>", function()
   if vim.o.background == "light" then
     vim.o.background = "dark"
+    vim.cmd.colorscheme("tango-dark")
   else
     vim.o.background = "light"
+    vim.cmd.colorscheme("zellner")
   end
 end, opts)
+
+-- Diffview
+set("n", "<Leader>dd", "<Cmd>DiffviewToggle<CR>", opts)
+set("n", "<Leader>df", "<Cmd>DiffviewFileHistory %<CR>", opts)

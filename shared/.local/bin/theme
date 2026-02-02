@@ -22,9 +22,27 @@ mkdir -p "$(dirname "$THEME_STATE_FILE")"
 resolve_path() {
     local path="$1"
     if [[ -L "$path" ]]; then
-        readlink -f "$path"
+        local target
+        target=$(readlink "$path")
+        if [[ "$target" = /* ]]; then
+            echo "$target"
+        else
+            local base_dir
+            base_dir=$(cd -P "$(dirname "$path")" && pwd)
+            local target_dir
+            target_dir=$(cd -P "$(dirname "$base_dir/$target")" && pwd)
+            echo "$target_dir/$(basename "$target")"
+        fi
     else
         echo "$path"
+    fi
+}
+
+sed_inplace() {
+    if sed --version >/dev/null 2>&1; then
+        sed -i "$@"
+    else
+        sed -i '' "$@"
     fi
 }
 
@@ -53,9 +71,15 @@ switch_ghostty() {
     config_file=$(resolve_path "$config_file")
     
     if [[ "$mode" == "light" ]]; then
-        sed -i '' 's/^theme = .*/theme = modus_operandi/' "$config_file"
+        local theme="modus_vivendi"
+        if grep -q '^theme[[:space:]]*=' "$config_file"; then
+            sed_inplace "s/^theme[[:space:]]*=.*/theme = $theme/" "$config_file"
+        else
+            printf '\n' >> "$config_file"
+            echo "theme = $theme" >> "$config_file"
+        fi
     else
-        sed -i '' 's/^theme = .*/theme = modus_vivendi/' "$config_file"
+        sed_inplace '/^theme[[:space:]]*=/d' "$config_file"
     fi
     
     # Ghostty auto-reloads config on file change
@@ -81,17 +105,20 @@ switch_neovim() {
     done < <(find /tmp -name 'nvim*' -type s 2>/dev/null | tr '\n' '\0')
     
     local bg_mode
+    local scheme
     if [[ "$mode" == "light" ]]; then
         bg_mode="light"
+        scheme="zellner"
     else
         bg_mode="dark"
+        scheme="tango-dark"
     fi
     
     # Send commands to all running Neovim instances
-    # modus-themes with style="auto" follows vim.o.background
+    # Set background + colorscheme per mode
     for socket in "${nvim_sockets[@]}"; do
         if [[ -S "$socket" ]]; then
-            nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR>" 2>/dev/null || true
+            nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR><Cmd>colorscheme $scheme<CR>" 2>/dev/null || true
         fi
     done
 }
@@ -179,11 +206,15 @@ switch_opencode() {
     
     # Resolve symlink to edit the actual file
     config_file=$(resolve_path "$config_file")
+
+    if grep -q '"theme": "system"' "$config_file"; then
+        return
+    fi
     
     if [[ "$mode" == "light" ]]; then
-        sed -i '' 's/"theme": "[^"]*"/"theme": "modus_operandi"/' "$config_file"
+        sed_inplace 's/"theme": "[^"]*"/"theme": "modus_operandi"/' "$config_file"
     else
-        sed -i '' 's/"theme": "[^"]*"/"theme": "modus_vivendi"/' "$config_file"
+        sed_inplace 's/"theme": "[^"]*"/"theme": "modus_vivendi"/' "$config_file"
     fi
 }
 

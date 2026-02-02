@@ -98,6 +98,28 @@ test_missing_service_for_start() {
     fi
 }
 
+test_start_accepts_worktree_flag() {
+    if [[ ! -x "$CS_SERVICES" ]]; then
+        print_skip "cs-services not found"
+        return 0
+    fi
+
+    set +e
+    output=$("$CS_SERVICES" start github --worktree invalid 2>&1)
+    exit_code=$?
+    set -e
+
+    TESTS_RUN=$((TESTS_RUN + 1))
+    if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "worktree\|directory not found"; then
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+        print_pass "worktree flag accepted (invalid worktree handled)"
+    else
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        print_fail "worktree flag not handled as expected (exit code: $exit_code)"
+        echo "  Output: $output"
+    fi
+}
+
 test_handles_invalid_service() {
     if [[ ! -x "$CS_SERVICES" ]]; then
         print_skip "cs-services not found"

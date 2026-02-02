@@ -16,6 +16,10 @@ declare -A SERVICE_PORTS=(
     [mission-control]="8080"
 )
 
+WORKTREE_BASE="/workspaces/worktrees"
+STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cs-services"
+STATE_FILE="${STATE_DIR}/state.env"
+
 show_help() {
     cat << 'EOF'
 cs-services - Unified service management for GitHub Codespaces
@@ -24,7 +28,7 @@ Usage: cs-services <command> [service]
 
 Commands:
   status              Show status of all services
-  start <service>     Start a specific service
+  start <service>     Start a specific service (prompts for worktree if available)
   stop <service>      Stop a specific service
   restart <service>   Restart a specific service (stop then start)
   logs <service>      Tail logs for a service
@@ -37,12 +41,13 @@ Services:
 
 Options:
   -h, --help          Show this help message
+  --worktree <name>   Use a specific worktree (default: main)
 
 Examples:
   cs-services status
-  cs-services start github
+  cs-services start github --worktree feature-branch
   cs-services logs sweagentd
-  cs-services restart capi
+  cs-services restart capi --worktree my-branch
 EOF
 }
 
@@ -78,6 +83,166 @@ get_branch() {
     else
         echo "N/A"
     fi
+}
+
+ensure_state_dir() {
+    mkdir -p "$STATE_DIR"
+}
+
+state_key() {
+    echo "$1" | tr '-' '_'
+}
+
+read_state() {
+    if [[ -f "$STATE_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$STATE_FILE"
+    fi
+}
+
+write_state() {
+    ensure_state_dir
+    {
+        for service in github sweagentd capi mission-control; do
+            local key var val
+            key=$(state_key "$service")
+            var="CS_DIR_${key}"
+            eval "val=\${$var:-}"
+            if [[ -n "$val" ]]; then
+                printf '%s=%q\n' "$var" "$val"
+            fi
+        done
+    } > "$STATE_FILE"
+}
+
+get_state_dir() {
+    local key var
+    key=$(state_key "$1")
+    var="CS_DIR_${key}"
+    eval "echo \"\${$var:-}\""
+}
+
+set_state_dir() {
+    local key var
+    key=$(state_key "$1")
+    var="CS_DIR_${key}"
+    eval "$var=\"$2\""
+    write_state
+}
+
+repo_for_service() {
+    local service="$1"
+    case "$service" in
+        github|sweagentd)
+            echo "$service"
+            ;;
+        capi)
+            echo "copilot-api"
+            ;;
+        mission-control)
+            echo "copilot-mission-control"
+            ;;
+        *)
+            echo "$service"
+            ;;
+    esac
+}
+
+list_worktrees() {
+    local repo="$1"
+    local wt_dir="${WORKTREE_BASE}/${repo}"
+    if [[ -d "$wt_dir" ]]; then
+        for dir in "$wt_dir"/*; do
+            [[ -d "$dir" ]] && basename "$dir"
+        done
+    fi
+}
+
+prompt_for_worktree() {
+    local repo="$1"
+    local worktrees=()
+    local wt
+
+    while IFS= read -r wt; do
+        worktrees+=("$wt")
+    done < <(list_worktrees "$repo")
+
+    if [[ ${#worktrees[@]} -eq 0 ]]; then
+        echo ""
+        return 0
+    fi
+
+    if [[ ! -t 0 ]]; then
+        echo ""
+        return 0
+    fi
+
+    echo "Available worktrees for $repo:"
+    echo "  main"
+    for wt in "${worktrees[@]}"; do
+        echo "  $wt"
+    done
+    read -rp "Worktree (blank for main): " selection
+    if [[ -z "$selection" || "$selection" == "main" ]]; then
+        echo ""
+        return 0
+    fi
+    for wt in "${worktrees[@]}"; do
+        if [[ "$wt" == "$selection" ]]; then
+            echo "$selection"
+            return 0
+        fi
+    done
+    echo "Error: Worktree '$selection' not found for $repo" >&2
+    exit 1
+}
+
+resolve_service_dir() {
+    local service="$1"
+    local worktree="$2"
+    local mode="$3"
+    local main_dir="${SERVICE_DIRS[$service]}"
+    local repo
+    repo=$(repo_for_service "$service")
+
+    if [[ -n "$worktree" ]]; then
+        if [[ "$worktree" == "main" ]]; then
+            echo "$main_dir"
+            return 0
+        fi
+        local wt_path="${WORKTREE_BASE}/${repo}/${worktree}"
+        if [[ ! -d "$wt_path" ]]; then
+            echo "Error: Worktree '$worktree' not found at ${wt_path}" >&2
+            exit 1
+        fi
+        echo "$wt_path"
+        return 0
+    fi
+
+    if [[ "$mode" == "state" ]]; then
+        local state_dir
+        state_dir=$(get_state_dir "$service")
+        if [[ -n "$state_dir" && -d "$state_dir" ]]; then
+            echo "$state_dir"
+            return 0
+        fi
+    fi
+
+    if [[ "$mode" == "prompt" ]]; then
+        local selection
+        selection=$(prompt_for_worktree "$repo")
+        if [[ -n "$selection" ]]; then
+            local wt_path="${WORKTREE_BASE}/${repo}/${selection}"
+            if [[ ! -d "$wt_path" ]]; then
+                echo "Error: Worktree '$selection' not found at ${wt_path}" >&2
+                exit 1
+            fi
+            echo "$wt_path"
+            return 0
+        fi
+    fi
+
+    echo "$main_dir"
 }
 
 # Check if service directory exists
@@ -117,6 +282,7 @@ get_service_status() {
 
 # Show status for all services
 cmd_status() {
+    read_state
     printf "%-16s %-8s %-15s %-20s %s\n" "SERVICE" "STATUS" "PORTS" "BRANCH" "PID"
     printf "%-16s %-8s %-15s %-20s %s\n" "-------" "------" "-----" "------" "---"
     
@@ -124,10 +290,17 @@ cmd_status() {
         local dir="${SERVICE_DIRS[$service]}"
         local ports="${SERVICE_PORTS[$service]}"
         local status branch pid port_list
+        local active_dir="$dir"
         
         if [[ ! -d "$dir" ]]; then
             printf "%-16s %-8s %-15s %-20s %s\n" "$service" "N/A" "-" "(not installed)" "-"
             continue
+        fi
+
+        local state_dir
+        state_dir=$(get_state_dir "$service")
+        if [[ -n "$state_dir" && -d "$state_dir" ]]; then
+            active_dir="$state_dir"
         fi
         
         # Get status from first port
@@ -141,7 +314,7 @@ cmd_status() {
             pid="-"
         fi
         
-        branch=$(get_branch "$dir")
+        branch=$(get_branch "$active_dir")
         port_list=$(echo "$ports" | tr ' ' ',')
         
         printf "%-16s %-8s %-15s %-20s %s\n" "$service" "$status" "$port_list" "$branch" "${pid:-"-"}"
@@ -151,11 +324,30 @@ cmd_status() {
 # Start a service
 cmd_start() {
     local service="$1"
+    shift
+    local worktree=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --worktree)
+                worktree="${2:-}"
+                shift 2
+                ;;
+            --worktree=*)
+                worktree="${1#--worktree=}"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                exit 1
+                ;;
+        esac
+    done
     validate_service "$service"
     
-    local dir="${SERVICE_DIRS[$service]}"
+    local dir
+    dir=$(resolve_service_dir "$service" "$worktree" "prompt")
     
-    echo "Starting $service..."
+    echo "Starting $service (dir: $dir)..."
     cd "$dir"
     
     case "$service" in
@@ -196,14 +388,35 @@ cmd_start() {
     esac
     
     echo "$service started."
+    set_state_dir "$service" "$dir"
 }
 
 # Stop a service
 cmd_stop() {
     local service="$1"
+    shift
+    local worktree=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --worktree)
+                worktree="${2:-}"
+                shift 2
+                ;;
+            --worktree=*)
+                worktree="${1#--worktree=}"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                exit 1
+                ;;
+        esac
+    done
     validate_service "$service"
     
-    local dir="${SERVICE_DIRS[$service]}"
+    read_state
+    local dir
+    dir=$(resolve_service_dir "$service" "$worktree" "state")
     
     echo "Stopping $service..."
     
@@ -264,8 +477,33 @@ cmd_stop() {
 # Restart a service
 cmd_restart() {
     local service="$1"
+    shift
+    local worktree=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --worktree)
+                worktree="${2:-}"
+                shift 2
+                ;;
+            --worktree=*)
+                worktree="${1#--worktree=}"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                exit 1
+                ;;
+        esac
+    done
     validate_service "$service"
     
+    if [[ -n "$worktree" ]]; then
+        cmd_stop "$service" --worktree "$worktree"
+        sleep 2
+        cmd_start "$service" --worktree "$worktree"
+        return
+    fi
+
     cmd_stop "$service"
     sleep 2
     cmd_start "$service"
@@ -274,9 +512,29 @@ cmd_restart() {
 # Tail logs for a service
 cmd_logs() {
     local service="$1"
+    shift
+    local worktree=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --worktree)
+                worktree="${2:-}"
+                shift 2
+                ;;
+            --worktree=*)
+                worktree="${1#--worktree=}"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                exit 1
+                ;;
+        esac
+    done
     validate_service "$service"
     
-    local dir="${SERVICE_DIRS[$service]}"
+    read_state
+    local dir
+    dir=$(resolve_service_dir "$service" "$worktree" "state")
     
     case "$service" in
         github)
@@ -336,36 +594,40 @@ case "${1:-}" in
         cmd_status
         ;;
     start)
-        if [[ -z "${2:-}" ]]; then
+        shift
+        if [[ -z "${1:-}" ]]; then
             echo "Error: Service name required" >&2
             echo "Usage: cs-services start <service>" >&2
             exit 1
         fi
-        cmd_start "$2"
+        cmd_start "$@"
         ;;
     stop)
-        if [[ -z "${2:-}" ]]; then
+        shift
+        if [[ -z "${1:-}" ]]; then
             echo "Error: Service name required" >&2
             echo "Usage: cs-services stop <service>" >&2
             exit 1
         fi
-        cmd_stop "$2"
+        cmd_stop "$@"
         ;;
     restart)
-        if [[ -z "${2:-}" ]]; then
+        shift
+        if [[ -z "${1:-}" ]]; then
             echo "Error: Service name required" >&2
             echo "Usage: cs-services restart <service>" >&2
             exit 1
         fi
-        cmd_restart "$2"
+        cmd_restart "$@"
         ;;
     logs)
-        if [[ -z "${2:-}" ]]; then
+        shift
+        if [[ -z "${1:-}" ]]; then
             echo "Error: Service name required" >&2
             echo "Usage: cs-services logs <service>" >&2
             exit 1
         fi
-        cmd_logs "$2"
+        cmd_logs "$@"
         ;;
     *)
         echo "Error: Unknown command '${1:-}'" >&2

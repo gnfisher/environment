@@ -1,0 +1,496 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_NAME="$(basename "$0")"
+CODESPACE=""
+DEVCONTAINER_PATH=""
+DRY_RUN=false
+PORTS_OVERRIDE=""
+RUN_IN_BACKGROUND=true
+MODE="forward"
+
+STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cs-forward"
+PID_FILE="${STATE_DIR}/forward.pid"
+INFO_FILE="${STATE_DIR}/forward.info"
+LOG_FILE="${STATE_DIR}/forward.log"
+
+usage() {
+    cat <<EOF
+cs-forward - Forward ports from a GitHub Codespace devcontainer
+
+Usage: $SCRIPT_NAME [command] [OPTIONS]
+
+Commands:
+  forward               Forward ports (default)
+  stop                  Stop active port forwarding
+  status                Show current forwarding status
+
+Options:
+  -c, --codespace <name>   Codespace name (if omitted, auto-select when possible)
+  --devcontainer <path>    devcontainer.json path in codespace
+  --ports <list>           Override ports (comma/space-separated, supports ranges like 3000-3002)
+  --dry-run                Print what would happen without forwarding
+  --foreground             Run in foreground (blocks until stopped)
+  -h, --help               Show this help message
+
+Examples:
+  $SCRIPT_NAME --codespace my-cs
+  $SCRIPT_NAME -c my-cs --dry-run
+  $SCRIPT_NAME stop
+  $SCRIPT_NAME status
+  $SCRIPT_NAME -c my-cs --ports 3000,8080
+  $SCRIPT_NAME --ports 3000-3002 --dry-run
+EOF
+}
+
+log() { echo "==> $*"; }
+error() { echo "Error: $*" >&2; }
+
+require_cmd() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        error "Required command not found: $1"
+        exit 1
+    fi
+}
+
+ensure_state_dir() {
+    mkdir -p "$STATE_DIR"
+}
+
+read_state() {
+    if [[ -f "$INFO_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$INFO_FILE"
+    fi
+}
+
+write_state() {
+    local pid="$1"
+    local codespace="$2"
+    local ports="$3"
+    ensure_state_dir
+    cat <<EOF > "$INFO_FILE"
+codespace="$codespace"
+ports="$ports"
+pid="$pid"
+log_file="$LOG_FILE"
+EOF
+    echo "$pid" > "$PID_FILE"
+}
+
+cleanup_state() {
+    rm -f "$PID_FILE" "$INFO_FILE"
+}
+
+status_forwarding() {
+    if [[ ! -f "$PID_FILE" ]]; then
+        echo "No active port forwarding."
+        return 0
+    fi
+    local pid
+    pid=$(cat "$PID_FILE" 2>/dev/null || true)
+    if [[ -z "$pid" ]]; then
+        echo "No active port forwarding."
+        cleanup_state
+        return 0
+    fi
+    if kill -0 "$pid" 2>/dev/null; then
+        read_state
+        echo "Forwarding is running."
+        echo "  PID:       $pid"
+        if [[ -n "${codespace:-}" ]]; then
+            echo "  Codespace: $codespace"
+        fi
+        if [[ -n "${ports:-}" ]]; then
+            echo "  Ports:     $ports"
+        fi
+        if [[ -n "${log_file:-}" ]]; then
+            echo "  Log:       $log_file"
+        fi
+        return 0
+    fi
+    echo "No active port forwarding."
+    cleanup_state
+    return 0
+}
+
+stop_forwarding() {
+    if [[ ! -f "$PID_FILE" ]]; then
+        echo "No forwarding process found."
+        return 0
+    fi
+    local pid
+    pid=$(cat "$PID_FILE" 2>/dev/null || true)
+    if [[ -z "$pid" ]]; then
+        echo "No forwarding process found."
+        cleanup_state
+        return 0
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+        echo "Forwarding process not running."
+        cleanup_state
+        return 0
+    fi
+    log "Stopping forwarding (pid $pid)..."
+    kill "$pid" 2>/dev/null || true
+    local attempts=0
+    while kill -0 "$pid" 2>/dev/null; do
+        attempts=$((attempts + 1))
+        if [[ $attempts -ge 10 ]]; then
+            error "Unable to stop forwarding process (pid $pid)"
+            return 1
+        fi
+        sleep 1
+    done
+    cleanup_state
+    echo "Forwarding stopped."
+}
+
+detect_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return 0
+    fi
+    if command -v python >/dev/null 2>&1; then
+        echo "python"
+        return 0
+    fi
+    error "python3 is required to parse devcontainer.json"
+    exit 1
+}
+
+resolve_codespace() {
+    local codespaces
+    mapfile -t codespaces < <(gh codespace list --json name --jq '.[].name' 2>/dev/null || true)
+    if [[ ${#codespaces[@]} -eq 0 ]]; then
+        error "No codespaces found (use --codespace to specify)"
+        exit 1
+    fi
+    if [[ ${#codespaces[@]} -eq 1 ]]; then
+        CODESPACE="${codespaces[0]}"
+        return 0
+    fi
+    error "Multiple codespaces found. Use --codespace to specify one:"
+    for cs in "${codespaces[@]}"; do
+        echo "  - $cs" >&2
+    done
+    exit 1
+}
+
+resolve_repo_name() {
+    local repo
+    repo=$(gh codespace list --json name,repository \
+        --jq ".[] | select(.name==\"${CODESPACE}\") | .repository.name" 2>/dev/null | head -1)
+    if [[ -z "$repo" ]]; then
+        error "Unable to determine repository for codespace '$CODESPACE'"
+        exit 1
+    fi
+    echo "$repo"
+}
+
+remote_exec() {
+    gh codespace ssh -c "$CODESPACE" -- "$1"
+}
+
+remote_file_exists() {
+    local path="$1"
+    remote_exec "test -f '$path'"
+}
+
+resolve_devcontainer_path() {
+    local repo="$1"
+    local repo_dir="/workspaces/$repo"
+
+    if [[ -n "$DEVCONTAINER_PATH" ]]; then
+        if [[ "$DEVCONTAINER_PATH" != /* ]]; then
+            DEVCONTAINER_PATH="${repo_dir}/${DEVCONTAINER_PATH}"
+        fi
+        echo "$DEVCONTAINER_PATH"
+        return 0
+    fi
+
+    if remote_file_exists "${repo_dir}/.devcontainer/devcontainer.json"; then
+        echo "${repo_dir}/.devcontainer/devcontainer.json"
+        return 0
+    fi
+
+    if remote_file_exists "${repo_dir}/.devcontainer.json"; then
+        echo "${repo_dir}/.devcontainer.json"
+        return 0
+    fi
+
+    local found
+    found=$(remote_exec "find /workspaces -maxdepth 4 \\( -name devcontainer.json -o -name .devcontainer.json \\) 2>/dev/null | head -1" || true)
+    if [[ -n "$found" ]]; then
+        echo "$found"
+        return 0
+    fi
+
+    error "devcontainer.json not found in codespace"
+    exit 1
+}
+
+parse_ports_override() {
+    local raw="$1"
+    raw="${raw//,/ }"
+    local ports=()
+    local token
+    for token in $raw; do
+        if [[ "$token" =~ ^[0-9]+$ ]]; then
+            ports+=("$token")
+        elif [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            local start="${BASH_REMATCH[1]}"
+            local end="${BASH_REMATCH[2]}"
+            if [[ "$start" -le "$end" ]]; then
+                local p
+                for p in $(seq "$start" "$end"); do
+                    ports+=("$p")
+                done
+            fi
+        fi
+    done
+
+    if [[ ${#ports[@]} -eq 0 ]]; then
+        echo ""
+        return 0
+    fi
+
+    printf '%s\n' "${ports[@]}" | sort -n -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+parse_ports_from_json() {
+    local json="$1"
+    local python_bin
+    python_bin=$(detect_python)
+    local script
+    script=$(cat <<'PY'
+import json
+import sys
+
+text = sys.stdin.read()
+
+def strip_jsonc(src: str) -> str:
+    out = []
+    i = 0
+    in_str = False
+    escape = False
+    length = len(src)
+    while i < length:
+        ch = src[i]
+        if in_str:
+            out.append(ch)
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            i += 1
+            continue
+        if ch == '"':
+            in_str = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < length:
+            nxt = src[i + 1]
+            if nxt == "/":
+                i += 2
+                while i < length and src[i] not in "\n\r":
+                    i += 1
+                continue
+            if nxt == "*":
+                i += 2
+                while i + 1 < length and not (src[i] == "*" and src[i + 1] == "/"):
+                    i += 1
+                i += 2
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+def add_port_value(value, target):
+    if isinstance(value, int):
+        target.add(value)
+        return
+    if isinstance(value, str):
+        if value.isdigit():
+            target.add(int(value))
+            return
+        if "-" in value:
+            parts = value.split("-", 1)
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                start = int(parts[0])
+                end = int(parts[1])
+                if start <= end:
+                    for p in range(start, end + 1):
+                        target.add(p)
+
+try:
+    cleaned = strip_jsonc(text)
+    data = json.loads(cleaned)
+except Exception as exc:
+    print(f"Failed to parse devcontainer.json: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+ports = set()
+
+for key in ("forwardPorts", "appPort"):
+    if key in data:
+        value = data[key]
+        if isinstance(value, list):
+            for item in value:
+                add_port_value(item, ports)
+        else:
+            add_port_value(value, ports)
+
+ports_attributes = data.get("portsAttributes", {})
+if isinstance(ports_attributes, dict):
+    for port_key in ports_attributes.keys():
+        add_port_value(str(port_key), ports)
+
+print(" ".join(str(p) for p in sorted(ports)))
+PY
+)
+    printf '%s' "$json" | "$python_bin" -c "$script"
+}
+
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        forward|stop|status)
+            MODE="$1"
+            shift
+            ;;
+    esac
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -c|--codespace)
+            CODESPACE="${2:-}"
+            shift 2
+            ;;
+        --codespace=*)
+            CODESPACE="${1#--codespace=}"
+            shift
+            ;;
+        --devcontainer)
+            DEVCONTAINER_PATH="${2:-}"
+            shift 2
+            ;;
+        --devcontainer=*)
+            DEVCONTAINER_PATH="${1#--devcontainer=}"
+            shift
+            ;;
+        --ports)
+            PORTS_OVERRIDE="${2:-}"
+            shift 2
+            ;;
+        --ports=*)
+            PORTS_OVERRIDE="${1#--ports=}"
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --foreground)
+            RUN_IN_BACKGROUND=false
+            shift
+            ;;
+        *)
+            error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$MODE" == "stop" ]]; then
+    stop_forwarding
+    exit $?
+fi
+
+if [[ "$MODE" == "status" ]]; then
+    status_forwarding
+    exit $?
+fi
+
+if [[ -z "$PORTS_OVERRIDE" || "$DRY_RUN" == "false" ]]; then
+    require_cmd gh
+fi
+
+if [[ -z "$CODESPACE" ]]; then
+    if [[ -n "$PORTS_OVERRIDE" && "$DRY_RUN" == "true" ]]; then
+        CODESPACE="(not specified)"
+    else
+        resolve_codespace
+    fi
+fi
+
+ports_list=""
+devcontainer=""
+
+if [[ -n "$PORTS_OVERRIDE" ]]; then
+    ports_list=$(parse_ports_override "$PORTS_OVERRIDE")
+    if [[ -z "$ports_list" ]]; then
+        error "No valid ports found in --ports"
+        exit 1
+    fi
+else
+    log "Resolving devcontainer.json in codespace '$CODESPACE'..."
+    repo_name=$(resolve_repo_name)
+    devcontainer=$(resolve_devcontainer_path "$repo_name")
+    log "Using devcontainer: $devcontainer"
+    devcontainer_json=$(remote_exec "cat '$devcontainer'")
+    ports_list=$(parse_ports_from_json "$devcontainer_json")
+    if [[ -z "$ports_list" ]]; then
+        error "No ports found in devcontainer.json"
+        exit 1
+    fi
+fi
+
+read -r -a ports <<< "$ports_list"
+if [[ ${#ports[@]} -eq 0 ]]; then
+    error "No ports to forward"
+    exit 1
+fi
+
+forward_args=()
+for port in "${ports[@]}"; do
+    forward_args+=("${port}:${port}")
+done
+
+echo "Codespace:   $CODESPACE"
+if [[ -n "$devcontainer" ]]; then
+    echo "Devcontainer: $devcontainer"
+fi
+echo "Ports:       ${ports[*]}"
+echo
+
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[DRY RUN] gh codespace ports forward -c $CODESPACE ${forward_args[*]}"
+    exit 0
+fi
+
+log "Forwarding ports..."
+if [[ "$RUN_IN_BACKGROUND" == "true" ]]; then
+    ensure_state_dir
+    if [[ -f "$PID_FILE" ]]; then
+        if status_forwarding >/dev/null; then
+            error "Forwarding already running. Use '$SCRIPT_NAME stop' first."
+            exit 1
+        fi
+    fi
+    nohup gh codespace ports forward -c "$CODESPACE" "${forward_args[@]}" > "$LOG_FILE" 2>&1 &
+    pid=$!
+    write_state "$pid" "$CODESPACE" "${ports[*]}"
+    echo "Forwarding started (pid $pid)."
+    echo "Use '$SCRIPT_NAME stop' to stop forwarding."
+else
+    gh codespace ports forward -c "$CODESPACE" "${forward_args[@]}"
+fi

@@ -362,7 +362,7 @@ cmd_switch() {
     echo
     echo "Run: cd $wt_path"
     echo
-    echo "To restart service: cs-services restart $service_name"
+    echo "To restart service: cs-services restart $service_name --worktree $name"
 }
 
 # ============================================================================
