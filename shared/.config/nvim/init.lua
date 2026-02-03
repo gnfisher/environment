@@ -2,8 +2,7 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
-vim.opt.background = "light"
-vim.cmd.colorscheme("zellner")
+-- colorscheme set by solarized plugin in lua/plugins/theme.lua
 
 -- Folding (treesitter-based, LazyVim style)
 vim.opt.foldmethod = "expr"

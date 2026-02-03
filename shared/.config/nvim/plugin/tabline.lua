@@ -1,3 +1,16 @@
+-- Override tabline colors to match solarized light bg
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = function()
+    vim.api.nvim_set_hl(0, "TabLine", { bg = "#fdf6e3", fg = "#93a1a1" })
+    vim.api.nvim_set_hl(0, "TabLineSel", { bg = "#fdf6e3", fg = "#657b83", bold = true })
+    vim.api.nvim_set_hl(0, "TabLineFill", { bg = "#fdf6e3" })
+  end,
+})
+-- Apply now too
+vim.api.nvim_set_hl(0, "TabLine", { bg = "#fdf6e3", fg = "#93a1a1" })
+vim.api.nvim_set_hl(0, "TabLineSel", { bg = "#fdf6e3", fg = "#657b83", bold = true })
+vim.api.nvim_set_hl(0, "TabLineFill", { bg = "#fdf6e3" })
+
 function CustomTabLine()
   local tabline = ''
   local current_tab = vim.fn.tabpagenr()

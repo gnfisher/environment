@@ -1,6 +1,7 @@
 # Font
+font-family = Monaco
 font-size = 15
-adjust-cell-width = -1%
+adjust-cell-width = -1
 
 # macOS options
 macos-titlebar-style = tabs
@@ -41,3 +42,4 @@ keybind = cmd+w=close_surface
 # Shift+Enter for multi-line input in TUIs
 keybind = shift+enter=text:\n
 
+theme = iTerm2 Solarized Light

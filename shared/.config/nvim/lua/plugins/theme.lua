@@ -1,14 +1,29 @@
 return {
-  -- Modus themes - primary theme (light: operandi, dark: vivendi)
+  -- Solarized - faithful lua port
   {
-    "miikanissi/modus-themes.nvim",
+    "ishan9299/nvim-solarized-lua",
     lazy = false,
     priority = 1000,
+    config = function()
+      vim.o.background = "light"
+      vim.cmd.colorscheme("solarized")
+      -- Clean up line number gutter to match reference image
+      vim.api.nvim_set_hl(0, "LineNr", { fg = "#b58900", bg = "NONE" })
+      vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#839496", bg = "NONE", bold = false })
+      vim.api.nvim_set_hl(0, "SignColumn", { bg = "NONE" })
+      -- Match statusline bg to theme bg
+      vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3" })
+      vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3" })
+    end,
+  },
+
+  -- Modus themes - available as alternative
+  {
+    "miikanissi/modus-themes.nvim",
+    lazy = true,
     opts = {
-      -- Style can be "auto", "modus_operandi", "modus_vivendi"
-      -- "auto" follows vim.o.background
       style = "auto",
-      variant = "default", -- "default", "tinted", "deuteranopia", "tritanopia"
+      variant = "default",
       transparent = false,
       dim_inactive = false,
       styles = {
@@ -18,10 +33,6 @@ return {
         variables = {},
       },
     },
-    config = function(_, opts)
-      require("modus-themes").setup(opts)
-      -- modus available but not default; using zellner
-    end,
   },
 
   -- Keep catppuccin available as fallback

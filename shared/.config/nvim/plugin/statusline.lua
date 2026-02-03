@@ -2,16 +2,16 @@
 vim.opt.laststatus = 2
 vim.opt.showmode = false -- we show mode in statusline
 
--- Override statusline colors for zellner
+-- Override statusline colors to match solarized light bg
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
-    vim.api.nvim_set_hl(0, "StatusLine", { bg = "#e0e0e0", fg = "#333333" })
-    vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#d0d0d0", fg = "#666666" })
+    vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3", fg = "#657b83" })
+    vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3", fg = "#93a1a1" })
   end,
 })
 -- Apply now too
-vim.api.nvim_set_hl(0, "StatusLine", { bg = "#e0e0e0", fg = "#333333" })
-vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#d0d0d0", fg = "#666666" })
+vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3", fg = "#657b83" })
+vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3", fg = "#93a1a1" })
 
 local function git_branch()
   local branch = vim.fn.system("git branch --show-current 2>/dev/null | tr -d '\n'")
