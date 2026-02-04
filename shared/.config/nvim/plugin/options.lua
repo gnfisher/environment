@@ -7,7 +7,7 @@ opt.number = true
 opt.numberwidth = 1
 opt.signcolumn = "yes"
 opt.showtabline = 3
-opt.cursorline = true
+opt.cursorline = false
 
 opt.tabstop = 2
 opt.softtabstop = 2
@@ -32,7 +32,7 @@ opt.undofile = true
 opt.scrolloff = 3
 opt.updatetime = 250
 
-opt.path:append  "**"
+opt.path:append "**"
 
 opt.wildmenu = true
 opt.wildmode = "longest:full,full"

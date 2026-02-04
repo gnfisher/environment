@@ -9,13 +9,6 @@ declare -A SERVICE_DIRS=(
     [mission-control]="/workspaces/copilot-mission-control"
 )
 
-declare -A SERVICE_PORTS=(
-    [github]="80 8152"
-    [sweagentd]="2208 2209"
-    [capi]="2206"
-    [mission-control]="8080"
-)
-
 WORKTREE_BASE="/workspaces/worktrees"
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cs-services"
 STATE_FILE="${STATE_DIR}/state.env"
@@ -34,8 +27,8 @@ Commands:
   logs <service>      Tail logs for a service
 
 Services:
-  github              Main GitHub monolith (ports 80, 8152)
-  sweagentd           SWE Agent daemon (ports 2208, 2209)
+  github              Main GitHub monolith
+  sweagentd           SWE Agent daemon
   capi                Copilot API
   mission-control     Copilot Mission Control
 
@@ -50,30 +43,6 @@ Examples:
   cs-services logs sweagentd
   cs-services restart capi --worktree my-branch
 EOF
-}
-
-# Check if a port is listening, return 0 if up
-port_is_up() {
-    local port="$1"
-    if ss -tln 2>/dev/null | grep -q ":${port} " || \
-       netstat -tln 2>/dev/null | grep -q ":${port} " || \
-       lsof -iTCP:"${port}" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
-        return 0
-    fi
-    return 1
-}
-
-# Get PID listening on a port
-get_port_pid() {
-    local port="$1"
-    local pid=""
-    # Try lsof first
-    pid=$(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null | head -1) || true
-    if [[ -z "$pid" ]]; then
-        # Try ss
-        pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K\d+' | head -1) || true
-    fi
-    echo "$pid"
 }
 
 # Get current git branch for a directory
@@ -267,14 +236,35 @@ validate_service() {
     fi
 }
 
+# Check if service is running using service-specific methods
+is_service_running() {
+    local service="$1"
+    case "$service" in
+        github)
+            # Check for overmind socket
+            [[ -S "/tmp/overmind-github.sock" ]] && return 0
+            ;;
+        sweagentd)
+            [[ -S "/tmp/overmind-sweagentd.sock" ]] && return 0
+            ;;
+        capi)
+            # Check for overmind socket or pidfile
+            [[ -S "/tmp/overmind-capi.sock" ]] && return 0
+            local dir="${SERVICE_DIRS[$service]}"
+            [[ -f "$dir/tmp/pids/server.pid" ]] && kill -0 "$(cat "$dir/tmp/pids/server.pid")" 2>/dev/null && return 0
+            ;;
+        mission-control)
+            local dir="${SERVICE_DIRS[$service]}"
+            [[ -f "$dir/tmp/pids/server.pid" ]] && kill -0 "$(cat "$dir/tmp/pids/server.pid")" 2>/dev/null && return 0
+            ;;
+    esac
+    return 1
+}
+
 # Check service status (returns UP or DOWN)
 get_service_status() {
     local service="$1"
-    local ports="${SERVICE_PORTS[$service]:-}"
-    local first_port
-    first_port=$(echo "$ports" | awk '{print $1}')
-
-    if [[ -n "$first_port" ]] && port_is_up "$first_port"; then
+    if is_service_running "$service"; then
         echo "UP"
     else
         echo "DOWN"
@@ -284,17 +274,16 @@ get_service_status() {
 # Show status for all services
 cmd_status() {
     read_state
-    printf "%-16s %-8s %-15s %-20s %s\n" "SERVICE" "STATUS" "PORTS" "BRANCH" "PID"
-    printf "%-16s %-8s %-15s %-20s %s\n" "-------" "------" "-----" "------" "---"
+    printf "%-16s %-8s %-20s\n" "SERVICE" "STATUS" "BRANCH"
+    printf "%-16s %-8s %-20s\n" "-------" "------" "------"
 
     for service in github sweagentd capi mission-control; do
         local dir="${SERVICE_DIRS[$service]}"
-        local ports="${SERVICE_PORTS[$service]}"
-        local status branch pid port_list
+        local status branch
         local active_dir="$dir"
 
         if [[ ! -d "$dir" ]]; then
-            printf "%-16s %-8s %-15s %-20s %s\n" "$service" "N/A" "-" "(not installed)" "-"
+            printf "%-16s %-8s %-20s\n" "$service" "N/A" "(not installed)"
             continue
         fi
 
@@ -304,21 +293,10 @@ cmd_status() {
             active_dir="$state_dir"
         fi
 
-        # Get status from first port
-        local first_port
-        first_port=$(echo "$ports" | awk '{print $1}')
-        if port_is_up "$first_port"; then
-            status="UP"
-            pid=$(get_port_pid "$first_port")
-        else
-            status="DOWN"
-            pid="-"
-        fi
-
+        status=$(get_service_status "$service")
         branch=$(get_branch "$active_dir")
-        port_list=$(echo "$ports" | tr ' ' ',')
 
-        printf "%-16s %-8s %-15s %-20s %s\n" "$service" "$status" "$port_list" "$branch" "${pid:-"-"}"
+        printf "%-16s %-8s %-20s\n" "$service" "$status" "$branch"
     done
 }
 
@@ -483,21 +461,17 @@ cmd_stop() {
             local socket="/tmp/overmind-sweagentd.sock"
             if [[ -S "$socket" ]]; then
                 overmind quit -s "$socket" 2>/dev/null || true
-            fi
-            # Give overmind a moment to clean up
-            sleep 1
-            # Check if still running and force kill if needed
-            local pid
-            pid=$(get_port_pid 2208)
-            if [[ -n "$pid" ]]; then
-                echo "Force killing remaining processes..."
-                kill "$pid" 2>/dev/null || true
+            else
+                echo "No running process found for sweagentd"
             fi
             ;;
         capi)
-            local pid
-            pid=$(get_port_pid 2206)
-            if [[ -n "$pid" ]]; then
+            cd "$dir"
+            if [[ -x "script/manage-overmind-capi" ]]; then
+                script/manage-overmind-capi stop
+            elif [[ -f "tmp/pids/server.pid" ]]; then
+                local pid
+                pid=$(cat "tmp/pids/server.pid")
                 kill "$pid" 2>/dev/null || true
             else
                 echo "No running process found for capi"
@@ -507,15 +481,12 @@ cmd_stop() {
             cd "$dir"
             if [[ -x "script/stop" ]]; then
                 script/stop --type all
-            else
-                # Fallback: kill by port
+            elif [[ -f "tmp/pids/server.pid" ]]; then
                 local pid
-                pid=$(get_port_pid 8080)
-                if [[ -n "$pid" ]]; then
-                    kill "$pid" 2>/dev/null || true
-                else
-                    echo "No running process found for mission-control"
-                fi
+                pid=$(cat "tmp/pids/server.pid")
+                kill "$pid" 2>/dev/null || true
+            else
+                echo "No running process found for mission-control"
             fi
             ;;
     esac

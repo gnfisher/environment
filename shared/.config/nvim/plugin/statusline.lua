@@ -2,40 +2,6 @@
 vim.opt.laststatus = 2
 vim.opt.showmode = false -- we show mode in statusline
 
--- Override statusline colors to match solarized light bg
-vim.api.nvim_create_autocmd("ColorScheme", {
-  callback = function()
-    vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3", fg = "#657b83" })
-    vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3", fg = "#93a1a1" })
-  end,
-})
--- Apply now too
-vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3", fg = "#657b83" })
-vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3", fg = "#93a1a1" })
-
-local function git_branch()
-  local branch = vim.fn.system("git branch --show-current 2>/dev/null | tr -d '\n'")
-  if branch ~= "" then
-    return " " .. branch
-  end
-  return ""
-end
-
--- Cache git branch (update on buffer enter, focus, or after shell commands)
-local cached_branch = ""
-local function update_branch()
-  cached_branch = git_branch()
-  vim.cmd("redrawstatus")
-end
-
-vim.api.nvim_create_autocmd({ "BufEnter", "FocusGained", "ShellCmdPost", "TermLeave" }, {
-  callback = update_branch,
-})
-
--- Also refresh periodically (every 5 seconds) to catch external git changes
-local timer = vim.uv.new_timer()
-timer:start(5000, 5000, vim.schedule_wrap(update_branch))
-
 local mode_map = {
   ["n"] = "NORMAL",
   ["no"] = "O-PENDING",
@@ -79,7 +45,7 @@ function _G.statusline()
   local mode_str = mode_map[mode] or mode
 
   -- Left: mode + git branch
-  local left = string.format(" %s%s ", mode_str, cached_branch)
+  local left = string.format(" %s ", mode_str)
 
   -- Center: filepath with modified indicator
   local filename = vim.fn.expand("%:~:.") -- relative to cwd, fallback to home-relative

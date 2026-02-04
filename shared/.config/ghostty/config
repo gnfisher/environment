@@ -16,8 +16,6 @@ window-padding-x = 8
 window-padding-y = 8
 window-padding-balance = true
 window-padding-color = background
-background-opacity = 1.0
-unfocused-split-opacity = 0.97
 
 # Cursor
 cursor-style-blink = false
@@ -41,5 +39,3 @@ keybind = cmd+w=close_surface
 
 # Shift+Enter for multi-line input in TUIs
 keybind = shift+enter=text:\n
-
-theme = iTerm2 Solarized Light

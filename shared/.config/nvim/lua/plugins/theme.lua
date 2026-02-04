@@ -5,8 +5,8 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
-      vim.o.background = "light"
-      vim.cmd.colorscheme("solarized")
+      -- vim.o.background = "light"
+      -- vim.cmd.colorscheme("solarized")
       -- Clean up line number gutter to match reference image
       vim.api.nvim_set_hl(0, "LineNr", { fg = "#b58900", bg = "NONE" })
       vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#839496", bg = "NONE", bold = false })
