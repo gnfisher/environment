@@ -40,9 +40,11 @@ opt.wildmenu = true
 opt.wildmode = "longest:full,full"
 opt.wildoptions = "pum"
 
-opt.foldmethod = 'manual'
-opt.foldenable = false
-opt.foldlevel = 99
+-- Treesitter-based folding
+opt.foldmethod = "expr"
+opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+opt.foldlevelstart = 99
+opt.foldenable = true
 
 vim.opt.wildignore = {
   "*/node_modules/*",

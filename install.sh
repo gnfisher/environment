@@ -147,8 +147,19 @@ else
     echo "⚠️  Fish not found, skipping shell change"
 fi
 
-# Inject Codespaces-specific Copilot instructions (cs/ws helpers)
+# Codespaces-specific setup
 if [[ -n "${CODESPACE_NAME:-}" || "${CODESPACES:-}" == "true" ]]; then
+    # Store GITHUB_TOKEN in gh config so Copilot CLI can access it
+    # (Copilot runs in a non-interactive shell without the env var)
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        echo "🔑 Configuring gh auth for Copilot CLI..."
+        token="$GITHUB_TOKEN"
+        unset GITHUB_TOKEN
+        printf "%s" "$token" | gh auth login --with-token
+        echo "✅ gh auth configured"
+    fi
+
+    # Inject Codespaces-specific Copilot instructions (cs/ws helpers)
     instructions_file="$SCRIPT_DIR/shared/.copilot/copilot-instructions.md"
     if [[ -f "$instructions_file" ]]; then
         cs_instructions=$(cat <<'EOF'
