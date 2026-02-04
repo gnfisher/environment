@@ -84,6 +84,22 @@ else
     echo "✅ lazydocker already installed"
 fi
 
+# Install difftastic
+echo "🔍 Installing difftastic..."
+DIFFT_VERSION="0.67.0"
+if ! command -v difft &>/dev/null || [[ "$(difft --version | grep -oP '\d+\.\d+\.\d+')" != "$DIFFT_VERSION" ]]; then
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    curl -Lo difft.tar.gz "https://github.com/Wilfred/difftastic/releases/download/${DIFFT_VERSION}/difft-x86_64-unknown-linux-gnu.tar.gz"
+    tar -xzf difft.tar.gz
+    sudo install difft /usr/local/bin
+    cd "$SCRIPT_DIR"
+    rm -rf "$TEMP_DIR"
+    echo "✅ difftastic ${DIFFT_VERSION} installed"
+else
+    echo "✅ difftastic already installed"
+fi
+
 # Backup existing configs
 echo "📁 Backing up existing configs..."
 for file in .bashrc .tmux.conf .gitconfig; do
