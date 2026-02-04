@@ -5,7 +5,7 @@ opt.termguicolors = true
 opt.splitright = true
 opt.splitbelow = true
 
-opt.number = true
+opt.number = false
 opt.numberwidth = 1
 opt.signcolumn = "yes"
 opt.showtabline = 3
