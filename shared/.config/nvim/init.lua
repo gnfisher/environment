@@ -2,7 +2,7 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
--- colorscheme set by solarized plugin in lua/plugins/theme.lua
+-- colorscheme set by onedark plugin in lua/plugins/theme.lua
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then

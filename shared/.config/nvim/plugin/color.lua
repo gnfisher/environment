@@ -2,14 +2,16 @@ local set = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
 vim.o.background = "dark"
-vim.cmd.colorscheme("tango-dark")
+vim.cmd.colorscheme("onedark")
 
 set("n", "<F6>", function()
+  local onedark = require("onedark")
   if vim.o.background == "light" then
     vim.o.background = "dark"
-    vim.cmd.colorscheme("tango-dark")
+    onedark.setup({ style = "dark" })
   else
     vim.o.background = "light"
-    vim.cmd.colorscheme("solarized")
+    onedark.setup({ style = "light" })
   end
+  onedark.load()
 end, opts)

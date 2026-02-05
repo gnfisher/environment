@@ -1,36 +1,23 @@
 return {
-  -- Solarized - faithful lua port
+  -- Atom One - clean, readable dark/light theme
   {
-    "ishan9299/nvim-solarized-lua",
+    "navarasu/onedark.nvim",
     lazy = false,
     priority = 1000,
-    config = function()
-      -- vim.o.background = "light"
-      -- vim.cmd.colorscheme("solarized")
-      -- Clean up line number gutter to match reference image
-      vim.api.nvim_set_hl(0, "LineNr", { fg = "#b58900", bg = "NONE" })
-      vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#839496", bg = "NONE", bold = false })
-      vim.api.nvim_set_hl(0, "SignColumn", { bg = "NONE" })
-      -- Match statusline bg to theme bg
-      vim.api.nvim_set_hl(0, "StatusLine", { bg = "#fdf6e3" })
-      vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "#fdf6e3" })
-    end,
-  },
-
-  -- Modus themes - available as alternative
-  {
-    "miikanissi/modus-themes.nvim",
-    lazy = true,
     opts = {
-      style = "auto",
-      variant = "default",
+      style = "dark",
       transparent = false,
-      dim_inactive = false,
-      styles = {
-        comments = { italic = true },
-        keywords = { italic = false },
-        functions = {},
-        variables = {},
+      term_colors = true,
+      code_style = {
+        comments = "italic",
+        keywords = "bold",
+        functions = "none",
+        strings = "none",
+        variables = "none",
+      },
+      diagnostics = {
+        darker = true,
+        undercurl = true,
       },
     },
   },
@@ -67,10 +54,5 @@ return {
         which_key = true,
       },
     },
-  },
-
-  {
-    "gnfisher/tomorrow-night-blue.nvim",
-    lazy = true,
   },
 }
