@@ -120,8 +120,8 @@ __is_light_theme() {
     [[ -f "$theme_file" && "$(cat "$theme_file")" == "light" ]]
 }
 
-# Tango Sky Blue - classic GNOME/Emacs feel
-PS1='\[\e[0m\]\[\e[1;38;5;74m\]\w\[\e[0;38;5;245m\]$(__git_prompt)\[\e[1;38;5;74m\]\$ \[\e[0m\]'
+# GitHub Dark Dimmed colors
+PS1='\[\e[0m\]\[\e[1;38;2;83;155;245m\]\w\[\e[0;38;2;118;131;144m\]$(__git_prompt)\[\e[1;38;2;83;155;245m\]\$ \[\e[0m\]'
 
 # Dynamic terminal title for Ghostty/WezTerm tabs
 __set_title() {

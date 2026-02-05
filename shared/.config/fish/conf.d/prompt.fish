@@ -17,12 +17,12 @@ end
 function fish_prompt
     set -l path (string replace -r "^$HOME" "~" (pwd))
     
-    # Tango Sky Blue - classic GNOME/Emacs feel
-    set_color --bold 729fcf
+    # GitHub Dark Dimmed colors
+    set_color --bold 539bf5
     echo -n $path
-    set_color 888a85
+    set_color 768390
     echo -n (__git_prompt)
-    set_color --bold 729fcf
+    set_color --bold 539bf5
     echo -n '$ '
     set_color normal
 end
