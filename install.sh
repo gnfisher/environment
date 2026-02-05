@@ -33,20 +33,14 @@ sudo apt-get install -y \
     wget \
     unzip
 
-# Install Neovim (latest stable)
+# Install Neovim (latest stable via AppImage for glibc compatibility)
 echo "📝 Installing Neovim..."
 NVIM_VERSION="v0.11.1"
-if ! command -v nvim &>/dev/null || [[ "$(nvim --version | head -1)" != *"${NVIM_VERSION#v}"* ]]; then
-    NVIM_URL="https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.tar.gz"
-    TEMP_DIR=$(mktemp -d)
-    cd "$TEMP_DIR"
-    wget -q "$NVIM_URL" -O nvim.tar.gz
-    tar -xzf nvim.tar.gz
-    sudo rm -rf /opt/nvim
-    sudo mv nvim-linux-x86_64 /opt/nvim
-    sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
-    cd "$SCRIPT_DIR"
-    rm -rf "$TEMP_DIR"
+if ! command -v nvim &>/dev/null || [[ "$(nvim --version 2>/dev/null | head -1)" != *"${NVIM_VERSION#v}"* ]]; then
+    NVIM_URL="https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/nvim-linux-x86_64.appimage"
+    sudo rm -f /usr/local/bin/nvim
+    sudo wget -q "$NVIM_URL" -O /usr/local/bin/nvim
+    sudo chmod +x /usr/local/bin/nvim
     echo "✅ Neovim ${NVIM_VERSION} installed"
 else
     echo "✅ Neovim already installed"
