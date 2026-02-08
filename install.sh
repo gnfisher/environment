@@ -162,48 +162,6 @@ if [[ -n "${CODESPACE_NAME:-}" || "${CODESPACES:-}" == "true" ]]; then
         echo "✅ gh auth configured"
     fi
 
-    # Inject Codespaces-specific Copilot instructions (cs/ws helpers)
-    instructions_file="$SCRIPT_DIR/shared/.copilot/copilot-instructions.md"
-    if [[ -f "$instructions_file" ]]; then
-        cs_instructions=$(cat <<'EOF'
-<!-- CODESPACES_CS_INSTRUCTIONS_BEGIN -->
-## Codespaces
-
-You're operating in a Codespace. The repos we care about live under /workspaces/* (example layout):
-```
-/workspaces/
-  copilot-api/
-  copilot-developer-action-local/
-  copilot-mission-control/
-  github/
-  github-ui/
-  packages/
-  sweagentd/
-```
-
-We work across repos; each repo has its own branch and docs (start with README.md and docs/). Prefer `cs` for Codespaces operations (status/clean/restart/update/services/forward), and `cs ws` for worktrees and draft PR workflows; use `ws` for the full worktree manager.
-
-Repo aliases and meaning: `capi` == copilot-api; copilot-mission-control == cmc/mission control/task api; `github` is the monolith; `github-ui` contains the React UI. Start the monolith with UI via `script/dx/server-start --ui` (or `cs-services start github`) which uses github-ui as the source.
-
-Reliable scripts/docs (preferred):
-- `cs-services status|start|stop|logs <service>` (github, sweagentd, capi, mission-control).
-- github: script/dx/server-start --ui; script/dx/server-logs; script/server --log-output (logs in tmp/app.log and tmp/*.log).
-- github-ui: script/server (or from github, script/server --ui); README.md for full-stack vs UI-only.
-- sweagentd: script/server (overmind), script/cosmos-dev, script/redis-dev; logs via `cs-services logs sweagentd` (overmind socket /tmp/overmind-sweagentd.sock).
-- copilot-api: docs/dev/local-development.md; script/server; make cosmos-emulator-*; docs/dev/debug-logging.md.
-- copilot-mission-control: docs/dev/dotcom-codespaces-development.md; script/server --type all --background; script/routes.
-
-Log tips: prefer `cs-services logs <service>`; otherwise use repo-specific logs (github tmp/*.log, sweagentd overmind socket, mission-control/log and copilot-api/log when present).
-<!-- CODESPACES_CS_INSTRUCTIONS_END -->
-EOF
-)
-        awk -v block="$cs_instructions" '
-            BEGIN {in_block=0}
-            /<!-- CODESPACES_CS_INSTRUCTIONS_BEGIN -->/ {print block; in_block=1; next}
-            /<!-- CODESPACES_CS_INSTRUCTIONS_END -->/ {if (in_block) {in_block=0}; next}
-            !in_block {print}
-        ' "$instructions_file" > "${instructions_file}.tmp" && mv "${instructions_file}.tmp" "$instructions_file"
-    fi
 fi
 
 echo ""

@@ -90,7 +90,7 @@ branch_name() {
     echo "${BRANCH_PREFIX}-${name}"
 }
 
-# Map repo name to cs-services service name
+# Map repo name to service name
 service_name_for_repo() {
     local repo="$1"
     case "$repo" in
@@ -362,7 +362,7 @@ cmd_switch() {
     echo
     echo "Run: cd $wt_path"
     echo
-    echo "To restart service: cs-services restart $service_name --worktree $name"
+    echo "To restart service for worktree: $service_name --worktree $name"
 }
 
 # ============================================================================
