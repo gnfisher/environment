@@ -1,5 +1,5 @@
 # Font
-font-family = Berkeley Mono
+#font-family = Consolas
 font-size = 15
 adjust-cell-width = -1
 adjust-cell-height = 5
@@ -40,3 +40,5 @@ keybind = cmd+w=close_surface
 
 # Shift+Enter for multi-line input in TUIs
 keybind = shift+enter=text:\n
+
+theme = doom-one-light

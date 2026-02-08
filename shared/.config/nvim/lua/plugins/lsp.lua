@@ -39,7 +39,7 @@ return {
           vim.keymap.set("n", "gr", "<cmd>Telescope lsp_references<cr>", opts)
           vim.keymap.set("n", "<S-F12>", "<cmd>Telescope lsp_references<cr>", opts)
           vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
-          vim.keymap.set( "n", "<leader>vd", function()
+          vim.keymap.set("n", "<leader>vd", function()
             local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line('.') - 1 })
             if #diagnostics > 0 then
               local messages = {}
@@ -59,6 +59,59 @@ return {
         end,
       })
 
+      -- Configure LSP servers via vim.lsp.config (Neovim 0.11+).
+      -- mason-lspconfig auto-enables installed servers via vim.lsp.enable().
+      vim.lsp.config("lua_ls", {
+        settings = {
+          Lua = {
+            diagnostics = {
+              globals = { "vim" }
+            }
+          }
+        }
+      })
+
+      vim.lsp.config("gopls", {
+        settings = {
+          gopls = {
+            staticcheck = false,
+            analyses = {
+              unusedparams = false,
+              shadow = false,
+            },
+          }
+        }
+      })
+
+      vim.lsp.config("vtsls", {
+        capabilities = {
+          documentFormattingProvider = false,
+        },
+      })
+
+      vim.lsp.config("golangci_lint_ls", {
+        -- Only use Go project markers for root detection; golangci config
+        -- files in parent directories must not pull root_dir upward.
+        root_markers = { "go.work", "go.mod", ".git" },
+        before_init = function(params, config)
+          -- Pass local config explicitly to prevent golangci-lint v2 from
+          -- walking up to parent directories and finding a v1 config.
+          local root = params.rootUri and vim.uri_to_fname(params.rootUri) or vim.fn.getcwd()
+          local names = {
+            ".golangci.toml", ".golangci.yml", ".golangci.yaml", ".golangci.json",
+            "golangci.toml", "golangci.yml", "golangci.yaml", "golangci.json",
+          }
+          for _, name in ipairs(names) do
+            local path = root .. "/" .. name
+            if vim.uv.fs_stat(path) then
+              table.insert(config.init_options.command, "-c")
+              table.insert(config.init_options.command, path)
+              return
+            end
+          end
+        end,
+      })
+
       require("mason").setup()
       require("mason-lspconfig").setup({
         ensure_installed = {
@@ -66,42 +119,6 @@ return {
           "gopls",
           "lua_ls",
         },
-        handlers = {
-          function(server_name)
-            require("lspconfig")[server_name].setup({})
-          end,
-          ["lua_ls"] = function()
-            require("lspconfig").lua_ls.setup({
-              settings = {
-                Lua = {
-                  diagnostics = {
-                    globals = { "vim" }
-                  }
-                }
-              }
-            })
-          end,
-          ["gopls"] = function()
-            require("lspconfig").gopls.setup({
-              settings = {
-                gopls = {
-                  staticcheck = false,
-                  analyses = {
-                    unusedparams = false,
-                    shadow = false,
-                  },
-                }
-              }
-            })
-          end,
-          ["vtsls"] = function()
-            require("lspconfig").vtsls.setup({
-              server_capabilities = {
-                documentFormattingProvider = false,
-              },
-            })
-          end,
-        }
       })
     end
   },

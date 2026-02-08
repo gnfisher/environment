@@ -10,7 +10,7 @@
 # @raycast.packageName Theme
 
 # Documentation:
-# @raycast.description Switch to dark theme (modus vivendi)
+# @raycast.description Switch to dark theme (doom-one)
 # @raycast.author gnfisher
 
 ~/.local/bin/theme dark

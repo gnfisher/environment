@@ -2,6 +2,25 @@
 vim.opt.laststatus = 2
 vim.opt.showmode = false -- we show mode in statusline
 
+-- Mode highlight groups (set after colorscheme loads)
+local function setup_custom_highlights()
+  local normal_bg = vim.api.nvim_get_hl(0, { name = "Normal" }).bg
+  local normal_fg = vim.api.nvim_get_hl(0, { name = "Normal" }).fg
+  local bg_str = normal_bg and string.format("#%06x", normal_bg) or "NONE"
+  local fg_str = normal_fg and string.format("#%06x", normal_fg) or "#ffffff"
+  vim.api.nvim_set_hl(0, "StatusMode", { fg = "#969896", bg = bg_str, bold = false })
+  vim.api.nvim_set_hl(0, "StatusModeInsert", { fg = "#002451", bg = "#ebcb8b", bold = true })
+  vim.api.nvim_set_hl(0, "StatusModeVisual", { fg = "#002451", bg = "#b48ead", bold = true })
+  vim.api.nvim_set_hl(0, "StatusModeReplace", { fg = "#002451", bg = "#bf616a", bold = true })
+  vim.api.nvim_set_hl(0, "StatusModeCommand", { fg = "#002451", bg = "#a3be8c", bold = true })
+  -- Oil.nvim winbar: match editor background
+  vim.api.nvim_set_hl(0, "WinBar", { fg = fg_str, bg = bg_str, bold = true })
+  vim.api.nvim_set_hl(0, "WinBarNC", { fg = "#969896", bg = bg_str })
+end
+
+setup_custom_highlights()
+vim.api.nvim_create_autocmd("ColorScheme", { callback = setup_custom_highlights })
+
 local mode_map = {
   ["n"] = "NORMAL",
   ["no"] = "O-PENDING",
@@ -44,8 +63,20 @@ function _G.statusline()
   local mode = vim.fn.mode()
   local mode_str = mode_map[mode] or mode
 
+  -- Pick highlight group based on mode
+  local mode_hl = "StatusMode"
+  if mode_str == "INSERT" then
+    mode_hl = "StatusModeInsert"
+  elseif mode_str == "VISUAL" or mode_str == "V-LINE" or mode_str == "V-BLOCK" then
+    mode_hl = "StatusModeVisual"
+  elseif mode_str == "REPLACE" or mode_str == "V-REPLACE" then
+    mode_hl = "StatusModeReplace"
+  elseif mode_str == "COMMAND" then
+    mode_hl = "StatusModeCommand"
+  end
+
   -- Left: mode + git branch
-  local left = string.format(" %s ", mode_str)
+  local left = string.format("%%#%s# %s %%*", mode_hl, mode_str)
 
   -- Center: filepath with modified indicator
   local filename = vim.fn.expand("%:~:.") -- relative to cwd, fallback to home-relative
@@ -68,8 +99,9 @@ function _G.statusline()
   local right = string.format(" %s │ %d:%d │ %d%%%% ", filetype, line, col, pct)
 
   -- Calculate padding for centering
+  -- left display width is mode_str + 2 spaces (highlight codes don't count)
   local width = vim.o.columns
-  local left_len = vim.fn.strchars(left)
+  local left_len = vim.fn.strchars(mode_str) + 2
   local right_len = vim.fn.strchars(right)
   local center_len = vim.fn.strchars(filename)
   local available = width - left_len - right_len

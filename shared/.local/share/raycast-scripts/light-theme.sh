@@ -10,7 +10,7 @@
 # @raycast.packageName Theme
 
 # Documentation:
-# @raycast.description Switch to light theme (modus operandi)
+# @raycast.description Switch to light theme (doom-one)
 # @raycast.author gnfisher
 
 ~/.local/bin/theme light

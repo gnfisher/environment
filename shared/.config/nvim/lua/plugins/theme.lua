@@ -1,12 +1,12 @@
 return {
-  -- GitHub theme - dimmed variant
   {
-    "projekt0n/github-nvim-theme",
+    "NTBBloodbath/doom-one.nvim",
     lazy = false,
     priority = 1000,
     config = function()
-      require("github-theme").setup({})
-      vim.cmd.colorscheme("github_dark_dimmed")
+      vim.g.doom_one_enable_treesitter = true
+      vim.g.doom_one_terminal_colors = true
+      vim.cmd.colorscheme("doom-one")
     end,
   },
 }

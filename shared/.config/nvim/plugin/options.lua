@@ -40,9 +40,7 @@ opt.wildmenu = true
 opt.wildmode = "longest:full,full"
 opt.wildoptions = "pum"
 
--- Treesitter-based folding
-opt.foldmethod = "expr"
-opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+-- Folding managed by nvim-ufo
 opt.foldlevelstart = 99
 opt.foldenable = true
 

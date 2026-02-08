@@ -1,0 +1,26 @@
+# Tomorrow Night Blue with brighter split dividers
+# Based on built-in Tomorrow Night Blue, with palette 8 (bright black)
+# changed from #7285b7 to #aabbee for more visible split pane dividers.
+
+background = #002451
+foreground = #ffffff
+cursor-color = #ffffff
+selection-background = #003f8e
+selection-foreground = #ffffff
+
+palette = 0=#00346e
+palette = 1=#ff9da4
+palette = 2=#d1f1a9
+palette = 3=#ffeead
+palette = 4=#bbdaff
+palette = 5=#ebbbff
+palette = 6=#99ffff
+palette = 7=#ffffff
+palette = 8=#aabbee
+palette = 9=#ff9da4
+palette = 10=#d1f1a9
+palette = 11=#ffeead
+palette = 12=#bbdaff
+palette = 13=#ebbbff
+palette = 14=#99ffff
+palette = 15=#ffffff

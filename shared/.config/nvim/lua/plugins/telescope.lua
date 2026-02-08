@@ -33,8 +33,9 @@ return {
 	keys = {
 		{ "<leader>ff", "<cmd>Telescope git_files<cr>", desc = "Find in git files" },
 		{ "<leader>fa", "<cmd>Telescope find_files<cr>", desc = "Find all files" },
-		{ "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Find in files" },
+		{ "<leader>fg", function() require("custom.telescope.multi-ripgrep")() end, desc = "Multi grep" },
     { "<space>/", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy find in buffer" },
+		{ "<leader>fw", "<cmd>Telescope grep_string<cr>", desc = "Grep word under cursor" },
 		{ "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
 		{ "<leader>fd", "<cmd>Telescope diagnostics bufnr=0<cr>", desc = "Find buffer diagnostics" },
 		{ "<leader>fs", "<cmd>Telescope lsp_document_symbols<cr>", desc = "Find buffer symbols" },

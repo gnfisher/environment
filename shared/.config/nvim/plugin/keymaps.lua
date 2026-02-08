@@ -17,6 +17,10 @@ set("n", "<Leader>Y", [["+Y]], opts)
 set("v", "J", ":m '>+1<CR>gv=gv", opts)
 set("v", "K", ":m '<-2<CR>gv=gv", opts)
 
+-- Jump to line then scroll to top
+set("n", "G", "Gzt", opts)
+set("n", "gg", "ggzt", opts)
+
 -- Quickfix jump
 set("n", "]q", "<Cmd>cnext<CR>zz", opts)
 set("n", "[q", "<Cmd>cprev<CR>zz", opts)
