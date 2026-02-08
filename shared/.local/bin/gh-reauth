@@ -1,0 +1,15 @@
+#!/bin/bash
+# Re-authenticate gh CLI with the current GITHUB_TOKEN environment variable.
+# Useful in Codespaces after a reconnect when the injected token has rotated.
+
+set -e
+
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    echo "Error: GITHUB_TOKEN is not set" >&2
+    exit 1
+fi
+
+token="$GITHUB_TOKEN"
+unset GITHUB_TOKEN
+printf "%s" "$token" | gh auth login --with-token
+echo "✅ gh auth updated with current GITHUB_TOKEN"
