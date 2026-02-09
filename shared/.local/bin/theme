@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Unified theme switcher for light/dark mode
-# Switches: Ghostty, Neovim, Tmux, FZF
+# Switches: Ghostty, Neovim, Tmux, FZF, Copilot CLI
 # OpenCode auto-follows system appearance.
 # Color scheme: doom-one everywhere
 #
@@ -109,38 +109,38 @@ switch_neovim() {
     done
 }
 
-# Switch Tmux theme
+# Switch Tmux theme (matches layout from .tmux.conf)
 switch_tmux() {
     local mode="$1"
-    
+
     if ! command -v tmux &>/dev/null || ! tmux list-sessions &>/dev/null; then
         return
     fi
-    
+
     if [[ "$mode" == "light" ]]; then
-        # Doom One Light colors
-        tmux set -g status-style "bg=#f0f0f0,fg=#383a42"
-        tmux set -g status-left "#[bg=#4078f2,fg=#fafafa,bold] #S #[default] "
-        tmux set -g status-right "#[fg=#9ca0a4]#H"
-        tmux set -g window-status-format "#[fg=#9ca0a4] #I:#W "
-        tmux set -g window-status-current-format "#[bg=#e7e7e7,fg=#383a42,bold] #I:#W "
-        tmux set -g pane-border-style "fg=#c6c7c7"
-        tmux set -g pane-active-border-style "fg=#4078f2"
-        tmux set -g message-style "bg=#e7e7e7,fg=#383a42"
-        tmux set -g message-command-style "bg=#e7e7e7,fg=#383a42"
-        tmux set -g mode-style "bg=#a626a4,fg=#fafafa"
+        # Tango Light - transparent bg, purple accent, dark text
+        tmux set -g status-style "bg=default,fg=#555753"
+        tmux set -g status-left "#[fg=#e090d7,bold]  #S #[default]"
+        tmux set -g status-right "#[fg=#e090d7]󰒋 #H "
+        tmux set -g window-status-format "#[bg=#d3d7cf,fg=#555753] #I #[bg=default,fg=#555753] #W "
+        tmux set -g window-status-current-format "#[bg=#e090d7,fg=#ffffff,bold] #I #[bg=default,fg=#2e3436,bold] #W "
+        tmux set -g pane-border-style "fg=#babdb6"
+        tmux set -g pane-active-border-style "fg=#e090d7"
+        tmux set -g message-style "bg=#d3d7cf,fg=#2e3436"
+        tmux set -g message-command-style "bg=#d3d7cf,fg=#2e3436"
+        tmux set -g mode-style "bg=#e090d7,fg=#ffffff"
     else
-        # Doom One Dark colors
-        tmux set -g status-style "bg=#21242b,fg=#bbc2cf"
-        tmux set -g status-left "#[bg=#51afef,fg=#282c34,bold] #S #[default] "
-        tmux set -g status-right "#[fg=#5b6268]#H"
-        tmux set -g window-status-format "#[fg=#5b6268] #I:#W "
-        tmux set -g window-status-current-format "#[bg=#3f444a,fg=#bbc2cf,bold] #I:#W "
-        tmux set -g pane-border-style "fg=#3f444a"
-        tmux set -g pane-active-border-style "fg=#51afef"
-        tmux set -g message-style "bg=#3f444a,fg=#bbc2cf"
-        tmux set -g message-command-style "bg=#3f444a,fg=#bbc2cf"
-        tmux set -g mode-style "bg=#c678dd,fg=#282c34"
+        # Tango Dark - transparent bg, purple accent, light text
+        tmux set -g status-style "bg=default,fg=#babdb6"
+        tmux set -g status-left "#[fg=#e090d7,bold]  #S #[default]"
+        tmux set -g status-right "#[fg=#e090d7]󰒋 #H "
+        tmux set -g window-status-format "#[bg=#212526,fg=#888a85] #I #[bg=default,fg=#888a85] #W "
+        tmux set -g window-status-current-format "#[bg=#e090d7,fg=#212526,bold] #I #[bg=default,fg=#eeeeec,bold] #W "
+        tmux set -g pane-border-style "fg=#555753"
+        tmux set -g pane-active-border-style "fg=#e090d7"
+        tmux set -g message-style "bg=#212526,fg=#eeeeec"
+        tmux set -g message-command-style "bg=#212526,fg=#eeeeec"
+        tmux set -g mode-style "bg=#e090d7,fg=#212526"
     fi
 }
 
@@ -181,6 +181,21 @@ EOF
     export FZF_DEFAULT_OPTS="$fzf_opts"
 }
 
+# Switch Copilot CLI theme
+# Our light Ghostty palette inverts ANSI black/white, so Copilot's
+# "ANSI Dark" theme (whiteBright text) is actually readable on light bg.
+switch_copilot() {
+    local mode="$1"
+    local config_file="$HOME/.copilot/theme-config"
+
+    if [[ ! -f "$config_file" ]]; then
+        return
+    fi
+
+    local copilot_theme="dark"
+    printf '{\n  "preference": "%s"\n}\n' "$copilot_theme" > "$config_file"
+}
+
 # Detect macOS appearance
 detect_macos_appearance() {
     if command -v defaults &>/dev/null; then
@@ -205,6 +220,7 @@ switch_all() {
     switch_neovim "$mode"
     switch_tmux "$mode"
     switch_fzf "$mode"
+    switch_copilot "$mode"
     
     set_theme_state "$mode"
     
