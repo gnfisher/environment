@@ -4,8 +4,7 @@ _ws_completions() {
     local cur prev words cword
     _init_completion || return
 
-    local commands="new list switch delete sync"
-    local repos="github sweagentd copilot-mission-control copilot-api"
+    local commands="new list open delete clean"
 
     # First argument: command
     if [[ $cword -eq 1 ]]; then
@@ -16,31 +15,48 @@ _ws_completions() {
     local cmd="${words[1]}"
 
     case "$cmd" in
-        new|switch|delete|sync)
-            # Second argument: repo name
+        open)
+            # Worktree names from current repo
             if [[ $cword -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "$repos" -- "$cur"))
+                local wt_base="$HOME/.worktrees"
+                local url org_repo
+                url=$(git remote get-url origin 2>/dev/null) || return
+                url="${url%.git}"
+                if [[ "$url" =~ ^git@[^:]+:([^/]+/[^/]+)$ ]]; then
+                    org_repo="${BASH_REMATCH[1]}"
+                elif [[ "$url" =~ ^https://[^/]+/([^/]+/[^/]+)$ ]]; then
+                    org_repo="${BASH_REMATCH[1]}"
+                else
+                    return
+                fi
+                local wt_dir="$wt_base/$org_repo"
+                [[ -d "$wt_dir" ]] || return
+                local names
+                names=$(printf '%s\n' "$wt_dir"/*/ 2>/dev/null | xargs -I{} basename "{}")
+                COMPREPLY=($(compgen -W "$names" -- "$cur"))
                 return
             fi
-
-            # Third argument: worktree name (for switch, delete, sync)
-            if [[ $cword -eq 3 && "$cmd" != "new" ]]; then
-                local repo="${words[2]}"
-                local worktrees=""
-                local wt_dir="/workspaces/worktrees/${repo}"
-                
-                if [[ -d "$wt_dir" ]]; then
-                    worktrees=$(ls -1 "$wt_dir" 2>/dev/null | tr '\n' ' ')
-                fi
-                
-                COMPREPLY=($(compgen -W "$worktrees" -- "$cur"))
+            ;;
+        delete)
+            # Worktree names across all repos
+            if [[ $cword -eq 2 ]]; then
+                local wt_base="$HOME/.worktrees"
+                [[ -d "$wt_base" ]] || return
+                local names
+                names=$(printf '%s\n' "$wt_base"/*/*/*/ 2>/dev/null | xargs -I{} basename "{}")
+                COMPREPLY=($(compgen -W "$names" -- "$cur"))
                 return
             fi
             ;;
         list)
-            # Optional repo filter
             if [[ $cword -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "$repos" -- "$cur"))
+                COMPREPLY=($(compgen -W "--all" -- "$cur"))
+                return
+            fi
+            ;;
+        new)
+            if [[ $cword -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "--pr" -- "$cur"))
                 return
             fi
             ;;

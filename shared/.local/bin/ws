@@ -1,487 +1,510 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ws - Git worktree manager with Draft PR integration
-# Manages worktrees tied to draft PRs for isolated feature development
+# ws - Git worktree manager with tmux integration
+# Repo-agnostic: detects org/repo from git remote origin
+# Worktrees stored in ~/.worktrees/{org}/{repo}/{name}
 
-WORKTREE_BASE="/workspaces/worktrees"
-WORKSPACE_BASE="/workspaces"
-BRANCH_PREFIX="gnfisher"
-
-# Supported repositories
-SUPPORTED_REPOS=(github sweagentd copilot-mission-control copilot-api)
+WORKTREE_BASE="$HOME/.worktrees"
 
 show_help() {
     cat << 'EOF'
-ws - Git worktree manager with Draft PR integration
+ws - Git worktree manager with tmux integration
 
-Usage: ws <command> [arguments]
+Usage: ws <command> [options]
 
 Commands:
-  new <repo> <name>       Create worktree, branch, and draft PR
-  list [repo]             List worktrees (optionally filtered by repo)
-  switch <repo> <name>    Show path and hints for switching to worktree
-  delete <repo> <name>    Remove worktree and optionally close PR
-  sync <repo> <name>      Rebase worktree on origin/main and push
+  new <name>              Create worktree branching off default branch
+  new --pr <url>          Create worktree from a GitHub PR URL
+  list                    List worktrees for current repo
+  list --all              List worktrees across all repos
+  open <name>             Open worktree in a tmux session (nvim + copilot)
+  delete <name>           Remove worktree and kill its tmux session
+  clean                   Remove all worktrees for current repo
 
-Arguments:
-  repo    Repository name (github, sweagentd, copilot-mission-control, copilot-api)
-  name    Worktree/feature name (used in branch: gnfisher-{name})
+Run from inside any git repository. Org and repo are detected from the
+origin remote URL.
 
-Paths:
-  Main checkouts:   /workspaces/{repo}/
-  Worktrees:        /workspaces/worktrees/{repo}/{name}/
+Worktree paths:  ~/.worktrees/{org}/{repo}/{name}/
+Tmux sessions:   {repo}#{branch-name}
 
 Options:
   -h, --help    Show this help message
 
 Examples:
-  ws new github fix-login
-  ws list
-  ws list github
-  ws switch github fix-login
-  ws sync github fix-login
-  ws delete github fix-login
+  ws new fix-login            # new worktree + tmux session
+  ws new --pr https://github.com/org/repo/pull/1234
+  ws list --all                # show worktrees across all repos
+  ws open fix-login           # switch to worktree's tmux session
+  ws delete fix-login         # remove worktree + session
+  ws clean                    # remove all worktrees for this repo
 EOF
 }
 
-# Logging helpers
-log() {
-    echo "==> $*"
-}
+# --- helpers ----------------------------------------------------------------
 
-error() {
-    echo "Error: $*" >&2
-}
+log() { echo "==> $*"; }
+error() { echo "Error: $*" >&2; }
 
-# Validate repo name
-validate_repo() {
-    local repo="$1"
-    local valid=false
-    for r in "${SUPPORTED_REPOS[@]}"; do
-        if [[ "$r" == "$repo" ]]; then
-            valid=true
-            break
-        fi
-    done
-    if ! $valid; then
-        error "Unknown repository '$repo'"
-        echo "Supported repos: ${SUPPORTED_REPOS[*]}" >&2
-        exit 1
-    fi
-}
-
-# Check if repo exists at /workspaces/{repo}
-repo_exists() {
-    local repo="$1"
-    [[ -d "${WORKSPACE_BASE}/${repo}/.git" ]]
-}
-
-# Get worktree path
-worktree_path() {
-    local repo="$1"
-    local name="$2"
-    echo "${WORKTREE_BASE}/${repo}/${name}"
-}
-
-# Get branch name from worktree name
-branch_name() {
-    local name="$1"
-    echo "${BRANCH_PREFIX}-${name}"
-}
-
-# Map repo name to service name
-service_name_for_repo() {
-    local repo="$1"
-    case "$repo" in
-        github|sweagentd)
-            echo "$repo"
-            ;;
-        copilot-api)
-            echo "capi"
-            ;;
-        copilot-mission-control)
-            echo "mission-control"
-            ;;
-        *)
-            echo "$repo"
-            ;;
-    esac
-}
-
-# Check if worktree exists
-worktree_exists() {
-    local repo="$1"
-    local name="$2"
-    local wt_path
-    wt_path=$(worktree_path "$repo" "$name")
-    [[ -d "$wt_path" ]]
-}
-
-# Get default branch for a repo
-get_default_branch() {
-    local repo_dir="$1"
-    git -C "$repo_dir" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
-}
-
-# ============================================================================
-# ws new <repo> <name>
-# ============================================================================
-cmd_new() {
-    if [[ $# -lt 2 ]]; then
-        error "Usage: ws new <repo> <name>"
-        exit 1
-    fi
-
-    local repo="$1"
-    local name="$2"
-    local repo_dir="${WORKSPACE_BASE}/${repo}"
-    local wt_path
-    wt_path=$(worktree_path "$repo" "$name")
-    local branch
-    branch=$(branch_name "$name")
-
-    validate_repo "$repo"
-
-    # 1. Validate repo exists
-    if ! repo_exists "$repo"; then
-        error "Repository not found at ${repo_dir}"
-        exit 1
-    fi
-
-    # Check worktree doesn't already exist
-    if worktree_exists "$repo" "$name"; then
-        error "Worktree already exists at ${wt_path}"
-        exit 1
-    fi
-
-    log "Creating worktree for '$name' in $repo..."
-
-    # 2. Fetch and get latest main
-    log "Fetching latest from origin..."
-    git -C "$repo_dir" fetch origin --quiet
-
-    local default_branch
-    default_branch=$(get_default_branch "$repo_dir")
-
-    # 3. Create branch from origin/main (or default branch)
-    log "Creating branch '$branch' from origin/${default_branch}..."
-    git -C "$repo_dir" branch "$branch" "origin/${default_branch}"
-
-    # 4. Create worktree
-    log "Creating worktree at ${wt_path}..."
-    mkdir -p "${WORKTREE_BASE}/${repo}"
-    git -C "$repo_dir" worktree add "$wt_path" "$branch"
-
-    # 5. Push branch to origin
-    log "Pushing branch to origin..."
-    git -C "$wt_path" push -u origin "$branch" --quiet
-
-    # 6. Create Draft PR
-    log "Creating draft PR..."
-    local pr_url
-    pr_url=$(gh pr create \
-        --repo "github/${repo}" \
-        --head "$branch" \
-        --draft \
-        --title "$name" \
-        --body "WIP" \
-        --base "$default_branch" \
-        2>&1) || {
-        error "Failed to create PR: $pr_url"
+# Detect org and repo from git remote origin
+detect_repo_info() {
+    local url
+    url=$(git remote get-url origin 2>/dev/null) || {
+        error "Not in a git repository or no 'origin' remote"
         exit 1
     }
 
-    echo
-    echo "✓ Worktree created successfully!"
-    echo
-    echo "  Repository:  $repo"
-    echo "  Name:        $name"
-    echo "  Branch:      $branch"
-    echo "  Path:        $wt_path"
-    echo "  PR:          $pr_url"
-    echo
-    echo "To start working:"
-    echo "  cd $wt_path"
-}
+    # Strip trailing .git if present
+    url="${url%.git}"
 
-# ============================================================================
-# ws list [repo]
-# ============================================================================
-cmd_list() {
-    local filter_repo="${1:-}"
-
-    if [[ -n "$filter_repo" ]]; then
-        validate_repo "$filter_repo"
+    # SSH: git@github.com:org/repo
+    if [[ "$url" =~ ^git@[^:]+:([^/]+)/([^/]+)$ ]]; then
+        REPO_ORG="${BASH_REMATCH[1]}"
+        REPO_NAME="${BASH_REMATCH[2]}"
+    # HTTPS: https://github.com/org/repo
+    elif [[ "$url" =~ ^https://[^/]+/([^/]+)/([^/]+)$ ]]; then
+        REPO_ORG="${BASH_REMATCH[1]}"
+        REPO_NAME="${BASH_REMATCH[2]}"
+    else
+        error "Cannot parse origin URL: $url"
+        exit 1
     fi
 
-    # Collect all worktrees
-    local worktrees=()
-    for repo in "${SUPPORTED_REPOS[@]}"; do
-        if [[ -n "$filter_repo" && "$filter_repo" != "$repo" ]]; then
-            continue
-        fi
-        local repo_dir="${WORKSPACE_BASE}/${repo}"
-        local wt_dir="${WORKTREE_BASE}/${repo}"
+    REPO_DIR=$(git rev-parse --show-toplevel)
+    REPO_WT_DIR="${WORKTREE_BASE}/${REPO_ORG}/${REPO_NAME}"
+}
 
-        if [[ ! -d "$repo_dir" ]]; then
-            continue
-        fi
+get_default_branch() {
+    git -C "$REPO_DIR" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
+        | sed 's@^refs/remotes/origin/@@' || echo "main"
+}
 
-        if [[ ! -d "$wt_dir" ]]; then
-            continue
-        fi
+worktree_path() {
+    echo "${REPO_WT_DIR}/$1"
+}
 
-        # List worktrees from git
-        while IFS= read -r line; do
-            # Parse git worktree list output: path hash [branch]
-            local wt_path wt_branch
-            wt_path=$(echo "$line" | awk '{print $1}')
-            wt_branch=$(echo "$line" | grep -oP '\[.*\]' | tr -d '[]' || echo "")
+worktree_exists() {
+    [[ -d "$(worktree_path "$1")" ]]
+}
 
-            # Skip if it's the main worktree
-            if [[ "$wt_path" == "$repo_dir" ]]; then
-                continue
-            fi
+# Sanitize a string for use as tmux session name (no dots/colons)
+tmux_session_name() {
+    local name="$1"
+    echo "${REPO_NAME}#${name}" | tr './:' '_-_'
+}
 
-            # Skip if not in our worktree directory
-            if [[ "$wt_path" != "${WORKTREE_BASE}/${repo}/"* ]]; then
-                continue
-            fi
+# Create or switch to a tmux session for a worktree
+tmux_open() {
+    local name="$1"
+    local wt_path
+    wt_path=$(worktree_path "$name")
+    local session
+    session=$(tmux_session_name "$name")
 
-            local wt_name
-            wt_name=$(basename "$wt_path")
-            worktrees+=("${repo}|${wt_name}|${wt_branch}|${wt_path}")
-        done < <(git -C "$repo_dir" worktree list 2>/dev/null || true)
+    if tmux has-session -t="$session" 2>/dev/null; then
+        log "Tmux session '$session' already exists, switching..."
+    else
+        log "Creating tmux session '$session'..."
+
+        # Create session (hook may rename it, so we capture the id)
+        local sid
+        sid=$(tmux new-session -d -P -F '#{session_id}' -c "$wt_path" -n "$REPO_NAME")
+
+        # Rename to our desired name (overrides the after-new-session hook)
+        tmux rename-session -t "$sid" "$session"
+
+        tmux set-option -t "$sid" automatic-rename off
+        tmux send-keys -t "$sid" "nvim" C-m
+
+        # Window 2: copilot
+        tmux new-window -t "$sid" -c "$wt_path" -n "copilot"
+        tmux send-keys -t "${sid}:copilot" "copilot --yolo" C-m
+
+        # Focus nvim window
+        tmux select-window -t "${sid}:1"
+    fi
+
+    if [[ -z "${TMUX:-}" ]]; then
+        tmux attach-session -t "$session"
+    else
+        tmux switch-client -t "$session"
+    fi
+}
+
+# --- commands ---------------------------------------------------------------
+
+cmd_new() {
+    local name="" pr_url=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --pr)
+                pr_url="$2"
+                shift 2
+                ;;
+            -*)
+                error "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                name="$1"
+                shift
+                ;;
+        esac
     done
 
-    if [[ ${#worktrees[@]} -eq 0 ]]; then
+    if [[ -n "$pr_url" ]]; then
+        # PR mode: parse org/repo/number from URL
+        # e.g. https://github.com/github/copilot-mission-control/pull/1527
+        if [[ ! "$pr_url" =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
+            error "Invalid PR URL: $pr_url"
+            echo "Expected format: https://github.com/org/repo/pull/NUMBER" >&2
+            exit 1
+        fi
+
+        local pr_org="${BASH_REMATCH[1]}"
+        local pr_repo="${BASH_REMATCH[2]}"
+        local pr_number="${BASH_REMATCH[3]}"
+
+        # Find the local clone of this repo
+        REPO_DIR="$HOME/Development/${pr_org}/${pr_repo}"
+        if [[ ! -d "$REPO_DIR/.git" ]]; then
+            error "Local clone not found at ${REPO_DIR}"
+            echo "Clone it first: gh-clone https://github.com/${pr_org}/${pr_repo}" >&2
+            exit 1
+        fi
+
+        REPO_ORG="$pr_org"
+        REPO_NAME="$pr_repo"
+        REPO_WT_DIR="${WORKTREE_BASE}/${REPO_ORG}/${REPO_NAME}"
+
+        log "Fetching PR #${pr_number} info..."
+        local pr_json
+        pr_json=$(gh pr view "$pr_number" \
+            --repo "${REPO_ORG}/${REPO_NAME}" \
+            --json headRefName,title 2>&1) || {
+            error "Failed to fetch PR #${pr_number}: $pr_json"
+            exit 1
+        }
+
+        local pr_branch pr_title
+        pr_branch=$(echo "$pr_json" | jq -r '.headRefName')
+        pr_title=$(echo "$pr_json" | jq -r '.title')
+
+        # Use PR number as worktree name if no name given
+        [[ -z "$name" ]] && name="pr-${pr_number}"
+
+        log "PR #${pr_number}: ${pr_title}"
+        log "Branch: ${pr_branch}"
+
+        local wt_path
+        wt_path=$(worktree_path "$name")
+
+        if worktree_exists "$name"; then
+            error "Worktree already exists at ${wt_path}"
+            exit 1
+        fi
+
+        log "Fetching latest from origin..."
+        git -C "$REPO_DIR" fetch origin --quiet
+
+        log "Creating worktree at ${wt_path}..."
+        mkdir -p "$REPO_WT_DIR"
+        git -C "$REPO_DIR" worktree add "$wt_path" "$pr_branch"
+    else
+        # Normal mode: create new branch from default branch
+        if [[ -z "$name" ]]; then
+            error "Usage: ws new <name>  or  ws new --pr <url>"
+            exit 1
+        fi
+
+        detect_repo_info
+
+        local wt_path
+        wt_path=$(worktree_path "$name")
+        local branch="$name"
+
+        if worktree_exists "$name"; then
+            error "Worktree already exists at ${wt_path}"
+            exit 1
+        fi
+
+        log "Fetching latest from origin..."
+        git -C "$REPO_DIR" fetch origin --quiet
+
+        local default_branch
+        default_branch=$(get_default_branch)
+
+        log "Creating branch '$branch' from origin/${default_branch}..."
+        mkdir -p "$REPO_WT_DIR"
+        git -C "$REPO_DIR" worktree add -b "$branch" "$wt_path" "origin/${default_branch}"
+    fi
+
+    echo
+    echo "✓ Worktree created!"
+    echo
+    echo "  Repo:   ${REPO_ORG}/${REPO_NAME}"
+    echo "  Name:   $name"
+    echo "  Path:   $(worktree_path "$name")"
+    echo
+
+    # Auto-open tmux session
+    tmux_open "$name"
+}
+
+cmd_list() {
+    local show_all=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --all) show_all=true; shift ;;
+            *) error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if $show_all; then
+        cmd_list_all
+        return
+    fi
+
+    detect_repo_info
+
+    if [[ ! -d "$REPO_WT_DIR" ]]; then
+        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
+        return 0
+    fi
+
+    local found=false
+
+    printf "%-20s %-30s %-40s %-10s\n" "NAME" "BRANCH" "PATH" "TMUX"
+    printf "%-20s %-30s %-40s %-10s\n" "----" "------" "----" "----"
+
+    while IFS= read -r line; do
+        local wt_path wt_branch
+        wt_path=$(echo "$line" | awk '{print $1}')
+        wt_branch=$(echo "$line" | grep -o '\[.*\]' | tr -d '[]' || echo "?")
+
+        # Skip main worktree
+        [[ "$wt_path" == "$REPO_DIR" ]] && continue
+        # Skip worktrees not in our managed directory
+        [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
+
+        local wt_name
+        wt_name=$(basename "$wt_path")
+        local session
+        session=$(tmux_session_name "$wt_name")
+
+        local tmux_status="no"
+        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
+
+        printf "%-20s %-30s %-40s %-10s\n" "$wt_name" "$wt_branch" "$wt_path" "$tmux_status"
+        found=true
+    done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
+
+    if ! $found; then
+        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
+    fi
+}
+
+cmd_list_all() {
+    if [[ ! -d "$WORKTREE_BASE" ]]; then
         echo "No worktrees found."
         return 0
     fi
 
-    # Get PR info for all repos we care about
-    declare -A pr_info
-    for repo in "${SUPPORTED_REPOS[@]}"; do
-        if [[ -n "$filter_repo" && "$filter_repo" != "$repo" ]]; then
-            continue
-        fi
-        local repo_dir="${WORKSPACE_BASE}/${repo}"
-        if [[ ! -d "$repo_dir" ]]; then
-            continue
-        fi
+    local found=false
 
-        # Fetch PRs authored by current user
-        local pr_json
-        pr_json=$(gh pr list \
-            --repo "github/${repo}" \
-            --author "@me" \
-            --state all \
-            --json number,title,state,isDraft,headRefName \
-            --limit 100 2>/dev/null || echo "[]")
+    printf "%-25s %-20s %-30s %-10s\n" "REPO" "NAME" "BRANCH" "TMUX"
+    printf "%-25s %-20s %-30s %-10s\n" "----" "----" "------" "----"
 
-        # Parse PR info and store by branch name
-        while IFS= read -r pr_line; do
-            local pr_branch pr_number pr_state pr_is_draft pr_status
-            pr_branch=$(echo "$pr_line" | jq -r '.headRefName // empty')
-            pr_number=$(echo "$pr_line" | jq -r '.number // empty')
-            pr_state=$(echo "$pr_line" | jq -r '.state // empty')
-            pr_is_draft=$(echo "$pr_line" | jq -r '.isDraft // false')
+    # Walk ~/.worktrees/{org}/{repo}/{name}
+    for org_dir in "$WORKTREE_BASE"/*/; do
+        [[ -d "$org_dir" ]] || continue
+        local org
+        org=$(basename "$org_dir")
 
-            if [[ -z "$pr_branch" || -z "$pr_number" ]]; then
+        for repo_dir in "$org_dir"*/; do
+            [[ -d "$repo_dir" ]] || continue
+            local repo
+            repo=$(basename "$repo_dir")
+
+            # Find the main clone to query git worktree list
+            local main_clone="$HOME/Development/${org}/${repo}"
+            if [[ ! -d "$main_clone/.git" ]]; then
+                # Fallback: list directories directly
+                for wt_dir in "$repo_dir"*/; do
+                    [[ -d "$wt_dir" ]] || continue
+                    local wt_name
+                    wt_name=$(basename "$wt_dir")
+                    printf "%-25s %-20s %-30s %-10s\n" "${org}/${repo}" "$wt_name" "?" "?"
+                    found=true
+                done
                 continue
             fi
 
-            # Determine status
-            if [[ "$pr_state" == "MERGED" ]]; then
-                pr_status="merged"
-            elif [[ "$pr_state" == "CLOSED" ]]; then
-                pr_status="closed"
-            elif [[ "$pr_is_draft" == "true" ]]; then
-                pr_status="draft"
-            else
-                pr_status="open"
-            fi
+            while IFS= read -r line; do
+                local wt_path wt_branch
+                wt_path=$(echo "$line" | awk '{print $1}')
+                wt_branch=$(echo "$line" | grep -o '\[.*\]' | tr -d '[]' || echo "?")
 
-            pr_info["${repo}:${pr_branch}"]="${pr_number}:${pr_status}"
-        done < <(echo "$pr_json" | jq -c '.[]' 2>/dev/null || true)
+                [[ "$wt_path" == "$main_clone" ]] && continue
+                [[ "$wt_path" != "${repo_dir}"* ]] && continue
+
+                local wt_name
+                wt_name=$(basename "$wt_path")
+
+                # Check tmux session
+                local session="${repo}#${wt_name}"
+                session=$(echo "$session" | tr './:' '_-_')
+                local tmux_status="no"
+                tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
+
+                printf "%-25s %-20s %-30s %-10s\n" "${org}/${repo}" "$wt_name" "$wt_branch" "$tmux_status"
+                found=true
+            done < <(git -C "$main_clone" worktree list 2>/dev/null || true)
+        done
     done
 
-    # Print table header
-    printf "%-20s %-20s %-30s %-10s %-8s\n" "REPO" "NAME" "BRANCH" "PR#" "STATUS"
-    printf "%-20s %-20s %-30s %-10s %-8s\n" "----" "----" "------" "---" "------"
-
-    # Print each worktree
-    for wt in "${worktrees[@]}"; do
-        IFS='|' read -r repo name branch _ <<< "$wt"
-        local pr_key="${repo}:${branch}"
-        local pr_data="${pr_info[$pr_key]:-}"
-        local pr_display="-"
-        local pr_status="-"
-
-        if [[ -n "$pr_data" ]]; then
-            local pr_num
-            pr_num=$(echo "$pr_data" | cut -d: -f1)
-            pr_status=$(echo "$pr_data" | cut -d: -f2)
-            pr_display="#${pr_num}"
-        fi
-
-        printf "%-20s %-20s %-30s %-10s %-8s\n" "$repo" "$name" "$branch" "$pr_display" "$pr_status"
-    done
-
-    echo
-    echo "Paths: ${WORKTREE_BASE}/{repo}/{name}/"
+    if ! $found; then
+        echo "No worktrees found."
+    fi
 }
 
-# ============================================================================
-# ws switch <repo> <name>
-# ============================================================================
-cmd_switch() {
-    if [[ $# -lt 2 ]]; then
-        error "Usage: ws switch <repo> <name>"
+cmd_open() {
+    if [[ $# -lt 1 ]]; then
+        error "Usage: ws open <name>"
         exit 1
     fi
 
-    local repo="$1"
-    local name="$2"
-    local wt_path
-    wt_path=$(worktree_path "$repo" "$name")
-    local service_name
-    service_name=$(service_name_for_repo "$repo")
+    local name="$1"
+    detect_repo_info
 
-    validate_repo "$repo"
-
-    # 1. Validate worktree exists
-    if ! worktree_exists "$repo" "$name"; then
-        error "Worktree not found at ${wt_path}"
+    if ! worktree_exists "$name"; then
+        error "Worktree '$name' not found in ${REPO_WT_DIR}/"
+        echo "Run 'ws list' to see available worktrees." >&2
         exit 1
     fi
 
-    # 2. Print path
-    echo "Worktree path: $wt_path"
-    echo
-    echo "Run: cd $wt_path"
-    echo
-    echo "To restart service for worktree: $service_name --worktree $name"
+    tmux_open "$name"
 }
 
-# ============================================================================
-# ws delete <repo> <name>
-# ============================================================================
 cmd_delete() {
-    if [[ $# -lt 2 ]]; then
-        error "Usage: ws delete <repo> <name>"
+    if [[ $# -lt 1 ]]; then
+        error "Usage: ws delete <name>"
         exit 1
     fi
 
-    local repo="$1"
-    local name="$2"
-    local repo_dir="${WORKSPACE_BASE}/${repo}"
-    local wt_path
-    wt_path=$(worktree_path "$repo" "$name")
+    local name="$1"
+
+    # Find the worktree across all repos in ~/.worktrees/{org}/{repo}/{name}
+    local wt_path="" found_org="" found_repo="" main_clone=""
+    for org_dir in "$WORKTREE_BASE"/*/; do
+        [[ -d "$org_dir" ]] || continue
+        for repo_dir in "$org_dir"*/; do
+            [[ -d "$repo_dir" ]] || continue
+            if [[ -d "${repo_dir}${name}" ]]; then
+                wt_path="${repo_dir}${name}"
+                found_org=$(basename "$org_dir")
+                found_repo=$(basename "$repo_dir")
+                main_clone="$HOME/Development/${found_org}/${found_repo}"
+                break 2
+            fi
+        done
+    done
+
+    if [[ -z "$wt_path" ]]; then
+        error "Worktree '$name' not found in ${WORKTREE_BASE}/"
+        exit 1
+    fi
+
+    # Kill tmux session if it exists
+    local session
+    session=$(echo "${found_repo}#${name}" | tr './:' '_-_')
+    if tmux has-session -t="$session" 2>/dev/null; then
+        log "Killing tmux session '$session'..."
+        tmux kill-session -t "$session"
+    fi
+
+    # Get the branch name before removing
     local branch
-    branch=$(branch_name "$name")
+    branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
-    validate_repo "$repo"
+    # Remove via git worktree if main clone exists, otherwise just delete the dir
+    if [[ -d "$main_clone/.git" ]]; then
+        log "Removing worktree..."
+        git -C "$main_clone" worktree remove "$wt_path" --force
 
-    # 1. Validate worktree exists
-    if ! worktree_exists "$repo" "$name"; then
-        error "Worktree not found at ${wt_path}"
-        exit 1
-    fi
-
-    log "Removing worktree '$name' from $repo..."
-
-    # 2. Remove git worktree
-    log "Removing worktree..."
-    git -C "$repo_dir" worktree remove "$wt_path" --force
-
-    # 3. Ask about closing PR
-    local pr_number
-    pr_number=$(gh pr list \
-        --repo "github/${repo}" \
-        --author "@me" \
-        --head "$branch" \
-        --json number \
-        --jq '.[0].number // empty' 2>/dev/null || true)
-
-    if [[ -n "$pr_number" ]]; then
-        echo
-        read -rp "Close PR #${pr_number}? [y/N] " close_pr
-        if [[ "$close_pr" =~ ^[Yy]$ ]]; then
-            log "Closing PR #${pr_number}..."
-            gh pr close "$pr_number" --repo "github/${repo}"
-
-            # 4. Clean up remote branch
-            log "Deleting remote branch..."
-            git -C "$repo_dir" push origin --delete "$branch" --quiet 2>/dev/null || true
+        # Delete local branch if it exists
+        if [[ -n "$branch" && "$branch" != "HEAD" ]]; then
+            if git -C "$main_clone" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+                log "Deleting local branch '$branch'..."
+                git -C "$main_clone" branch -D "$branch" 2>/dev/null || true
+            fi
         fi
+    else
+        # Only remove if path is safely under WORKTREE_BASE
+        if [[ "$wt_path" != "${WORKTREE_BASE}/"* ]]; then
+            error "Refusing to remove path outside of ${WORKTREE_BASE}: $wt_path"
+            exit 1
+        fi
+        log "Main clone not found at $main_clone, removing directory..."
+        rm -rf "$wt_path"
     fi
 
-    # Delete local branch if it exists
-    if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
-        log "Deleting local branch..."
-        git -C "$repo_dir" branch -D "$branch" 2>/dev/null || true
-    fi
+    # Clean up empty parent dirs
+    rmdir "${WORKTREE_BASE}/${found_org}/${found_repo}" 2>/dev/null || true
+    rmdir "${WORKTREE_BASE}/${found_org}" 2>/dev/null || true
 
     echo
-    echo "✓ Worktree '$name' deleted."
+    echo "✓ Worktree '$name' deleted (${found_org}/${found_repo})."
 }
 
-# ============================================================================
-# ws sync <repo> <name>
-# ============================================================================
-cmd_sync() {
-    if [[ $# -lt 2 ]]; then
-        error "Usage: ws sync <repo> <name>"
-        exit 1
+cmd_clean() {
+    detect_repo_info
+
+    if [[ ! -d "$REPO_WT_DIR" ]]; then
+        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
+        return 0
     fi
 
-    local repo="$1"
-    local name="$2"
-    local repo_dir="${WORKSPACE_BASE}/${repo}"
-    local wt_path
-    wt_path=$(worktree_path "$repo" "$name")
+    local names=()
+    while IFS= read -r line; do
+        local wt_path
+        wt_path=$(echo "$line" | awk '{print $1}')
+        [[ "$wt_path" == "$REPO_DIR" ]] && continue
+        [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
+        names+=("$(basename "$wt_path")")
+    done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
 
-    validate_repo "$repo"
-
-    # Validate worktree exists
-    if ! worktree_exists "$repo" "$name"; then
-        error "Worktree not found at ${wt_path}"
-        exit 1
+    if [[ ${#names[@]} -eq 0 ]]; then
+        echo "No worktrees to clean."
+        return 0
     fi
 
-    log "Syncing worktree '$name' in $repo..."
+    echo "Will delete ${#names[@]} worktree(s) for ${REPO_ORG}/${REPO_NAME}:"
+    printf "  %s\n" "${names[@]}"
+    echo
 
-    # 1. cd to worktree
-    cd "$wt_path"
-
-    # 2. Fetch origin
-    log "Fetching origin..."
-    git fetch origin --quiet
-
-    # 3. Get default branch
-    local default_branch
-    default_branch=$(get_default_branch "$repo_dir")
-
-    # 4. Rebase on origin/main (or default branch)
-    log "Rebasing on origin/${default_branch}..."
-    if ! git rebase "origin/${default_branch}"; then
-        error "Rebase failed. Resolve conflicts and run 'git rebase --continue'"
-        exit 1
+    read -rp "Continue? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        return 0
     fi
 
-    # 5. Push with --force-with-lease
-    log "Pushing with --force-with-lease..."
-    git push --force-with-lease --quiet
+    for name in "${names[@]}"; do
+        cmd_delete "$name"
+    done
+
+    # Clean up empty directory
+    rmdir "$REPO_WT_DIR" 2>/dev/null || true
+    rmdir "${WORKTREE_BASE}/${REPO_ORG}" 2>/dev/null || true
 
     echo
-    echo "✓ Worktree '$name' synced with origin/${default_branch}."
+    echo "✓ All worktrees cleaned."
 }
 
-# ============================================================================
-# Main
-# ============================================================================
+# --- main -------------------------------------------------------------------
+
 if [[ $# -eq 0 ]]; then
     show_help
     exit 0
@@ -492,26 +515,11 @@ case "${1:-}" in
         show_help
         exit 0
         ;;
-    new)
-        shift
-        cmd_new "$@"
-        ;;
-    list)
-        shift
-        cmd_list "$@"
-        ;;
-    switch)
-        shift
-        cmd_switch "$@"
-        ;;
-    delete)
-        shift
-        cmd_delete "$@"
-        ;;
-    sync)
-        shift
-        cmd_sync "$@"
-        ;;
+    new)    shift; cmd_new "$@" ;;
+    list)   shift; cmd_list "$@" ;;
+    open)   shift; cmd_open "$@" ;;
+    delete) shift; cmd_delete "$@" ;;
+    clean)  shift; cmd_clean "$@" ;;
     *)
         error "Unknown command '${1:-}'"
         echo "Run 'ws --help' for usage" >&2

@@ -8,7 +8,50 @@ opt.splitbelow = true
 opt.number = false
 opt.numberwidth = 1
 opt.signcolumn = "yes"
-opt.showtabline = 3
+opt.showtabline = 2
+
+-- Custom tabline with better names for oil and terminal buffers
+function _G.custom_tabline()
+  local s = ""
+  for tabnr = 1, vim.fn.tabpagenr("$") do
+    local winnr = vim.fn.tabpagewinnr(tabnr)
+    local bufnr = vim.fn.tabpagebuflist(tabnr)[winnr]
+    local bufname = vim.fn.bufname(bufnr)
+    local buftype = vim.fn.getbufvar(bufnr, "&buftype")
+    local label
+
+    if bufname:match("^oil://") then
+      -- Oil buffer: show just the directory name
+      local path = bufname:gsub("oil://", "")
+      label = "/" .. vim.fn.fnamemodify(path, ":t")
+    elseif buftype == "terminal" then
+      -- Terminal buffer: extract term name or use "term"
+      local term_title = vim.fn.getbufvar(bufnr, "term_title")
+      if term_title and term_title ~= "" then
+        -- Get just the command name (first word after any path)
+        label = "term:" .. vim.fn.fnamemodify(term_title, ":t"):gsub("^(%S+).*", "%1")
+      else
+        label = "term"
+      end
+    elseif bufname == "" then
+      label = "[No Name]"
+    else
+      label = vim.fn.fnamemodify(bufname, ":t")
+    end
+
+    -- Highlight current tab
+    if tabnr == vim.fn.tabpagenr() then
+      s = s .. "%#TabLineSel#"
+    else
+      s = s .. "%#TabLine#"
+    end
+    s = s .. " " .. label .. " "
+  end
+  s = s .. "%#TabLineFill#"
+  return s
+end
+
+vim.opt.tabline = "%!v:lua.custom_tabline()"
 opt.cursorline = false
 
 opt.tabstop = 2

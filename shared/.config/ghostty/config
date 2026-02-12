@@ -1,6 +1,6 @@
 # Font
-#font-family = Consolas
-#font-size = 15
+font-family = iosevkaterm nerd font mono medium
+font-size = 13
 adjust-cell-width = -1
 adjust-cell-height = 5
 
@@ -43,4 +43,4 @@ keybind = shift+enter=text:\n
 
 unfocused-split-opacity = 1.0
 
-theme = doom-one-light
+theme = Doom One
