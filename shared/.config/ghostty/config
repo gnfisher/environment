@@ -43,4 +43,4 @@ keybind = shift+enter=text:\n
 
 unfocused-split-opacity = 1.0
 
-theme = doom-one-light
+theme = Doom One
