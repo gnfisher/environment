@@ -12,6 +12,8 @@ return {
 					"typescript",
 					"tsx",
 					"go",
+					"markdown",
+					"markdown_inline",
 				},
 				highlight = { enable = true },
 				indent = { enable = true },
