@@ -1,8 +1,8 @@
 # Font
 font-family = iosevkaterm nerd font mono
-font-size = 16
-adjust-cell-width = -1
-adjust-cell-height = 5
+font-size = 13
+#adjust-cell-width = -1
+# adjust-cell-height = 5
 
 # macOS options
 macos-titlebar-style = tabs
