@@ -1,15 +1,24 @@
 -- LSP Configuration
 return {
+  -- Server configs and our unique keymaps
   {
     "neovim/nvim-lspconfig",
     opts = {
-      -- LSP Server settings
       servers = {
         vtsls = {
           settings = {
             typescript = {
               inlayHints = {
-                parameterNames = { enabled = "none" }, -- Disable for performance
+                parameterNames = { enabled = "none" },
+                variableTypes = { enabled = false },
+                functionLikeReturnTypes = { enabled = false },
+                enumMemberValues = { enabled = false },
+              },
+            },
+            javascript = {
+              inlayHints = {
+                parameterNames = { enabled = "none" },
+                variableTypes = { enabled = false },
               },
             },
           },
@@ -17,13 +26,13 @@ return {
         gopls = {
           settings = {
             gopls = {
-              staticcheck = false, -- Disable for performance (use golangci_lint_ls)
+              staticcheck = false,
               analyses = {
                 unusedparams = false,
                 shadow = false,
               },
               hints = {
-                assignVariableTypes = false, -- Disable inlay hints for performance
+                assignVariableTypes = false,
                 compositeLiteralFields = false,
                 constantValues = false,
                 functionTypeParameters = false,
@@ -36,12 +45,8 @@ return {
         lua_ls = {
           settings = {
             Lua = {
-              diagnostics = {
-                globals = { "vim" },
-              },
-              hint = {
-                enable = false, -- Disable inlay hints for performance
-              },
+              diagnostics = { globals = { "vim" } },
+              hint = { enable = false },
             },
           },
         },
@@ -49,12 +54,41 @@ return {
           filetypes = { "go", "gomod" },
         },
       },
-      -- Setup handlers
-      setup = {},
     },
+    -- init runs before opts merge - safe for side effects, won't wipe server configs
+    init = function()
+      -- Only add keymaps LazyVim doesn't set.
+      -- LazyVim already handles: gd, gD, gI, gr, gy, K, <leader>ca, <leader>cr, ]d, [d
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("user_lsp_keymaps", { clear = true }),
+        callback = function(event)
+          local buf = event.buf
+          -- IDE-style aliases for muscle memory
+          vim.keymap.set("n", "<F12>", vim.lsp.buf.definition, { buffer = buf, desc = "Go to definition" })
+          vim.keymap.set("n", "<S-F12>", vim.lsp.buf.references, { buffer = buf, desc = "Find references" })
+          vim.keymap.set("n", "<F2>", vim.lsp.buf.rename, { buffer = buf, desc = "Rename symbol" })
+          vim.keymap.set("i", "<C-s>", vim.lsp.buf.signature_help, { buffer = buf, desc = "Signature help" })
+          -- LazyVim uses gy for type_definition; keep go for muscle memory
+          vim.keymap.set("n", "go", vim.lsp.buf.type_definition, { buffer = buf, desc = "Type definition" })
+          -- Inline diagnostic popup
+          vim.keymap.set("n", "<leader>vd", function()
+            local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line(".") - 1 })
+            if #diagnostics > 0 then
+              local msgs = {}
+              for _, d in ipairs(diagnostics) do
+                table.insert(msgs, string.format("[%s] %s", vim.diagnostic.severity[d.severity], d.message))
+              end
+              vim.notify(table.concat(msgs, "\n"))
+            else
+              vim.notify("No diagnostics on this line")
+            end
+          end, { buffer = buf, desc = "View line diagnostics" })
+        end,
+      })
+    end,
   },
 
-  -- Mason for managing LSP servers
+  -- Mason: tool installer
   {
     "williamboman/mason.nvim",
     opts = {
@@ -64,19 +98,17 @@ return {
         "lua-language-server",
         "golangci-lint-langserver",
         "prettier",
-        "gofmt",
         "goimports",
+        "stylua",
       },
     },
   },
 
-  -- Replace nvim-cmp with blink.cmp
+  -- blink.cmp: Rust-based completion, faster than nvim-cmp
   {
     "saghen/blink.cmp",
     version = "1.*",
-    dependencies = {
-      "rafamadriz/friendly-snippets",
-    },
+    dependencies = { "rafamadriz/friendly-snippets" },
     opts = {
       keymap = {
         preset = "default",
@@ -88,11 +120,9 @@ return {
         ["<C-u>"] = { "scroll_documentation_up", "fallback" },
         ["<C-d>"] = { "scroll_documentation_down", "fallback" },
         ["<CR>"] = { "fallback" },
-        ["<C-y>"] = { "accept" }, -- Your preferred accept key
+        ["<C-y>"] = { "accept" },
       },
-      appearance = {
-        nerd_font_variant = "mono",
-      },
+      appearance = { nerd_font_variant = "mono" },
       completion = {
         trigger = {
           show_on_insert_on_trigger_character = true,
@@ -100,75 +130,18 @@ return {
         },
         menu = {
           auto_show = true,
-          draw = {
-            treesitter = { "lsp" },
-          },
+          draw = { treesitter = { "lsp" } },
         },
         documentation = {
           auto_show = true,
           auto_show_delay_ms = 200,
         },
-        accept = {
-          auto_brackets = { enabled = true },
-        },
+        accept = { auto_brackets = { enabled = true } },
       },
       sources = {
         default = { "lsp", "path", "snippets", "buffer" },
       },
-      fuzzy = {
-        implementation = "prefer_rust_with_warning",
-      },
+      fuzzy = { implementation = "prefer_rust_with_warning" },
     },
-  },
-
-  -- Customize LSP diagnostics
-  {
-    "neovim/nvim-lspconfig",
-    opts = function()
-      -- Optimize diagnostic configuration
-      vim.diagnostic.config({
-        virtual_text = true,
-        signs = true,
-        underline = false, -- You prefer this off
-        update_in_insert = false, -- Don't update in insert mode (performance)
-        severity_sort = true,
-      })
-
-      -- Custom keymaps on LSP attach
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(event)
-          local opts = { buffer = event.buf }
-
-          vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-          vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-          vim.keymap.set("n", "<F12>", vim.lsp.buf.definition, opts)
-          vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
-          vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
-          vim.keymap.set("n", "go", vim.lsp.buf.type_definition, opts)
-          vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-          vim.keymap.set("n", "<S-F12>", vim.lsp.buf.references, opts)
-          vim.keymap.set("i", "<C-s>", vim.lsp.buf.signature_help, opts)
-          vim.keymap.set("n", "<F2>", vim.lsp.buf.rename, opts)
-          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-
-          -- View diagnostics
-          vim.keymap.set("n", "<leader>vd", function()
-            local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line(".") - 1 })
-            if #diagnostics > 0 then
-              local messages = {}
-              for _, d in ipairs(diagnostics) do
-                table.insert(messages, string.format("[%s] %s", vim.diagnostic.severity[d.severity], d.message))
-              end
-              vim.notify(table.concat(messages, "\n"))
-            else
-              vim.notify("No diagnostics on this line")
-            end
-          end, { desc = "View Diagnostics", buffer = event.buf })
-
-          -- Set omnifunc
-          vim.bo[event.buf].omnifunc = "v:lua.vim.lsp.omnifunc"
-        end,
-      })
-    end,
   },
 }

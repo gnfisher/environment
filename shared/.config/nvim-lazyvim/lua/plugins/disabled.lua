@@ -1,42 +1,36 @@
--- Disable LazyVim plugins you don't want
+-- Disable LazyVim defaults that don't fit this workflow
 return {
-  -- Disable dashboard/alpha
-  { "nvimdev/dashboard-nvim", enabled = false },
-  { "goolord/alpha-nvim", enabled = false },
+  -- No start screen
+  { "nvimdev/dashboard-nvim",        enabled = false },
+  { "goolord/alpha-nvim",            enabled = false },
 
-  -- Disable neo-tree (you use oil.nvim)
-  { "nvim-neo-tree/neo-tree.nvim", enabled = false },
+  -- Using oil.nvim instead
+  { "nvim-neo-tree/neo-tree.nvim",   enabled = false },
 
-  -- Disable nvim-cmp (you use blink.cmp)
-  { "hrsh7th/nvim-cmp", enabled = false },
+  -- Using blink.cmp instead
+  { "hrsh7th/nvim-cmp",              enabled = false },
 
-  -- Disable noice.nvim (too intrusive)
-  { "folke/noice.nvim", enabled = false },
+  -- Too heavy, too intrusive
+  { "folke/noice.nvim",              enabled = false },
 
-  -- Disable mini.nvim suite (you prefer individual plugins)
-  { "echasnovski/mini.indentscope", enabled = false },
-  { "echasnovski/mini.pairs", enabled = false },
-  { "echasnovski/mini.ai", enabled = false },
-  { "echasnovski/mini.surround", enabled = false }, -- You use vim-surround
+  -- Using vim-surround instead
+  { "echasnovski/mini.surround",     enabled = false },
 
-  -- Disable flash.nvim (no fancy motions)
-  { "folke/flash.nvim", enabled = false },
+  -- mini.indentscope animates indent lines - distracting
+  { "echasnovski/mini.indentscope",  enabled = false },
 
-  -- Disable indent-blankline (cleaner look)
-  { "lukas-reineke/indent-blankline.nvim", enabled = false },
+  -- Changes core s/S motions, not worth the retraining
+  { "folke/flash.nvim",              enabled = false },
 
-  -- Disable bufferline (you have custom tabline)
-  { "akinsho/bufferline.nvim", enabled = false },
+  -- Using custom tabline
+  { "akinsho/bufferline.nvim",       enabled = false },
 
-  -- Disable which-key (you know your keybindings)
-  { "folke/which-key.nvim", enabled = false },
+  -- You know your bindings; enable if you want to explore LazyVim keymaps
+  { "folke/which-key.nvim",          enabled = false },
 
-  -- Disable notify (simpler notifications)
-  { "rcarriga/nvim-notify", enabled = false },
+  -- Native notifications are fine; noice is disabled so notify is moot
+  { "rcarriga/nvim-notify",          enabled = false },
 
-  -- Disable dressing.nvim (native UI is fine)
-  { "stevearc/dressing.nvim", enabled = false },
-
-  -- Disable nvim-navic (you don't use breadcrumbs)
-  { "SmiteshP/nvim-navic", enabled = false },
+  -- Enabled: mini.ai, mini.pairs, dressing.nvim, indent-blankline
+  -- (removed from disabled list - see coding.lua and ui.lua)
 }

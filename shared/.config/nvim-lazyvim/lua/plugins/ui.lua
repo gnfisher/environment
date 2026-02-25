@@ -1,50 +1,49 @@
 -- UI customizations
 return {
-  -- Lualine (statusline)
+  -- Lualine: configure LazyVim's built-in statusline
   {
     "nvim-lualine/lualine.nvim",
-    opts = function(_, opts)
-      opts.options = {
+    opts = {
+      options = {
         theme = "auto",
-        globalstatus = true, -- Global statusline (your preference)
+        globalstatus = true,
         component_separators = { left = "", right = "" },
         section_separators = { left = "", right = "" },
-      }
-      opts.sections = {
+      },
+      sections = {
         lualine_a = { "mode" },
         lualine_b = { "branch" },
         lualine_c = {
           {
             "filename",
-            path = 1, -- Show relative path
-            symbols = {
-              modified = " ●",
-              readonly = " ",
-              unnamed = "[No Name]",
-            },
+            path = 1, -- relative path
+            symbols = { modified = " ●", readonly = " ", unnamed = "[No Name]" },
           },
         },
         lualine_x = {
-          {
-            "diagnostics",
-            sources = { "nvim_diagnostic" },
-          },
+          { "diagnostics", sources = { "nvim_diagnostic" } },
           "filetype",
         },
         lualine_y = { "progress" },
         lualine_z = { "location" },
-      }
-      return opts
-    end,
+      },
+    },
   },
 
-  -- Custom tabline (keep it simple like yours)
+  -- dressing.nvim: better vim.ui.select() and vim.ui.input()
+  -- Makes code actions, rename prompts, etc. use telescope/float instead of cmdline
+  -- Minimal overhead, big UX improvement
   {
-    "nvim-lualine/lualine.nvim",
-    opts = function(_, opts)
-      -- Disable tabline (you have custom one or prefer simple)
-      opts.options.tabline = nil
-      return opts
-    end,
+    "stevearc/dressing.nvim",
+    event = "VeryLazy",
+    opts = {
+      input = {
+        default_prompt = "➤ ",
+        win_options = { winblend = 0 },
+      },
+      select = {
+        backend = { "telescope", "builtin" },
+      },
+    },
   },
 }
