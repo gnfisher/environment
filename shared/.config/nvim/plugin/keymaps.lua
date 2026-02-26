@@ -21,6 +21,33 @@ set("v", "K", ":m '<-2<CR>gv=gv", opts)
 set("n", "G", "Gzt", opts)
 set("n", "gg", "ggzt", opts)
 
+-- Window zoom: save layout when maximizing, and let <C-w>= restore it.
+local function save_winlayout_once()
+  if vim.t._zoom_winrestcmd == nil then
+    vim.t._zoom_winrestcmd = vim.fn.winrestcmd()
+  end
+end
+
+set("n", "<C-w>|", function()
+  save_winlayout_once()
+  vim.cmd("wincmd |")
+end, { silent = true, desc = "Maximize window width (save layout)" })
+
+set("n", "<C-w>_", function()
+  save_winlayout_once()
+  vim.cmd("wincmd _")
+end, { silent = true, desc = "Maximize window height (save layout)" })
+
+set("n", "<C-w>=", function()
+  local cmd = vim.t._zoom_winrestcmd
+  if cmd and cmd ~= "" then
+    vim.t._zoom_winrestcmd = nil
+    vim.cmd(cmd)
+  else
+    vim.cmd("wincmd =")
+  end
+end, { silent = true, desc = "Restore saved window layout or equalize" })
+
 -- Quickfix jump
 set("n", "]q", "<Cmd>cnext<CR>zz", opts)
 set("n", "[q", "<Cmd>cprev<CR>zz", opts)
