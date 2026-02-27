@@ -2,7 +2,8 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
--- colorscheme set by github-theme plugin in lua/plugins/theme.lua
+-- colorscheme set here (grb-lucius is a local colorscheme in colors/)
+vim.cmd.colorscheme("grb-lucius")
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then
