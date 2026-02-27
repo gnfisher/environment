@@ -1,28 +1,37 @@
-# Prompt: full path + git branch
-# Colors adapt to light/dark theme (set by `theme` command)
 status is-interactive; or return
 
-function __git_prompt
-    set -l git_prompt (fish_git_prompt "%s")
-    if test -n "$git_prompt"
-        echo -n "[$git_prompt]"
+function __grb_git_prompt
+    command -sq git; or return
+    set -l branch (command git rev-parse --abbrev-ref HEAD 2>/dev/null); or return
+    if test "$branch" = HEAD
+        set branch (command git rev-parse --short HEAD 2>/dev/null); or return
     end
-end
 
-function __is_light_theme
-    set -l theme_file "$HOME/.local/state/theme-mode"
-    test -f "$theme_file"; and test (cat "$theme_file") = "light"
+    set -l now (date +%s)
+    set -l last (command git log --pretty=format:'%at' -1 2>/dev/null); or return
+    set -l mins (math "($now - $last) / 60")
+
+    echo -n "($branch|"
+    if test $mins -gt 30
+        set_color red
+    else if test $mins -gt 10
+        set_color yellow
+    else
+        set_color green
+    end
+    echo -n "$mins"m
+    set_color normal
+    echo -n ")"
 end
 
 function fish_prompt
-    set -l path (string replace -r "^$HOME" "~" (pwd))
-    
-    # GitHub Dark Dimmed colors
-    set_color --bold 539bf5
-    echo -n $path
-    set_color 768390
-    echo -n (__git_prompt)
-    set_color --bold 539bf5
-    echo -n '$ '
-    set_color normal
+    set -l host (hostname -s)
+    set -l dir (basename (pwd))
+    if test (pwd) = $HOME
+        set dir "~"
+    end
+
+    echo -n "$host:$dir"
+    __grb_git_prompt
+    echo -n " $USER\$ "
 end

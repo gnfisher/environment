@@ -1,25 +1,14 @@
-# Prompt: full path + git branch
-function __git_prompt
-    command -sq git; or return
-    set -l branch (command git rev-parse --abbrev-ref HEAD 2>/dev/null); or return
-    if test "$branch" = "HEAD"
-        set branch (command git rev-parse --short HEAD 2>/dev/null); or return
-    end
-    set -l dirty ""
-    if not command git diff --quiet --ignore-submodules -- 2>/dev/null; or not command git diff --cached --quiet --ignore-submodules -- 2>/dev/null
-        set dirty "*"
-    end
-    echo -n "[⎇ $branch$dirty]"
-end
-
+# Prompt defined in conf.d/prompt.fish
+# This file intentionally left minimal to avoid conflicts.
 function fish_prompt
-    set -l path (string replace -r "^$HOME" "~" (pwd))
-    # GitHub Dark Dimmed colors
-    set_color --bold 539bf5
-    echo -n $path
-    set_color 768390
-    echo -n (__git_prompt)
-    set_color --bold 539bf5
-    echo -n '$ '
+    set -l host (hostname -s)
+    set -l dir (basename (pwd))
+    if test (pwd) = $HOME
+        set dir "~"
+    end
+
     set_color normal
+    echo -n "$host:$dir"
+    __grb_git_prompt
+    echo -n " $USER\$ "
 end
