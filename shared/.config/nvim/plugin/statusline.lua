@@ -1,4 +1,5 @@
--- Custom statusline with centered filename
+-- Custom statusline with centered filename (disabled)
+do return end
 vim.opt.laststatus = 2
 vim.opt.showmode = false -- we show mode in statusline
 
