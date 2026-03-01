@@ -1,9 +1,9 @@
 # Font
-font-family = Monaco
+font-family = Berkeley Mono
 # iosevkaterm nerd font mono
-font-size = 13
+#font-size = 13
 #adjust-cell-width = -1
-# adjust-cell-height = 5
+#adjust-cell-height = 5
 
 # macOS options
 macos-titlebar-style = tabs
@@ -43,3 +43,5 @@ keybind = cmd+w=close_surface
 keybind = shift+enter=text:\n
 
 unfocused-split-opacity = 1.0
+
+theme = Terminal Basic

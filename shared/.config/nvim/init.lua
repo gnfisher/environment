@@ -2,8 +2,8 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
--- colorscheme set here (grb-lucius is a local colorscheme in colors/)
-vim.cmd.colorscheme("grb-lucius")
+-- colorscheme set here (mono supports light+dark via vim.o.background)
+vim.cmd.colorscheme("mono")
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then

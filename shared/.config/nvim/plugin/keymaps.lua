@@ -2,6 +2,7 @@ local set = vim.keymap.set
 local opts = { noremap = true, silent = true }
 
 set("n", "<BS>", ":noh<CR>", opts)
+set("n", "<C-space>", ":noh<CR>", opts)
 
 set({ "i", "v" }, "<C-space>", "<Esc>", opts)
 
@@ -16,6 +17,17 @@ set("n", "<Leader>Y", [["+Y]], opts)
 -- Move highlighted lines up/down
 set("v", "J", ":m '>+1<CR>gv=gv", opts)
 set("v", "K", ":m '<-2<CR>gv=gv", opts)
+
+-- Center screen after jump motions
+set("n", "<C-d>", "<C-d>zz", opts)
+set("n", "<C-u>", "<C-u>zz", opts)
+set("n", "<C-f>", "<C-f>zz", opts)
+set("n", "<C-b>", "<C-b>zz", opts)
+set("n", "n", "nzz", opts)
+set("n", "N", "Nzz", opts)
+set("n", "*", "*zz", opts)
+set("n", "#", "#zz", opts)
+set("n", "%", "%zz", opts)
 
 -- Jump to line then scroll to top
 set("n", "G", "Gzt", opts)
@@ -52,6 +64,4 @@ end, { silent = true, desc = "Restore saved window layout or equalize" })
 set("n", "]q", "<Cmd>cnext<CR>zz", opts)
 set("n", "[q", "<Cmd>cprev<CR>zz", opts)
 
--- Diffview
-set("n", "<Leader>dd", "<Cmd>DiffviewToggle<CR>", opts)
-set("n", "<Leader>df", "<Cmd>DiffviewFileHistory %<CR>", opts)
+

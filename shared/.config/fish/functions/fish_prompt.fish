@@ -7,8 +7,9 @@ function fish_prompt
         set dir "~"
     end
 
-    set_color normal
+    set_color --bold
     echo -n "$host:$dir"
     __grb_git_prompt
     echo -n " $USER\$ "
+    set_color normal
 end

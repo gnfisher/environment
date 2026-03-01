@@ -10,7 +10,7 @@
 # @raycast.packageName Theme
 
 # Documentation:
-# @raycast.description Switch to dark theme (doom-one)
+# @raycast.description Switch to dark theme (mono)
 # @raycast.author gnfisher
 
 ~/.local/bin/theme dark

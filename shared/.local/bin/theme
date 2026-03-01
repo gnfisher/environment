@@ -3,7 +3,7 @@
 # Unified theme switcher for light/dark mode
 # Switches: Ghostty, Neovim, Tmux, FZF, Copilot CLI
 # OpenCode auto-follows system appearance.
-# Color scheme: doom-one everywhere
+# Color scheme: mono (light: Terminal Basic + mono, dark: mono-dark + mono)
 #
 # Usage:
 #   theme light    - Switch to light mode
@@ -65,9 +65,9 @@ switch_ghostty() {
 
     local theme_value
     if [[ "$mode" == "light" ]]; then
-        theme_value="doom-one-light"
+        theme_value="Terminal Basic"
     else
-        theme_value="Doom One"
+        theme_value="mono-dark"
     fi
 
     sed -i '' "s/^theme = .*/theme = $theme_value/" "$config_file"
@@ -98,10 +98,10 @@ switch_neovim() {
     else
         bg_mode="dark"
     fi
-    scheme="doom-one"
+    scheme="mono"
     
     # Send commands to all running Neovim instances
-    # Set background + colorscheme per mode
+    # Set background first, then colorscheme re-applies with new palette
     for socket in "${nvim_sockets[@]}"; do
         if [[ -S "$socket" ]]; then
             nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR><Cmd>colorscheme $scheme<CR>" 2>/dev/null || true
@@ -118,29 +118,29 @@ switch_tmux() {
     fi
 
     if [[ "$mode" == "light" ]]; then
-        # Tango Light - transparent bg, purple accent, dark text
-        tmux set -g status-style "bg=default,fg=#555753"
-        tmux set -g status-left "#[fg=#e090d7,bold]  #S #[default]"
-        tmux set -g status-right "#[fg=#e090d7]󰒋 #H "
-        tmux set -g window-status-format "#[bg=#d3d7cf,fg=#555753] #I #[bg=default,fg=#555753] #W "
-        tmux set -g window-status-current-format "#[bg=#e090d7,fg=#ffffff,bold] #I #[bg=default,fg=#2e3436,bold] #W "
-        tmux set -g pane-border-style "fg=#babdb6"
-        tmux set -g pane-active-border-style "fg=#e090d7"
-        tmux set -g message-style "bg=#d3d7cf,fg=#2e3436"
-        tmux set -g message-command-style "bg=#d3d7cf,fg=#2e3436"
-        tmux set -g mode-style "bg=#e090d7,fg=#ffffff"
+        # Mono Light - transparent bg, minimal
+        tmux set -g status-style "bg=default,fg=#777777"
+        tmux set -g status-left "#[fg=#222222,bold]  #S #[default]"
+        tmux set -g status-right "#[fg=#777777]󰒋 #H "
+        tmux set -g window-status-format "#[bg=#eeeeee,fg=#777777] #I #[bg=default,fg=#777777] #W "
+        tmux set -g window-status-current-format "#[bg=#222222,fg=#ffffff,bold] #I #[bg=default,fg=#222222,bold] #W "
+        tmux set -g pane-border-style "fg=#cccccc"
+        tmux set -g pane-active-border-style "fg=#222222"
+        tmux set -g message-style "bg=#eeeeee,fg=#222222"
+        tmux set -g message-command-style "bg=#eeeeee,fg=#222222"
+        tmux set -g mode-style "bg=#f5d87a,fg=#222222"
     else
-        # Tango Dark - transparent bg, purple accent, light text
-        tmux set -g status-style "bg=default,fg=#babdb6"
-        tmux set -g status-left "#[fg=#e090d7,bold]  #S #[default]"
-        tmux set -g status-right "#[fg=#e090d7]󰒋 #H "
-        tmux set -g window-status-format "#[bg=#212526,fg=#888a85] #I #[bg=default,fg=#888a85] #W "
-        tmux set -g window-status-current-format "#[bg=#e090d7,fg=#212526,bold] #I #[bg=default,fg=#eeeeec,bold] #W "
-        tmux set -g pane-border-style "fg=#555753"
-        tmux set -g pane-active-border-style "fg=#e090d7"
-        tmux set -g message-style "bg=#212526,fg=#eeeeec"
-        tmux set -g message-command-style "bg=#212526,fg=#eeeeec"
-        tmux set -g mode-style "bg=#e090d7,fg=#212526"
+        # Mono Dark - transparent bg, minimal
+        tmux set -g status-style "bg=default,fg=#777777"
+        tmux set -g status-left "#[fg=#d4d4d4,bold]  #S #[default]"
+        tmux set -g status-right "#[fg=#777777]󰒋 #H "
+        tmux set -g window-status-format "#[bg=#2d2d2d,fg=#606060] #I #[bg=default,fg=#606060] #W "
+        tmux set -g window-status-current-format "#[bg=#d4d4d4,fg=#191919,bold] #I #[bg=default,fg=#d4d4d4,bold] #W "
+        tmux set -g pane-border-style "fg=#3a3a3a"
+        tmux set -g pane-active-border-style "fg=#d4d4d4"
+        tmux set -g message-style "bg=#2d2d2d,fg=#d4d4d4"
+        tmux set -g message-command-style "bg=#2d2d2d,fg=#d4d4d4"
+        tmux set -g mode-style "bg=#504000,fg=#d4d4d4"
     fi
 }
 
@@ -150,19 +150,19 @@ switch_fzf() {
     local fish_theme_file="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/fzf-theme.fish"
     
     if [[ "$mode" == "light" ]]; then
-        # Doom One Light colors for FZF
-        local fzf_opts="--color=bg+:#e7e7e7,bg:#fafafa,spinner:#a626a4,hl:#e45649 \
---color=fg:#383a42,header:#4078f2,info:#a626a4,pointer:#4078f2 \
---color=marker:#50a14f,fg+:#383a42,prompt:#a626a4,hl+:#e45649 \
---color=selected-bg:#dfdfdf \
---color=border:#c6c7c7,label:#383a42"
+        # Mono light - grayscale FZF
+        local fzf_opts="--color=bg+:#eeeeee,bg:#ffffff,spinner:#999999,hl:#cc0000 \
+--color=fg:#222222,header:#444444,info:#999999,pointer:#222222 \
+--color=marker:#222222,fg+:#222222,prompt:#555555,hl+:#cc0000 \
+--color=selected-bg:#e0e0e0 \
+--color=border:#cccccc,label:#222222"
     else
-        # Doom One Dark colors for FZF
-        local fzf_opts="--color=bg+:#3f444a,bg:#282c34,spinner:#c678dd,hl:#ff6c6b \
---color=fg:#bbc2cf,header:#51afef,info:#c678dd,pointer:#51afef \
---color=marker:#98be65,fg+:#bbc2cf,prompt:#c678dd,hl+:#ff6c6b \
---color=selected-bg:#3f444a \
---color=border:#3f444a,label:#bbc2cf"
+        # Mono dark - grayscale FZF
+        local fzf_opts="--color=bg+:#2d2d2d,bg:#191919,spinner:#777777,hl:#ff8787 \
+--color=fg:#d4d4d4,header:#aaaaaa,info:#777777,pointer:#d4d4d4 \
+--color=marker:#d4d4d4,fg+:#d4d4d4,prompt:#999999,hl+:#ff8787 \
+--color=selected-bg:#3a3a3a \
+--color=border:#3a3a3a,label:#d4d4d4"
     fi
     
     # Update fish config file (resolve symlink first)

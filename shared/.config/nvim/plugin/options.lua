@@ -5,8 +5,8 @@ opt.termguicolors = true
 opt.splitright = true
 opt.splitbelow = true
 
-opt.number = false
-opt.numberwidth = 1
+opt.number = true
+opt.numberwidth = 5
 opt.signcolumn = "yes"
 opt.showtabline = 2
 
@@ -52,7 +52,8 @@ function _G.custom_tabline()
 end
 
 vim.opt.tabline = "%!v:lua.custom_tabline()"
-opt.cursorline = false
+opt.cursorline = true
+opt.cursorcolumn = true
 
 opt.tabstop = 2
 opt.softtabstop = 2

@@ -1,0 +1,41 @@
+# Mono Dark - minimal monochromatic terminal theme
+# Matches the mono.lua Neovim dark colorscheme
+
+background = #191919
+foreground = #d4d4d4
+cursor-color = #d4d4d4
+cursor-text = #191919
+selection-background = #504000
+selection-foreground = #d4d4d4
+
+# black
+palette = 0=#191919
+palette = 8=#606060
+
+# red (errors)
+palette = 1=#ff8787
+palette = 9=#ff5f5f
+
+# green (additions)
+palette = 2=#7fb87f
+palette = 10=#7fb87f
+
+# yellow (warnings)
+palette = 3=#ffaf87
+palette = 11=#ffaf87
+
+# blue (muted)
+palette = 4=#999999
+palette = 12=#999999
+
+# magenta (muted)
+palette = 5=#777777
+palette = 6=#aaaaaa
+palette = 13=#777777
+
+# cyan (muted)
+palette = 14=#aaaaaa
+
+# white
+palette = 7=#d4d4d4
+palette = 15=#d4d4d4
