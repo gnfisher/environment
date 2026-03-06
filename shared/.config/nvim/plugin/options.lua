@@ -52,8 +52,6 @@ function _G.custom_tabline()
 end
 
 vim.opt.tabline = "%!v:lua.custom_tabline()"
-opt.cursorline = true
-opt.cursorcolumn = true
 
 opt.tabstop = 2
 opt.softtabstop = 2

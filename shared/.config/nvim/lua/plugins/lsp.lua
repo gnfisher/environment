@@ -29,15 +29,34 @@ return {
         desc = "LSP actions",
         callback = function(event)
           local opts = { buffer = event.buf }
+          local telescope_builtin = require("telescope.builtin")
+          local telescope_actions = require("telescope.actions")
+
+          local function telescope_jump_with_zz(picker)
+            picker({
+              attach_mappings = function(prompt_bufnr, map)
+                local function select_and_center()
+                  telescope_actions.select_default(prompt_bufnr)
+                  vim.schedule(function()
+                    vim.cmd("normal! zz")
+                  end)
+                end
+
+                map("i", "<CR>", select_and_center)
+                map("n", "<CR>", select_and_center)
+                return true
+              end,
+            })
+          end
 
           vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<cr>", opts)
-          vim.keymap.set("n", "gd", "<cmd>Telescope lsp_definitions<cr>", opts)
-          vim.keymap.set("n", "<F12>", "<cmd>Telescope lsp_definitions<cr>", opts)
-          vim.keymap.set("n", "gD", "<cmd>Telescope lsp_type_definitions<cr>", opts)
-          vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations<cr>", opts)
-          vim.keymap.set("n", "go", "<cmd>Telescope lsp_type_definitions<cr>", opts)
-          vim.keymap.set("n", "gr", "<cmd>Telescope lsp_references<cr>", opts)
-          vim.keymap.set("n", "<S-F12>", "<cmd>Telescope lsp_references<cr>", opts)
+          vim.keymap.set("n", "gd", function() telescope_jump_with_zz(telescope_builtin.lsp_definitions) end, opts)
+          vim.keymap.set("n", "<F12>", function() telescope_jump_with_zz(telescope_builtin.lsp_definitions) end, opts)
+          vim.keymap.set("n", "gD", function() telescope_jump_with_zz(telescope_builtin.lsp_type_definitions) end, opts)
+          vim.keymap.set("n", "gi", function() telescope_jump_with_zz(telescope_builtin.lsp_implementations) end, opts)
+          vim.keymap.set("n", "go", function() telescope_jump_with_zz(telescope_builtin.lsp_type_definitions) end, opts)
+          vim.keymap.set("n", "gr", function() telescope_jump_with_zz(telescope_builtin.lsp_references) end, opts)
+          vim.keymap.set("n", "<S-F12>", function() telescope_jump_with_zz(telescope_builtin.lsp_references) end, opts)
           vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
           vim.keymap.set("n", "<leader>vd", function()
             local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line('.') - 1 })

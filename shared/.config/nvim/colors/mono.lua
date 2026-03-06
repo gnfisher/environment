@@ -40,10 +40,9 @@ if is_light then
     pmenusel = "#d0e4f5",
     nontext  = "#cccccc",
 
-    -- Cursor accent (warm amber)
-    cursorline_bg = "#f5f0e0",
-    linenr_fg     = "#b89a60",
-    curlinenr_fg  = "#8a6d20",
+    -- Status line
+    statusline_fg = "#222222",
+    statusline_bg = "#e0e0e0",
 
     -- Diagnostics (red/orange, matching lucius style)
     error_fg = "#cc0000",
@@ -69,6 +68,7 @@ if is_light then
     spell_cap   = "#bf6900",
     spell_local = "#856404",
     spell_rare  = "#22863a",
+
   }
 else
   colors = {
@@ -98,10 +98,9 @@ else
     pmenusel = "#264f78",
     nontext  = "#3a3a3a",
 
-    -- Cursor accent (warm amber)
-    cursorline_bg = "#2a2418",
-    linenr_fg     = "#7a6530",
-    curlinenr_fg  = "#d4a840",
+    -- Status line
+    statusline_fg = "#191919",
+    statusline_bg = "#d4d4d4",
 
     -- Diagnostics (red/orange, matching lucius style)
     error_fg = "#ff8787",
@@ -127,6 +126,7 @@ else
     spell_cap   = "#ffaf87",
     spell_local = "#d7af5f",
     spell_rare  = "#5faf5f",
+
   }
 end
 
@@ -151,20 +151,20 @@ hi("Normal",        { fg = colors.fg, bg = colors.bg })
 hi("NormalNC",      { fg = colors.fg, bg = colors.bg })
 hi("Cursor",        { fg = colors.bg, bg = colors.cursor })
 hi("CursorIM",      { fg = colors.bg, bg = colors.cursor })
-hi("CursorLine",    { bg = colors.cursorline_bg })
-hi("CursorColumn",  { bg = colors.cursorline_bg })
+hi("CursorLine",    { bg = colors.gray3 })
+hi("CursorColumn",  { bg = colors.gray3 })
 hi("ColorColumn",   { bg = colors.gray3 })
 hi("Visual",        { bg = colors.visual })
 hi("VisualNOS",     { fg = colors.fg, gui = "underline" })
 
-hi("LineNr",        { fg = colors.linenr_fg, bg = colors.bg })
-hi("CursorLineNr",  { fg = colors.curlinenr_fg, bg = colors.bg, gui = "bold" })
+hi("LineNr",        { fg = colors.gray6, bg = colors.bg })
+hi("CursorLineNr",  { fg = colors.gray9, bg = colors.bg, gui = "bold" })
 hi("SignColumn",    { fg = colors.gray7, bg = colors.bg })
 
-hi("StatusLine",    { fg = colors.bg, bg = colors.fg, gui = "bold" })
+hi("StatusLine",    { fg = colors.statusline_fg, bg = colors.statusline_bg, gui = "bold" })
 hi("StatusLineNC",  { fg = colors.gray8, bg = colors.gray4 })
-hi("VertSplit",     { fg = colors.gray5 })
-hi("WinSeparator",  { fg = colors.gray5 })
+hi("VertSplit",     { fg = colors.gray4, bg = colors.gray4 })
+hi("WinSeparator",  { fg = colors.gray4, bg = colors.gray4 })
 
 hi("TabLine",       { fg = colors.gray7, bg = colors.bg })
 hi("TabLineFill",   { bg = colors.bg })

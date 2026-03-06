@@ -76,6 +76,7 @@ switch_ghostty() {
 # Switch Neovim theme in all running instances
 switch_neovim() {
     local mode="$1"
+    local nvim_color_file="${XDG_CONFIG_HOME:-$HOME/.config}/nvim/plugin/color.lua"
     
     # Find all Neovim server sockets
     local nvim_sockets=()
@@ -99,12 +100,23 @@ switch_neovim() {
         bg_mode="dark"
     fi
     scheme="mono"
+
+    if [[ -f "$nvim_color_file" ]]; then
+        nvim_color_file=$(resolve_path "$nvim_color_file")
+        sed -i '' -E "s/^vim\\.o\\.background = \"(light|dark)\"/vim.o.background = \"$bg_mode\"/" "$nvim_color_file"
+    else
+        nvim_color_file=""
+    fi
     
     # Send commands to all running Neovim instances
     # Set background first, then colorscheme re-applies with new palette
     for socket in "${nvim_sockets[@]}"; do
         if [[ -S "$socket" ]]; then
-            nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR><Cmd>colorscheme $scheme<CR>" 2>/dev/null || true
+            if [[ -n "$nvim_color_file" ]]; then
+                nvim --server "$socket" --remote-send "<Cmd>source $nvim_color_file<CR><Cmd>colorscheme $scheme<CR>" 2>/dev/null || true
+            else
+                nvim --server "$socket" --remote-send "<Cmd>set background=$bg_mode<CR><Cmd>colorscheme $scheme<CR>" 2>/dev/null || true
+            fi
         fi
     done
 }

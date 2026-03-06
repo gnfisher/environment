@@ -100,19 +100,36 @@ if [[ -f ~/.fzf.bash ]]; then
     fzf-tmux() { __fzf_lazy_load; command fzf-tmux "$@"; }
 fi
 
-# Prompt: full path + git branch
-__git_prompt() {
+__git_ref() {
     command -v git >/dev/null 2>&1 || return
-    local branch dirty
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+
+    local branch
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
-    if [[ "$branch" == "HEAD" ]]; then
-        branch=$(git rev-parse --short HEAD 2>/dev/null) || return
+    if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+        printf '%s' "$branch"
+    else
+        git rev-parse --short HEAD 2>/dev/null || return
     fi
-    if ! git diff --quiet --ignore-submodules -- 2>/dev/null || \
-       ! git diff --cached --quiet --ignore-submodules -- 2>/dev/null; then
-        dirty="*"
+}
+
+__git_ref_color() {
+    command -v git >/dev/null 2>&1 || return
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+
+    if ! git diff --quiet --ignore-submodules -- 2>/dev/null; then
+        printf '\\[\e[1;38;2;248;81;73m\\]'
+    elif ! git diff --cached --quiet --ignore-submodules -- 2>/dev/null; then
+        printf '\\[\e[1;38;2;210;153;34m\\]'
+    else
+        printf '\\[\e[1;38;2;63;185;80m\\]'
     fi
-    printf '[⎇ %s%s]' "$branch" "$dirty"
+}
+
+__git_ref_segment() {
+    local ref
+    ref=$(__git_ref) || return
+    printf ' %s%s' "$(__git_ref_color)" "$ref"
 }
 
 __is_light_theme() {
@@ -120,8 +137,8 @@ __is_light_theme() {
     [[ -f "$theme_file" && "$(cat "$theme_file")" == "light" ]]
 }
 
-# GitHub Dark Dimmed colors
-PS1='\[\e[0m\]\[\e[1;38;2;83;155;245m\]\w\[\e[0;38;2;118;131;144m\]$(__git_prompt)\[\e[1;38;2;83;155;245m\]\$ \[\e[0m\]'
+# GitHub Dark Dimmed colors (short prompt)
+PS1='\[\e[0m\]\[\e[1;38;2;83;155;245m\]\W$(__git_ref_segment)\[\e[1;38;2;83;155;245m\]\$ \[\e[0m\]'
 
 # Dynamic terminal title for Ghostty/WezTerm tabs
 __set_title() {
@@ -148,7 +165,6 @@ alias g='git'
 # Helpful
 alias dots='cd ~/Development/gnfisher/environment/'
 alias dev='cd ~/Development'
-alias copilot='copilot --disable-builtin-mcp=github'
 
 # cd with ls
 cd() {

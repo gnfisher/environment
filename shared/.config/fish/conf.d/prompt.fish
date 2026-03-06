@@ -1,39 +1,37 @@
 status is-interactive; or return
 
-function __grb_git_prompt
+function __grb_git_ref_segment
     command -sq git; or return
+    command git rev-parse --is-inside-work-tree >/dev/null 2>&1; or return
+
     set -l branch (command git rev-parse --abbrev-ref HEAD 2>/dev/null); or return
-    if test "$branch" = HEAD
-        set branch (command git rev-parse --short HEAD 2>/dev/null); or return
+    set -l ref
+    if test "$branch" = main -o "$branch" = master
+        set ref $branch
+    else
+        set ref (command git rev-parse --short HEAD 2>/dev/null); or return
     end
 
-    set -l now (date +%s)
-    set -l last (command git log --pretty=format:'%at' -1 2>/dev/null); or return
-    set -l mins (math "($now - $last) / 60")
-
-    echo -n "($branch|"
-    if test $mins -gt 30
+    if not command git diff --quiet --ignore-submodules -- 2>/dev/null
         set_color --bold red
-    else if test $mins -gt 10
+    else if not command git diff --cached --quiet --ignore-submodules -- 2>/dev/null
         set_color --bold yellow
     else
         set_color --bold green
     end
-    echo -n "$mins"m
-    set_color --bold normal
-    echo -n ")"
+    echo -n " $ref"
 end
 
 function fish_prompt
-    set -l host (hostname -s)
     set -l dir (basename (pwd))
     if test (pwd) = $HOME
         set dir "~"
     end
 
     set_color --bold
-    echo -n "$host:$dir"
-    __grb_git_prompt
-    echo -n " $USER\$ "
+    echo -n "$dir"
+    __grb_git_ref_segment
+    set_color --bold
+    echo -n "\$ "
     set_color normal
 end
