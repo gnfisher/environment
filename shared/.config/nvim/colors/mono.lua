@@ -2,9 +2,9 @@
 -- Minimal monochromatic colorscheme with light and dark variants.
 -- Respects vim.o.background; toggle with F6 (see plugin/color.lua).
 --
--- Syntax uses only shades of gray differentiated by weight and style.
--- Color is reserved for diagnostics (red/orange underlines), diffs,
--- and git signs.
+-- Syntax stays mostly grayscale differentiated by weight and style.
+-- Restrained color is used for navigation-critical structure (functions,
+-- methods, returns), diagnostics, diffs, and git signs.
 
 vim.cmd("highlight clear")
 vim.g.colors_name = "mono"
@@ -43,6 +43,11 @@ if is_light then
     -- Status line
     statusline_fg = "#222222",
     statusline_bg = "#e0e0e0",
+
+    -- Structural accents
+    fold_bg       = "#e0e0e0",
+    accent_fn     = "#333333",
+    accent_return = "#555555",
 
     -- Diagnostics (red/orange, matching lucius style)
     error_fg = "#cc0000",
@@ -101,6 +106,11 @@ else
     -- Status line
     statusline_fg = "#191919",
     statusline_bg = "#d4d4d4",
+
+    -- Structural accents
+    fold_bg       = "#303030",
+    accent_fn     = "#bbbbbb",
+    accent_return = "#999999",
 
     -- Diagnostics (red/orange, matching lucius style)
     error_fg = "#ff8787",
@@ -166,12 +176,12 @@ hi("StatusLineNC",  { fg = colors.gray8, bg = colors.gray4 })
 hi("VertSplit",     { fg = colors.gray4, bg = colors.gray4 })
 hi("WinSeparator",  { fg = colors.gray4, bg = colors.gray4 })
 
-hi("TabLine",       { fg = colors.gray7, bg = colors.bg })
-hi("TabLineFill",   { bg = colors.bg })
+hi("TabLineFill",   { bg = colors.gray3 })
+hi("TabLine",       { fg = colors.gray8, bg = colors.gray3 })
 hi("TabLineSel",    { fg = colors.fg, bg = colors.bg, gui = "bold" })
 
-hi("Folded",        { fg = colors.gray8, bg = colors.gray3, gui = "bold" })
-hi("FoldColumn",    { fg = colors.gray7, bg = colors.bg })
+hi("Folded",        { fg = colors.fg, bg = colors.fold_bg, gui = "bold" })
+hi("FoldColumn",    { fg = colors.accent_fn, bg = colors.bg })
 
 hi("NonText",       { fg = colors.nontext })
 hi("SpecialKey",    { fg = colors.gray6 })
@@ -213,7 +223,7 @@ hi("MoreMsg",       { fg = colors.fg, gui = "bold" })
 hi("Question",      { fg = colors.fg })
 
 -- ============================================================================
--- Syntax — monochromatic: shades + weight/style only
+-- Syntax — mostly monochromatic with restrained structural accents
 -- ============================================================================
 
 hi("Comment",       { fg = colors.gray8, gui = "italic" })
@@ -322,7 +332,7 @@ hi("GitSignsChangeLn",  { bg = colors.diff_change })
 hi("GitSignsDeleteLn",  { bg = colors.diff_delete })
 
 -- ============================================================================
--- Treesitter — same monochromatic philosophy
+-- Treesitter — same mono-plus philosophy
 -- ============================================================================
 
 hi("@comment",              { fg = colors.gray8, gui = "italic" })
@@ -347,10 +357,13 @@ hi("@parameter",            { fg = colors.fg })
 hi("@field",                { fg = colors.fg })
 hi("@property",             { fg = colors.fg })
 
-hi("@function",             { fg = colors.fg })
+hi("@function",             { fg = colors.accent_fn, gui = "bold" })
 hi("@function.builtin",     { fg = colors.fg })
 hi("@function.call",        { fg = colors.fg })
-hi("@method",               { fg = colors.fg })
+hi("@function.method",      { fg = colors.accent_fn, gui = "bold" })
+hi("@function.method.call", { fg = colors.fg })
+hi("@function.signature",   { fg = colors.fg, gui = "bold" })
+hi("@method",               { fg = colors.accent_fn, gui = "bold" })
 hi("@method.call",          { fg = colors.fg })
 hi("@constructor",          { fg = colors.fg, gui = "bold" })
 
@@ -364,7 +377,7 @@ hi("@namespace",            { fg = colors.gray10 })
 
 hi("@keyword",              { fg = colors.fg, gui = "bold" })
 hi("@keyword.function",     { fg = colors.fg, gui = "bold" })
-hi("@keyword.return",       { fg = colors.fg, gui = "bold" })
+hi("@keyword.return",       { fg = colors.accent_return })
 hi("@keyword.operator",     { fg = colors.fg, gui = "bold" })
 hi("@keyword.import",       { fg = colors.gray10 })
 hi("@keyword.conditional",  { fg = colors.fg, gui = "bold" })
@@ -374,7 +387,7 @@ hi("@keyword.exception",    { fg = colors.fg, gui = "bold" })
 hi("@operator",             { fg = colors.fg })
 
 hi("@punctuation.delimiter", { fg = colors.fg })
-hi("@punctuation.bracket",   { fg = colors.fg, gui = "bold" })
+hi("@punctuation.bracket",   { fg = colors.fg })
 hi("@punctuation.special",   { fg = colors.gray9, gui = "italic" })
 
 hi("@tag",                  { fg = colors.fg, gui = "bold" })

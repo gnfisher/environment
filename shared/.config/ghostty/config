@@ -1,7 +1,7 @@
 # Font
 # font-family = Menlo
-# iosevkaterm nerd font mono
-#font-size = 13
+font-family = iosevkaterm nerd font mono
+font-size = 15
 #adjust-cell-width = -1
 # adjust-cell-height = 5
 

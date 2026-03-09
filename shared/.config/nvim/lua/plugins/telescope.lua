@@ -5,6 +5,7 @@ return {
 		"debugloop/telescope-undo.nvim",
 		"isak102/telescope-git-file-history.nvim",
 		{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+		{ "gnfisher/nvim-telescope-ctags-plus", branch = "modernize" },
 	},
 	opts = {
 		pickers = {
@@ -22,6 +23,7 @@ return {
 		},
 		extensions = {
 			fzf = {},
+			ctags_plus = {},
 		},
 	},
 	config = function(_, opts)
@@ -29,6 +31,7 @@ return {
 		require("telescope").load_extension("undo")
 		require("telescope").load_extension("fzf")
 		require("telescope").load_extension("git_file_history")
+		require("telescope").load_extension("ctags_plus")
 	end,
 	keys = {
 		{ "<leader>ff", "<cmd>Telescope git_files<cr>", desc = "Find in git files" },
@@ -43,5 +46,8 @@ return {
 		{ "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Find help" },
 		{ "<leader>fc", "<cmd>Telescope commands<cr>", desc = "Find commands" },
 		{ "<leader>fk", "<cmd>Telescope keymaps<cr>", desc = "Find keymaps" },
+		{ "g]", "<cmd>lua require('telescope').extensions.ctags_plus.jump_to_tag()<cr>", desc = "Jump to ctag" },
+		{ "g]", "<cmd>lua require('telescope').extensions.ctags_plus.jump_to_tag({ word_source = 'visual' })<cr>", mode = "x", desc = "Jump to ctag (visual)" },
+		{ "<leader>ft", "<cmd>lua require('telescope').extensions.ctags_plus.select_tag()<cr>", desc = "Select ctag" },
 	},
 }
