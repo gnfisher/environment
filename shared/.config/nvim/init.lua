@@ -2,8 +2,7 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
--- colorscheme set here (mono supports light+dark via vim.o.background)
-vim.cmd.colorscheme("mono")
+vim.cmd.colorscheme("standard-light")
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then

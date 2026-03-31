@@ -115,7 +115,10 @@ return {
         before_init = function(params, config)
           -- Pass local config explicitly to prevent golangci-lint v2 from
           -- walking up to parent directories and finding a v1 config.
-          local root = params.rootUri and vim.uri_to_fname(params.rootUri) or vim.fn.getcwd()
+          -- Neovim 0.12+: JSON null → vim.NIL (truthy userdata), not nil
+          local root_uri = params.rootUri
+          if root_uri == vim.NIL then root_uri = nil end
+          local root = root_uri and vim.uri_to_fname(root_uri) or vim.fn.getcwd()
           local names = {
             ".golangci.toml", ".golangci.yml", ".golangci.yaml", ".golangci.json",
             "golangci.toml", "golangci.yml", "golangci.yaml", "golangci.json",
