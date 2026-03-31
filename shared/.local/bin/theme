@@ -191,6 +191,11 @@ EOF
     
     # Export for current shell session
     export FZF_DEFAULT_OPTS="$fzf_opts"
+
+    # Update tmux server environment so popups pick up the new colors
+    if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
+        tmux set-environment -g FZF_DEFAULT_OPTS "$fzf_opts"
+    fi
 }
 
 # Switch Copilot CLI theme
