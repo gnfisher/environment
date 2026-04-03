@@ -22,7 +22,7 @@ Add relevant emojis to markdown content in repository `.md` files.
 - Do not modify code blocks, inline code, links, URLs, or command examples just to add emojis.
 - Prefer one emoji per heading or list item where it improves scannability.
 - Avoid overuse; skip emojis where they reduce clarity.
-- Use semantically appropriate emojis (for example: setup, warning, tips, docs, tools).
+- Use semantically appropriate emojis (for example: ⚙️ setup, ⚠️ warning, 💡 tips, 📚 docs, 🛠️ tools).
 - Keep existing markdown structure intact.
 
 ## Output Expectations
