@@ -1,10 +1,10 @@
-# Environment
+# 🛠️ Environment
 
 Personal development environment managed with GNU Stow.
 
-## Quick Start
+## ⚙️ Quick Start
 
-### macOS
+### 🍎 macOS
 
 ```bash
 # Clone
@@ -17,7 +17,7 @@ stow -d ~/Development/gnfisher/environment -t ~ shared
 stow -d ~/Development/gnfisher/environment -t ~ macos
 ```
 
-### Ubuntu / Codespaces
+### 🐧 Ubuntu / Codespaces
 
 ```bash
 # Clone and run install script
@@ -26,11 +26,10 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-## Repository Layout
+## 📁 Repository Layout
 
-- `shared/` - Cross-platform configs (stowed to `~`)
-- `macos/` - macOS-specific configs
-- `linux/` - Linux-specific configs
-- `install.sh` - Setup script for Ubuntu/Codespaces
-- `resources/` - Fonts and other resources
-
+- 🌐 `shared/` - Cross-platform configs (stowed to `~`)
+- 🍎 `macos/` - macOS-specific configs
+- 🐧 `linux/` - Linux-specific configs
+- ⚙️ `install.sh` - Setup script for Ubuntu/Codespaces
+- 🔤 `resources/` - Fonts and other resources
