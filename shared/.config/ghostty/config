@@ -3,6 +3,9 @@ font-family = Consolas
 font-size = 17
 font-thicken = true
 
+# Theme (managed by ~/.local/bin/theme)
+theme = mono-dark
+
 # macOS options
 macos-option-as-alt = true
 

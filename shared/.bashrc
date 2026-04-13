@@ -89,6 +89,10 @@ if command -v gpgconf >/dev/null 2>&1; then
 fi
 
 # FZF integration (lazy load)
+if [[ -f ~/.config/bash/fzf-theme.bash ]]; then
+    . ~/.config/bash/fzf-theme.bash
+fi
+
 if [[ -f ~/.fzf.bash ]]; then
     __fzf_lazy_loaded=0
     __fzf_lazy_load() {

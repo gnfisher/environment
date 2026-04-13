@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v ws >/dev/null 2>&1; then
+    echo "ws command not found in PATH" >&2
+    exit 1
+fi
+if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required for ws-pick" >&2
+    exit 1
+fi
+if ! command -v fzf >/dev/null 2>&1; then
+    echo "fzf is required for ws-pick" >&2
+    exit 1
+fi
+
+selection=$(
+    ws list --all --full --json \
+        | jq -r '.[] | [.repo, .name, .branch, (.lastActiveHuman // "-"), (if .tmux then "yes" else "no" end), .path] | @tsv' \
+        | awk -F'\t' '
+            function fit(s, w) {
+                if (length(s) <= w) return s
+                return substr(s, 1, w - 3) "..."
+            }
+            {
+                printf "%-12s  %-28s  %-38s  %-11s  %-3s\t%s\n",
+                    fit($1, 12),
+                    fit($2, 28),
+                    fit($3, 38),
+                    fit($4, 11),
+                    fit($5, 3),
+                    $6
+            }
+        ' \
+        | fzf --reverse \
+              --prompt 'worktree> ' \
+              --delimiter $'\t' \
+              --with-nth=1 \
+              --preview 'printf "%s\n" {} | cut -f2' \
+              --preview-window 'down,3,wrap'
+)
+
+[[ -n "$selection" ]] || exit 0
+path=$(printf '%s' "$selection" | cut -f2)
+[[ -n "$path" ]] || exit 1
+
+exec ws open "$path"

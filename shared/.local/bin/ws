@@ -271,6 +271,53 @@ latest_copilot_session_title_for_id() {
         2>/dev/null | head -n1
 }
 
+latest_copilot_session_updated_at_for_id() {
+    local session_id="$1"
+    [[ -f "$COPILOT_DB" ]] || return 1
+    [[ -n "$session_id" ]] || return 1
+    command -v sqlite3 >/dev/null 2>&1 || return 1
+
+    local escaped
+    escaped=$(sql_escape "$session_id")
+    sqlite3 -noheader "$COPILOT_DB" \
+        "SELECT COALESCE(NULLIF(updated_at, ''), '') FROM sessions WHERE id='${escaped}' LIMIT 1;" \
+        2>/dev/null | head -n1
+}
+
+format_updated_at() {
+    local iso="$1"
+    [[ -n "$iso" ]] || {
+        printf '%s' "-"
+        return 0
+    }
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$iso" <<'PY'
+from datetime import datetime, timezone
+import sys
+
+iso = sys.argv[1]
+try:
+    ts = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    now = datetime.now(timezone.utc)
+    seconds = max(0, int((now - ts).total_seconds()))
+    if seconds < 60:
+        print("now")
+    elif seconds < 3600:
+        print(f"{(seconds + 59) // 60}m")
+    elif seconds < 86400:
+        print(f"{(seconds + 3599) // 3600}h")
+    elif seconds < 604800:
+        print(f"{(seconds + 86399) // 86400}d")
+    else:
+        print(f"{(seconds + 604799) // 604800}w")
+except Exception:
+    print(iso)
+PY
+        return 0
+    fi
+    printf '%s' "$iso"
+}
+
 normalize_cell() {
     local value="$1"
     value="${value//$'\t'/ }"
@@ -303,31 +350,42 @@ output_list_rows() {
     shift 2
     local records=("$@")
     local sep=$'\x1f'
+    local sorted_records=()
+    local record
+
+    while IFS= read -r record; do
+        sorted_records+=("$record")
+    done < <(printf '%s\n' "${records[@]}" | LC_ALL=C sort -t "$sep" -k1,1 -k9,9r -k2,2)
+
+    records=("${sorted_records[@]}")
 
     if [[ "$output_format" == "json" ]]; then
         local first=1
         printf "[\n"
-        local record
         for record in "${records[@]}"; do
-            local repo name path branch tmux_status tmux_session copilot_session resume_id
-            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id <<<"$record"
+            local repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active
+            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active <<<"$record"
             local tmux_bool="false"
             [[ "$tmux_status" == "yes" ]] && tmux_bool="true"
             [[ "$first" -eq 1 ]] || printf ",\n"
             first=0
 
             if [[ "$output_view" == "simple" ]]; then
-                printf '  {"repo":"%s","name":"%s","branch":"%s","tmux":%s}' \
+                printf '  {"repo":"%s","name":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s","tmux":%s}' \
                     "$(json_escape "$repo")" \
                     "$(json_escape "$name")" \
                     "$(json_escape "$branch")" \
+                    "$(json_escape "$last_active_iso")" \
+                    "$(json_escape "$last_active")" \
                     "$tmux_bool"
             else
-                printf '  {"repo":"%s","name":"%s","path":"%s","branch":"%s","tmux":%s,"tmuxSession":"%s","copilotSession":"%s","resumeId":"%s"}' \
+                printf '  {"repo":"%s","name":"%s","path":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s","tmux":%s,"tmuxSession":"%s","copilotSession":"%s","resumeId":"%s"}' \
                     "$(json_escape "$repo")" \
                     "$(json_escape "$name")" \
                     "$(json_escape "$path")" \
                     "$(json_escape "$branch")" \
+                    "$(json_escape "$last_active_iso")" \
+                    "$(json_escape "$last_active")" \
                     "$tmux_bool" \
                     "$(json_escape "$tmux_session")" \
                     "$(json_escape "$copilot_session")" \
@@ -340,19 +398,19 @@ output_list_rows() {
 
     {
         if [[ "$output_view" == "simple" ]]; then
-            printf "REPO\tNAME\tBRANCH\tTMUX\n"
+            printf "REPO\tNAME\tBRANCH\tLAST_ACTIVE\tTMUX\n"
         else
-            printf "REPO\tNAME\tPATH\tBRANCH\tTMUX\tTMUX_SESSION\tCOPILOT_SESSION\tRESUME_ID\n"
+            printf "REPO\tNAME\tPATH\tBRANCH\tLAST_ACTIVE\tTMUX\tTMUX_SESSION\tCOPILOT_SESSION\tRESUME_ID\n"
         fi
         local record
         for record in "${records[@]}"; do
-            local repo name path branch tmux_status tmux_session copilot_session resume_id
-            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id <<<"$record"
+            local repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active
+            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active <<<"$record"
             if [[ "$output_view" == "simple" ]]; then
-                printf "%s\t%s\t%s\t%s\n" "$repo" "$name" "$branch" "$tmux_status"
+                printf "%s\t%s\t%s\t%s\t%s\n" "$repo" "$name" "$branch" "$last_active" "$tmux_status"
             else
-                printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                    "$repo" "$name" "$path" "$branch" "$tmux_status" "$tmux_session" "$copilot_session" "$resume_id"
+                printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+                    "$repo" "$name" "$path" "$branch" "$last_active" "$tmux_status" "$tmux_session" "$copilot_session" "$resume_id"
             fi
         done
     } | render_table
@@ -670,7 +728,7 @@ cmd_list() {
         [[ "$wt_path" == "$REPO_DIR" ]] && continue
         [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
 
-        local display branch session tmux_status resume_id resume_title
+        local display branch session tmux_status resume_id resume_title resume_updated_at last_active
         display="${wt_path#${REPO_WT_DIR}/}"
         branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
         session=$(tmux_session_name_from_path "$REPO_NAME" "$display" "$wt_path")
@@ -678,11 +736,13 @@ cmd_list() {
         tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
         resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
         resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+        resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
+        last_active=$(format_updated_at "$resume_updated_at")
         [[ -z "$resume_title" ]] && resume_title="-"
         [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
         [[ -z "$resume_id" ]] && resume_id="-"
 
-        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
             "$(normalize_cell "$REPO_NAME")" "$sep" \
             "$(normalize_cell "$display")" "$sep" \
             "$(normalize_cell "$wt_path")" "$sep" \
@@ -690,7 +750,9 @@ cmd_list() {
             "$tmux_status" "$sep" \
             "$(normalize_cell "$session")" "$sep" \
             "$(normalize_cell "$resume_title")" "$sep" \
-            "$resume_id")")
+            "$resume_id" "$sep" \
+            "$(normalize_cell "$resume_updated_at")" "$sep" \
+            "$(normalize_cell "$last_active")")")
     done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
 
     if [[ ${#rows[@]} -eq 0 ]]; then
@@ -712,7 +774,7 @@ cmd_list_all() {
     local rows=()
     local sep=$'\x1f'
     while IFS= read -r wt_path; do
-        local repo display branch session tmux_status resume_id resume_title
+        local repo display branch session tmux_status resume_id resume_title resume_updated_at last_active
         repo=$(repo_name_from_worktree_path "$wt_path")
         display=$(worktree_display_name "$wt_path" "$repo")
         branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
@@ -721,11 +783,13 @@ cmd_list_all() {
         tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
         resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
         resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+        resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
+        last_active=$(format_updated_at "$resume_updated_at")
         [[ -z "$resume_title" ]] && resume_title="-"
         [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
         [[ -z "$resume_id" ]] && resume_id="-"
 
-        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
             "$(normalize_cell "$repo")" "$sep" \
             "$(normalize_cell "$display")" "$sep" \
             "$(normalize_cell "$wt_path")" "$sep" \
@@ -733,7 +797,9 @@ cmd_list_all() {
             "$tmux_status" "$sep" \
             "$(normalize_cell "$session")" "$sep" \
             "$(normalize_cell "$resume_title")" "$sep" \
-            "$resume_id")")
+            "$resume_id" "$sep" \
+            "$(normalize_cell "$resume_updated_at")" "$sep" \
+            "$(normalize_cell "$last_active")")")
     done < <(find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null | sort)
 
     if [[ ${#rows[@]} -eq 0 ]]; then
