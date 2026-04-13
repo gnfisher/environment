@@ -1,68 +1,139 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ws - Git worktree manager with tmux integration
-# Repo-agnostic: detects org/repo from git remote origin
-# Worktrees stored in ~/.worktrees/{org}/{repo}/{name}
+# ws - Copilot worktree + tmux session manager
+#
+# Conventions:
+# - Worktrees live under ~/.copilot/copilot-worktrees/<repo>/...
+# - PR worktrees: <repo>/pr-<number>
+# - Named worktrees: <repo>/<user>/<session-slug>
 
-WORKTREE_BASE="$HOME/.worktrees"
+WORKTREE_BASE="${WS_WORKTREE_BASE:-$HOME/.copilot/copilot-worktrees}"
+COPILOT_DB="${WS_COPILOT_DB:-$HOME/.copilot/data.db}"
+WS_USER="${WS_USER:-$USER}"
+WS_OPEN_COPILOT="${WS_OPEN_COPILOT:-1}"
+WS_OPEN_LAZYGIT="${WS_OPEN_LAZYGIT:-1}"
+
+REPO_ORG=""
+REPO_NAME=""
+REPO_DIR=""
+REPO_WT_DIR=""
+LOCK_PATH=""
 
 show_help() {
     cat << 'EOF'
-ws - Git worktree manager with tmux integration
+ws - Copilot worktree + tmux session manager
 
 Usage: ws <command> [options]
 
 Commands:
-  new <name>              Create worktree branching off default branch
-  new --pr <url>          Create worktree from a GitHub PR URL
-  list                    List worktrees for current repo
-  list --all              List worktrees across all repos
-  open <name>             Open worktree in a tmux session (nvim + copilot)
-  delete <name>           Remove worktree and kill its tmux session
-  clean                   Remove all worktrees for current repo
+  new <session-slug>        Create named worktree from default branch
+  new --pr <n|url>          Create/reuse PR worktree (pr-<number>)
+  pr <n|url>                Shortcut for: ws new --pr <n|url>
+  open <name|path>          Open an existing worktree in tmux
+  list                      List managed worktrees for current repo (default: simple view)
+  list --all                List managed worktrees across repos
+  list --full               Include tmux session + Copilot session metadata
+  list --json               Emit JSON for scripts/fzf/tmux pipelines
+  delete <name|path>        Remove one managed worktree + tmux session
+  clean                     Remove all managed worktrees for current repo
 
-Run from inside any git repository. Org and repo are detected from the
-origin remote URL.
-
-Worktree paths:  ~/.worktrees/{org}/{repo}/{name}/
-Tmux sessions:   {repo}#{branch-name}
+Notes:
+  - Source repo is resolved from ~/Development/<owner>/<repo> when needed.
+  - On open, ws starts Copilot with --resume=<session-id> when it finds
+    a prior session mapped to that checkout path in ~/.copilot/data.db.
 
 Options:
   -h, --help    Show this help message
 
 Examples:
-  ws new fix-login            # new worktree + tmux session
-  ws new --pr https://github.com/org/repo/pull/1234
-  ws list --all                # show worktrees across all repos
-  ws open fix-login           # switch to worktree's tmux session
-  ws delete fix-login         # remove worktree + session
-  ws clean                    # remove all worktrees for this repo
+  ws new oauth-refresh-investigation
+  ws pr 426638
+  ws new --pr https://github.com/github/github/pull/426638
+  ws open pr-426638
+  ws list
+  ws list --full
+  ws list --all --json
+  ws delete pr-426638
 EOF
 }
-
-# --- helpers ----------------------------------------------------------------
 
 log() { echo "==> $*"; }
 error() { echo "Error: $*" >&2; }
 
-# Detect org and repo from git remote origin
+cleanup_lock() {
+    if [[ -n "${LOCK_PATH:-}" ]]; then
+        rmdir "$LOCK_PATH" 2>/dev/null || true
+    fi
+}
+
+canonical_dir() {
+    local dir="$1"
+    (cd "$dir" 2>/dev/null && pwd -P)
+}
+
+path_under_base() {
+    local path="$1"
+    [[ "$path" == "${WORKTREE_BASE}/"* ]]
+}
+
+ensure_managed_path() {
+    local path="$1"
+    if ! path_under_base "$path"; then
+        error "Refusing unmanaged path: $path"
+        echo "Expected path under ${WORKTREE_BASE}/" >&2
+        exit 1
+    fi
+}
+
+validate_slug() {
+    local slug="$1"
+    if [[ "$slug" == */* ]]; then
+        error "Invalid session slug '$slug': slashes are not allowed."
+        exit 1
+    fi
+    if [[ ! "$slug" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        error "Invalid session slug '$slug': use letters, numbers, '.', '_' or '-'."
+        exit 1
+    fi
+}
+
+sql_escape() {
+    printf '%s' "$1" | sed "s/'/''/g"
+}
+
+short_hash() {
+    local text="$1"
+    printf '%s' "$text" | shasum | awk '{print substr($1, 1, 6)}'
+}
+
+acquire_lock() {
+    local key="$1"
+    local lock_root="${XDG_CACHE_HOME:-$HOME/.cache}/ws/locks"
+    mkdir -p "$lock_root"
+    LOCK_PATH="${lock_root}/${key}.lock"
+    if ! mkdir "$LOCK_PATH" 2>/dev/null; then
+        error "Another ws operation is already running for this target."
+        exit 1
+    fi
+    trap cleanup_lock EXIT
+}
+
 detect_repo_info() {
     local url
     url=$(git remote get-url origin 2>/dev/null) || {
         error "Not in a git repository or no 'origin' remote"
         exit 1
     }
-
-    # Strip trailing .git if present
     url="${url%.git}"
 
-    # SSH: git@github.com:org/repo
     if [[ "$url" =~ ^git@[^:]+:([^/]+)/([^/]+)$ ]]; then
         REPO_ORG="${BASH_REMATCH[1]}"
         REPO_NAME="${BASH_REMATCH[2]}"
-    # HTTPS: https://github.com/org/repo
     elif [[ "$url" =~ ^https://[^/]+/([^/]+)/([^/]+)$ ]]; then
+        REPO_ORG="${BASH_REMATCH[1]}"
+        REPO_NAME="${BASH_REMATCH[2]}"
+    elif [[ "$url" =~ ^ssh://git@[^/]+/([^/]+)/([^/]+)$ ]]; then
         REPO_ORG="${BASH_REMATCH[1]}"
         REPO_NAME="${BASH_REMATCH[2]}"
     else
@@ -71,7 +142,25 @@ detect_repo_info() {
     fi
 
     REPO_DIR=$(git rev-parse --show-toplevel)
-    REPO_WT_DIR="${WORKTREE_BASE}/${REPO_ORG}/${REPO_NAME}"
+    REPO_DIR=$(canonical_dir "$REPO_DIR")
+    REPO_WT_DIR="${WORKTREE_BASE}/${REPO_NAME}"
+}
+
+set_repo_from_owner_repo() {
+    local owner="$1"
+    local repo="$2"
+    local repo_dir="$HOME/Development/${owner}/${repo}"
+
+    if [[ ! -d "${repo_dir}/.git" ]]; then
+        error "Local clone not found at ${repo_dir}"
+        echo "Clone it first: gh repo clone ${owner}/${repo} ${repo_dir}" >&2
+        exit 1
+    fi
+
+    REPO_ORG="$owner"
+    REPO_NAME="$repo"
+    REPO_DIR=$(canonical_dir "$repo_dir")
+    REPO_WT_DIR="${WORKTREE_BASE}/${REPO_NAME}"
 }
 
 get_default_branch() {
@@ -79,51 +168,198 @@ get_default_branch() {
         | sed 's@^refs/remotes/origin/@@' || echo "main"
 }
 
-worktree_path() {
-    echo "${REPO_WT_DIR}/$1"
+branch_exists() {
+    local repo_dir="$1"
+    local branch="$2"
+    git -C "$repo_dir" show-ref --verify --quiet "refs/heads/${branch}"
 }
 
-worktree_exists() {
-    [[ -d "$(worktree_path "$1")" ]]
+worktree_registered_in_repo() {
+    local repo_root="$1"
+    local wt_path="$2"
+    git -C "$repo_root" worktree list --porcelain 2>/dev/null \
+        | sed -n 's/^worktree //p' \
+        | grep -Fxq "$wt_path"
 }
 
-# Sanitize a string for use as tmux session name (no dots/colons)
-tmux_session_name() {
+worktree_path_for_named() {
     local name="$1"
-    echo "${REPO_NAME}#${name}" | tr './:' '_-_'
+    echo "${REPO_WT_DIR}/${WS_USER}/${name}"
 }
 
-# Create or switch to a tmux session for a worktree
-tmux_open() {
-    local name="$1"
-    local wt_path
-    wt_path=$(worktree_path "$name")
-    local session
-    session=$(tmux_session_name "$name")
+worktree_path_for_pr() {
+    local pr_number="$1"
+    echo "${REPO_WT_DIR}/pr-${pr_number}"
+}
 
-    if tmux has-session -t="$session" 2>/dev/null; then
-        log "Tmux session '$session' already exists, switching..."
+repo_name_from_worktree_path() {
+    local wt_path="$1"
+    local rel="${wt_path#${WORKTREE_BASE}/}"
+    echo "${rel%%/*}"
+}
+
+worktree_display_name() {
+    local wt_path="$1"
+    local repo="$2"
+    local prefix="${WORKTREE_BASE}/${repo}/"
+    if [[ "$wt_path" == "$prefix"* ]]; then
+        echo "${wt_path#$prefix}"
     else
-        log "Creating tmux session '$session'..."
+        basename "$wt_path"
+    fi
+}
 
-        # Create session (hook may rename it, so we capture the id)
-        local sid
-        sid=$(tmux new-session -d -P -F '#{session_id}' -c "$wt_path" -n "$REPO_NAME")
+tmux_session_name_from_path() {
+    local repo="$1"
+    local display="$2"
+    local wt_path="$3"
+    local base="${repo}#${display}"
+    local safe
+    safe=$(echo "$base" | tr './: ' '_---')
+    echo "${safe}-$(short_hash "$wt_path")"
+}
 
-        # Rename to our desired name (overrides the after-new-session hook)
-        tmux rename-session -t "$sid" "$session"
+latest_copilot_session_for_path() {
+    local wt_path="$1"
+    [[ -f "$COPILOT_DB" ]] || return 1
+    command -v sqlite3 >/dev/null 2>&1 || return 1
 
-        tmux set-option -t "$sid" automatic-rename off
-        tmux send-keys -t "$sid" "nvim" C-m
+    local escaped
+    escaped=$(sql_escape "$wt_path")
 
-        # Window 2: copilot
-        tmux new-window -t "$sid" -c "$wt_path" -n "copilot"
-        tmux send-keys -t "${sid}:copilot" "copilot --yolo" C-m
+    local query
+    query=$(cat <<SQL
+SELECT COALESCE(
+  (
+    SELECT wss.active_session_id
+    FROM workspace_checkout_bindings wcb
+    JOIN workspace_session_state wss ON wss.workspace_id = wcb.workspace_id
+    WHERE wcb.checkout_path = '${escaped}'
+      AND wss.active_session_id IS NOT NULL
+      AND wss.active_session_id != ''
+    LIMIT 1
+  ),
+  (
+    WITH ranked AS (
+      SELECT
+        swm.session_id,
+        ROW_NUMBER() OVER (ORDER BY s.updated_at DESC) AS rn
+      FROM workspace_checkout_bindings wcb
+      JOIN session_workspace_map swm ON swm.workspace_id = wcb.workspace_id
+      JOIN sessions s ON s.id = swm.session_id
+      WHERE wcb.checkout_path = '${escaped}'
+    )
+    SELECT session_id FROM ranked WHERE rn = 1
+  )
+);
+SQL
+)
 
-        # Focus nvim window
-        tmux select-window -t "${sid}:1"
+    sqlite3 -noheader "$COPILOT_DB" "$query" 2>/dev/null | head -n1 | tr -d '[:space:]'
+}
+
+latest_copilot_session_title_for_id() {
+    local session_id="$1"
+    [[ -f "$COPILOT_DB" ]] || return 1
+    [[ -n "$session_id" ]] || return 1
+    command -v sqlite3 >/dev/null 2>&1 || return 1
+
+    local escaped
+    escaped=$(sql_escape "$session_id")
+    sqlite3 -noheader "$COPILOT_DB" \
+        "SELECT COALESCE(NULLIF(title, ''), '') FROM sessions WHERE id='${escaped}' LIMIT 1;" \
+        2>/dev/null | head -n1
+}
+
+normalize_cell() {
+    local value="$1"
+    value="${value//$'\t'/ }"
+    value="${value//$'\n'/ }"
+    value="${value//$'\r'/ }"
+    printf '%s' "$value"
+}
+
+render_table() {
+    if command -v column >/dev/null 2>&1; then
+        column -t -s $'\t'
+    else
+        cat
+    fi
+}
+
+json_escape() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+output_list_rows() {
+    local output_format="$1"
+    local output_view="$2"
+    shift 2
+    local records=("$@")
+    local sep=$'\x1f'
+
+    if [[ "$output_format" == "json" ]]; then
+        local first=1
+        printf "[\n"
+        local record
+        for record in "${records[@]}"; do
+            local repo name path branch tmux_status tmux_session copilot_session resume_id
+            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id <<<"$record"
+            local tmux_bool="false"
+            [[ "$tmux_status" == "yes" ]] && tmux_bool="true"
+            [[ "$first" -eq 1 ]] || printf ",\n"
+            first=0
+
+            if [[ "$output_view" == "simple" ]]; then
+                printf '  {"repo":"%s","name":"%s","branch":"%s","tmux":%s}' \
+                    "$(json_escape "$repo")" \
+                    "$(json_escape "$name")" \
+                    "$(json_escape "$branch")" \
+                    "$tmux_bool"
+            else
+                printf '  {"repo":"%s","name":"%s","path":"%s","branch":"%s","tmux":%s,"tmuxSession":"%s","copilotSession":"%s","resumeId":"%s"}' \
+                    "$(json_escape "$repo")" \
+                    "$(json_escape "$name")" \
+                    "$(json_escape "$path")" \
+                    "$(json_escape "$branch")" \
+                    "$tmux_bool" \
+                    "$(json_escape "$tmux_session")" \
+                    "$(json_escape "$copilot_session")" \
+                    "$(json_escape "$resume_id")"
+            fi
+        done
+        printf "\n]\n"
+        return 0
     fi
 
+    {
+        if [[ "$output_view" == "simple" ]]; then
+            printf "REPO\tNAME\tBRANCH\tTMUX\n"
+        else
+            printf "REPO\tNAME\tPATH\tBRANCH\tTMUX\tTMUX_SESSION\tCOPILOT_SESSION\tRESUME_ID\n"
+        fi
+        local record
+        for record in "${records[@]}"; do
+            local repo name path branch tmux_status tmux_session copilot_session resume_id
+            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id <<<"$record"
+            if [[ "$output_view" == "simple" ]]; then
+                printf "%s\t%s\t%s\t%s\n" "$repo" "$name" "$branch" "$tmux_status"
+            else
+                printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+                    "$repo" "$name" "$path" "$branch" "$tmux_status" "$tmux_session" "$copilot_session" "$resume_id"
+            fi
+        done
+    } | render_table
+}
+
+attach_or_switch_tmux_session() {
+    local session="$1"
     if [[ -z "${TMUX:-}" ]]; then
         tmux attach-session -t "$session"
     else
@@ -131,15 +367,156 @@ tmux_open() {
     fi
 }
 
-# --- commands ---------------------------------------------------------------
+tmux_open_worktree() {
+    local wt_path="$1"
+    wt_path=$(canonical_dir "$wt_path")
+
+    local repo display session
+    repo=$(repo_name_from_worktree_path "$wt_path")
+    display=$(worktree_display_name "$wt_path" "$repo")
+    session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
+
+    if tmux has-session -t="$session" 2>/dev/null; then
+        log "Switching to tmux session '$session'..."
+        attach_or_switch_tmux_session "$session"
+        return 0
+    fi
+
+    log "Creating tmux session '$session'..."
+    local sid
+    sid=$(tmux new-session -d -P -F '#{session_id}' -c "$wt_path" -n "$repo")
+    tmux rename-session -t "$sid" "$session"
+    tmux set-option -t "$sid" automatic-rename off
+    tmux send-keys -t "$sid" "nvim" C-m
+
+    if [[ "$WS_OPEN_COPILOT" == "1" ]]; then
+        local copilot_cmd="copilot --yolo"
+        local resume_id=""
+        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
+        if [[ -n "$resume_id" ]]; then
+            log "Resuming Copilot session: $resume_id"
+            copilot_cmd="${copilot_cmd} --resume=${resume_id}"
+        fi
+
+        tmux new-window -t "$sid" -c "$wt_path" -n "copilot"
+        tmux send-keys -t "${sid}:copilot" "$copilot_cmd" C-m
+    fi
+
+    if [[ "$WS_OPEN_LAZYGIT" == "1" ]]; then
+        tmux new-window -t "$sid" -c "$wt_path" -n "lazygit"
+        tmux send-keys -t "${sid}:lazygit" "lazygit" C-m
+    fi
+
+    tmux select-window -t "${sid}:1"
+    attach_or_switch_tmux_session "$session"
+}
+
+parse_pr_ref() {
+    local ref="$1"
+
+    if [[ "$ref" =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
+        PR_ORG="${BASH_REMATCH[1]}"
+        PR_REPO="${BASH_REMATCH[2]}"
+        PR_NUMBER="${BASH_REMATCH[3]}"
+    elif [[ "$ref" =~ ^[0-9]+$ ]]; then
+        detect_repo_info
+        PR_ORG="$REPO_ORG"
+        PR_REPO="$REPO_NAME"
+        PR_NUMBER="$ref"
+    else
+        error "Invalid PR reference: $ref"
+        echo "Use a PR number (in a repo) or URL: https://github.com/owner/repo/pull/123" >&2
+        exit 1
+    fi
+}
+
+resolve_worktree_for_open() {
+    local input="$1"
+
+    if [[ -d "$input" ]]; then
+        canonical_dir "$input"
+        return 0
+    fi
+
+    detect_repo_info
+
+    local candidate=""
+    if [[ "$input" =~ ^pr-[0-9]+$ ]]; then
+        candidate="${REPO_WT_DIR}/${input}"
+        [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+    fi
+
+    candidate="$(worktree_path_for_named "$input")"
+    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+    candidate="${REPO_WT_DIR}/${input}"
+    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+    local matches=()
+    while IFS= read -r d; do
+        matches+=("$d")
+    done < <(find "$REPO_WT_DIR" -mindepth 1 -maxdepth 4 -type d -name "$input" 2>/dev/null | sort)
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        canonical_dir "${matches[0]}"
+        return 0
+    fi
+
+    if [[ ${#matches[@]} -gt 1 ]]; then
+        error "Ambiguous worktree name '$input'."
+        printf '  %s\n' "${matches[@]}" >&2
+        exit 1
+    fi
+
+    error "Worktree '$input' not found for repo '$REPO_NAME'."
+    exit 1
+}
+
+resolve_worktree_for_delete() {
+    local input="$1"
+
+    if [[ -d "$input" ]]; then
+        canonical_dir "$input"
+        return 0
+    fi
+
+    local matches=()
+    while IFS= read -r wt; do
+        matches+=("$wt")
+    done < <(
+        find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null \
+            | while IFS= read -r wt_path; do
+                rel=""
+                rel="${wt_path#${WORKTREE_BASE}/}"
+                if [[ "$rel" == "$input" || "$(basename "$wt_path")" == "$input" ]]; then
+                    echo "$wt_path"
+                fi
+            done | sort
+    )
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        canonical_dir "${matches[0]}"
+        return 0
+    fi
+    if [[ ${#matches[@]} -gt 1 ]]; then
+        error "Ambiguous worktree '$input'. Use full path or repo-relative path."
+        printf '  %s\n' "${matches[@]}" >&2
+        exit 1
+    fi
+
+    error "Worktree '$input' not found under ${WORKTREE_BASE}/"
+    exit 1
+}
 
 cmd_new() {
-    local name="" pr_url=""
+    local name=""
+    local pr_ref=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --pr)
-                pr_url="$2"
+                [[ $# -ge 2 ]] || { error "--pr requires a value"; exit 1; }
+                pr_ref="$2"
                 shift 2
                 ;;
             -*)
@@ -153,357 +530,300 @@ cmd_new() {
         esac
     done
 
-    if [[ -n "$pr_url" ]]; then
-        # PR mode: parse org/repo/number from URL
-        # e.g. https://github.com/github/copilot-mission-control/pull/1527
-        if [[ ! "$pr_url" =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
-            error "Invalid PR URL: $pr_url"
-            echo "Expected format: https://github.com/org/repo/pull/NUMBER" >&2
-            exit 1
-        fi
-
-        local pr_org="${BASH_REMATCH[1]}"
-        local pr_repo="${BASH_REMATCH[2]}"
-        local pr_number="${BASH_REMATCH[3]}"
-
-        # Find the local clone of this repo
-        REPO_DIR="$HOME/Development/${pr_org}/${pr_repo}"
-        if [[ ! -d "$REPO_DIR/.git" ]]; then
-            error "Local clone not found at ${REPO_DIR}"
-            echo "Clone it first: gh-clone https://github.com/${pr_org}/${pr_repo}" >&2
-            exit 1
-        fi
-
-        REPO_ORG="$pr_org"
-        REPO_NAME="$pr_repo"
-        REPO_WT_DIR="${WORKTREE_BASE}/${REPO_ORG}/${REPO_NAME}"
-
-        log "Fetching PR #${pr_number} info..."
-        local pr_json
-        pr_json=$(gh pr view "$pr_number" \
-            --repo "${REPO_ORG}/${REPO_NAME}" \
-            --json headRefName,title 2>&1) || {
-            error "Failed to fetch PR #${pr_number}: $pr_json"
-            exit 1
-        }
-
-        local pr_branch pr_title
-        pr_branch=$(echo "$pr_json" | jq -r '.headRefName')
-        pr_title=$(echo "$pr_json" | jq -r '.title')
-
-        # Use PR number as worktree name if no name given
-        [[ -z "$name" ]] && name="pr-${pr_number}"
-
-        log "PR #${pr_number}: ${pr_title}"
-        log "Branch: ${pr_branch}"
+    if [[ -n "$pr_ref" ]]; then
+        parse_pr_ref "$pr_ref"
+        set_repo_from_owner_repo "$PR_ORG" "$PR_REPO"
 
         local wt_path
-        wt_path=$(worktree_path "$name")
+        wt_path=$(worktree_path_for_pr "$PR_NUMBER")
+        ensure_managed_path "$wt_path"
 
-        if worktree_exists "$name"; then
-            error "Worktree already exists at ${wt_path}"
-            exit 1
+        if [[ -d "$wt_path" ]]; then
+            log "Worktree already exists: $wt_path"
+            tmux_open_worktree "$wt_path"
+            return 0
         fi
 
-        log "Fetching latest from origin..."
-        git -C "$REPO_DIR" fetch origin --quiet
+        mkdir -p "$(dirname "$wt_path")"
+        acquire_lock "$(short_hash "$wt_path")"
 
-        log "Creating worktree at ${wt_path}..."
-        mkdir -p "$REPO_WT_DIR"
-        git -C "$REPO_DIR" worktree add "$wt_path" "$pr_branch"
+        log "Fetching PR #${PR_NUMBER} for ${PR_ORG}/${PR_REPO}..."
+        git -C "$REPO_DIR" fetch origin "pull/${PR_NUMBER}/head:refs/remotes/origin/pr/${PR_NUMBER}" --quiet
+
+        local pr_branch="pr-${PR_NUMBER}"
+        if branch_exists "$REPO_DIR" "$pr_branch"; then
+            log "Local branch '${pr_branch}' already exists; reusing it."
+            git -C "$REPO_DIR" worktree add "$wt_path" "$pr_branch"
+        else
+            log "Creating worktree: $wt_path"
+            git -C "$REPO_DIR" worktree add -b "$pr_branch" "$wt_path" "refs/remotes/origin/pr/${PR_NUMBER}"
+        fi
+
+        tmux_open_worktree "$wt_path"
+        return 0
+    fi
+
+    [[ -n "$name" ]] || {
+        error "Usage: ws new <session-slug>  or  ws new --pr <n|url>"
+        exit 1
+    }
+    validate_slug "$name"
+
+    detect_repo_info
+
+    local wt_path
+    wt_path=$(worktree_path_for_named "$name")
+    ensure_managed_path "$wt_path"
+
+    if [[ -d "$wt_path" ]]; then
+        log "Worktree already exists: $wt_path"
+        tmux_open_worktree "$wt_path"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$wt_path")"
+    acquire_lock "$(short_hash "$wt_path")"
+
+    local default_branch branch
+    default_branch=$(get_default_branch)
+    branch="${WS_USER}/${name}"
+
+    log "Fetching latest from origin..."
+    git -C "$REPO_DIR" fetch origin --quiet
+
+    if branch_exists "$REPO_DIR" "$branch"; then
+        log "Local branch '${branch}' already exists; reusing it."
+        git -C "$REPO_DIR" worktree add "$wt_path" "$branch"
     else
-        # Normal mode: create new branch from default branch
-        if [[ -z "$name" ]]; then
-            error "Usage: ws new <name>  or  ws new --pr <url>"
-            exit 1
-        fi
-
-        detect_repo_info
-
-        local wt_path
-        wt_path=$(worktree_path "$name")
-        local branch="$name"
-
-        if worktree_exists "$name"; then
-            error "Worktree already exists at ${wt_path}"
-            exit 1
-        fi
-
-        log "Fetching latest from origin..."
-        git -C "$REPO_DIR" fetch origin --quiet
-
-        local default_branch
-        default_branch=$(get_default_branch)
-
-        log "Creating branch '$branch' from origin/${default_branch}..."
-        mkdir -p "$REPO_WT_DIR"
+        log "Creating branch '${branch}' from origin/${default_branch}..."
         git -C "$REPO_DIR" worktree add -b "$branch" "$wt_path" "origin/${default_branch}"
     fi
 
-    echo
-    echo "✓ Worktree created!"
-    echo
-    echo "  Repo:   ${REPO_ORG}/${REPO_NAME}"
-    echo "  Name:   $name"
-    echo "  Path:   $(worktree_path "$name")"
-    echo
+    tmux_open_worktree "$wt_path"
+}
 
-    # Auto-open tmux session
-    tmux_open "$name"
+cmd_pr() {
+    [[ $# -ge 1 ]] || {
+        error "Usage: ws pr <number|url>"
+        exit 1
+    }
+    cmd_new --pr "$1"
+}
+
+cmd_open() {
+    [[ $# -ge 1 ]] || {
+        error "Usage: ws open <name|path>"
+        exit 1
+    }
+
+    local wt_path
+    wt_path=$(resolve_worktree_for_open "$1")
+
+    if ! path_under_base "$wt_path"; then
+        error "Refusing to open unmanaged path: $wt_path"
+        echo "Expected path under ${WORKTREE_BASE}/" >&2
+        exit 1
+    fi
+
+    tmux_open_worktree "$wt_path"
 }
 
 cmd_list() {
     local show_all=false
-
+    local output_format="text"
+    local output_view="simple"
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --all) show_all=true; shift ;;
+            --simple) output_view="simple"; shift ;;
+            --full) output_view="full"; shift ;;
+            --json) output_format="json"; shift ;;
+            --format)
+                [[ $# -ge 2 ]] || { error "--format requires a value: text|json"; exit 1; }
+                output_format="$2"
+                shift 2
+                ;;
             *) error "Unknown option: $1"; exit 1 ;;
         esac
     done
+    case "$output_format" in
+        text|json) ;;
+        *) error "Invalid --format value '$output_format' (expected: text|json)"; exit 1 ;;
+    esac
 
     if $show_all; then
-        cmd_list_all
+        cmd_list_all "$output_format" "$output_view"
         return
     fi
 
     detect_repo_info
+    [[ -d "$REPO_WT_DIR" ]] || {
+        echo "No managed worktrees for ${REPO_NAME}."
+        return 0
+    }
 
-    if [[ ! -d "$REPO_WT_DIR" ]]; then
-        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
+    local rows=()
+    local sep=$'\x1f'
+    while IFS= read -r line; do
+        local wt_path
+        wt_path=$(echo "$line" | awk '{print $1}')
+        [[ "$wt_path" == "$REPO_DIR" ]] && continue
+        [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
+
+        local display branch session tmux_status resume_id resume_title
+        display="${wt_path#${REPO_WT_DIR}/}"
+        branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+        session=$(tmux_session_name_from_path "$REPO_NAME" "$display" "$wt_path")
+        tmux_status="no"
+        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
+        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
+        resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+        [[ -z "$resume_title" ]] && resume_title="-"
+        [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
+        [[ -z "$resume_id" ]] && resume_id="-"
+
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+            "$(normalize_cell "$REPO_NAME")" "$sep" \
+            "$(normalize_cell "$display")" "$sep" \
+            "$(normalize_cell "$wt_path")" "$sep" \
+            "$(normalize_cell "$branch")" "$sep" \
+            "$tmux_status" "$sep" \
+            "$(normalize_cell "$session")" "$sep" \
+            "$(normalize_cell "$resume_title")" "$sep" \
+            "$resume_id")")
+    done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
+
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        echo "No managed worktrees for ${REPO_NAME}."
         return 0
     fi
 
-    local found=false
-
-    printf "%-20s %-30s %-40s %-10s\n" "NAME" "BRANCH" "PATH" "TMUX"
-    printf "%-20s %-30s %-40s %-10s\n" "----" "------" "----" "----"
-
-    while IFS= read -r line; do
-        local wt_path wt_branch
-        wt_path=$(echo "$line" | awk '{print $1}')
-        wt_branch=$(echo "$line" | grep -o '\[.*\]' | tr -d '[]' || echo "?")
-
-        # Skip main worktree
-        [[ "$wt_path" == "$REPO_DIR" ]] && continue
-        # Skip worktrees not in our managed directory
-        [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
-
-        local wt_name
-        wt_name=$(basename "$wt_path")
-        local session
-        session=$(tmux_session_name "$wt_name")
-
-        local tmux_status="no"
-        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
-
-        printf "%-20s %-30s %-40s %-10s\n" "$wt_name" "$wt_branch" "$wt_path" "$tmux_status"
-        found=true
-    done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
-
-    if ! $found; then
-        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
-    fi
+    output_list_rows "$output_format" "$output_view" "${rows[@]}"
 }
 
 cmd_list_all() {
-    if [[ ! -d "$WORKTREE_BASE" ]]; then
-        echo "No worktrees found."
+    local output_format="${1:-text}"
+    local output_view="${2:-simple}"
+    [[ -d "$WORKTREE_BASE" ]] || {
+        echo "No managed worktrees."
+        return 0
+    }
+
+    local rows=()
+    local sep=$'\x1f'
+    while IFS= read -r wt_path; do
+        local repo display branch session tmux_status resume_id resume_title
+        repo=$(repo_name_from_worktree_path "$wt_path")
+        display=$(worktree_display_name "$wt_path" "$repo")
+        branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+        session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
+        tmux_status="no"
+        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
+        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
+        resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+        [[ -z "$resume_title" ]] && resume_title="-"
+        [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
+        [[ -z "$resume_id" ]] && resume_id="-"
+
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+            "$(normalize_cell "$repo")" "$sep" \
+            "$(normalize_cell "$display")" "$sep" \
+            "$(normalize_cell "$wt_path")" "$sep" \
+            "$(normalize_cell "$branch")" "$sep" \
+            "$tmux_status" "$sep" \
+            "$(normalize_cell "$session")" "$sep" \
+            "$(normalize_cell "$resume_title")" "$sep" \
+            "$resume_id")")
+    done < <(find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null | sort)
+
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        echo "No managed worktrees."
         return 0
     fi
 
-    local found=false
-
-    printf "%-25s %-20s %-30s %-10s\n" "REPO" "NAME" "BRANCH" "TMUX"
-    printf "%-25s %-20s %-30s %-10s\n" "----" "----" "------" "----"
-
-    # Walk ~/.worktrees/{org}/{repo}/{name}
-    for org_dir in "$WORKTREE_BASE"/*/; do
-        [[ -d "$org_dir" ]] || continue
-        local org
-        org=$(basename "$org_dir")
-
-        for repo_dir in "$org_dir"*/; do
-            [[ -d "$repo_dir" ]] || continue
-            local repo
-            repo=$(basename "$repo_dir")
-
-            # Find the main clone to query git worktree list
-            local main_clone="$HOME/Development/${org}/${repo}"
-            if [[ ! -d "$main_clone/.git" ]]; then
-                # Fallback: list directories directly
-                for wt_dir in "$repo_dir"*/; do
-                    [[ -d "$wt_dir" ]] || continue
-                    local wt_name
-                    wt_name=$(basename "$wt_dir")
-                    printf "%-25s %-20s %-30s %-10s\n" "${org}/${repo}" "$wt_name" "?" "?"
-                    found=true
-                done
-                continue
-            fi
-
-            while IFS= read -r line; do
-                local wt_path wt_branch
-                wt_path=$(echo "$line" | awk '{print $1}')
-                wt_branch=$(echo "$line" | grep -o '\[.*\]' | tr -d '[]' || echo "?")
-
-                [[ "$wt_path" == "$main_clone" ]] && continue
-                [[ "$wt_path" != "${repo_dir}"* ]] && continue
-
-                local wt_name
-                wt_name=$(basename "$wt_path")
-
-                # Check tmux session
-                local session="${repo}#${wt_name}"
-                session=$(echo "$session" | tr './:' '_-_')
-                local tmux_status="no"
-                tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
-
-                printf "%-25s %-20s %-30s %-10s\n" "${org}/${repo}" "$wt_name" "$wt_branch" "$tmux_status"
-                found=true
-            done < <(git -C "$main_clone" worktree list 2>/dev/null || true)
-        done
-    done
-
-    if ! $found; then
-        echo "No worktrees found."
-    fi
-}
-
-cmd_open() {
-    if [[ $# -lt 1 ]]; then
-        error "Usage: ws open <name>"
-        exit 1
-    fi
-
-    local name="$1"
-    detect_repo_info
-
-    if ! worktree_exists "$name"; then
-        error "Worktree '$name' not found in ${REPO_WT_DIR}/"
-        echo "Run 'ws list' to see available worktrees." >&2
-        exit 1
-    fi
-
-    tmux_open "$name"
+    output_list_rows "$output_format" "$output_view" "${rows[@]}"
 }
 
 cmd_delete() {
-    if [[ $# -lt 1 ]]; then
-        error "Usage: ws delete <name>"
+    [[ $# -ge 1 ]] || {
+        error "Usage: ws delete <name|path>"
+        exit 1
+    }
+
+    local wt_path
+    wt_path=$(resolve_worktree_for_delete "$1")
+
+    if ! path_under_base "$wt_path"; then
+        error "Refusing to remove path outside managed root: $wt_path"
+        exit 1
+    fi
+    if [[ ! -f "$wt_path/.git" ]]; then
+        error "Not a managed git worktree: $wt_path"
         exit 1
     fi
 
-    local name="$1"
+    local repo display session
+    repo=$(repo_name_from_worktree_path "$wt_path")
+    display=$(worktree_display_name "$wt_path" "$repo")
+    session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
 
-    # Find the worktree across all repos in ~/.worktrees/{org}/{repo}/{name}
-    local wt_path="" found_org="" found_repo="" main_clone=""
-    for org_dir in "$WORKTREE_BASE"/*/; do
-        [[ -d "$org_dir" ]] || continue
-        for repo_dir in "$org_dir"*/; do
-            [[ -d "$repo_dir" ]] || continue
-            if [[ -d "${repo_dir}${name}" ]]; then
-                wt_path="${repo_dir}${name}"
-                found_org=$(basename "$org_dir")
-                found_repo=$(basename "$repo_dir")
-                main_clone="$HOME/Development/${found_org}/${found_repo}"
-                break 2
-            fi
-        done
-    done
-
-    if [[ -z "$wt_path" ]]; then
-        error "Worktree '$name' not found in ${WORKTREE_BASE}/"
-        exit 1
-    fi
-
-    # Kill tmux session if it exists
-    local session
-    session=$(echo "${found_repo}#${name}" | tr './:' '_-_')
     if tmux has-session -t="$session" 2>/dev/null; then
         log "Killing tmux session '$session'..."
         tmux kill-session -t "$session"
     fi
 
-    # Get the branch name before removing
-    local branch
-    branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    acquire_lock "$(short_hash "$wt_path")"
 
-    # Remove via git worktree if main clone exists, otherwise just delete the dir
-    if [[ -d "$main_clone/.git" ]]; then
-        log "Removing worktree..."
-        git -C "$main_clone" worktree remove "$wt_path" --force
-
-        # Delete local branch if it exists
-        if [[ -n "$branch" && "$branch" != "HEAD" ]]; then
-            if git -C "$main_clone" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
-                log "Deleting local branch '$branch'..."
-                git -C "$main_clone" branch -D "$branch" 2>/dev/null || true
-            fi
-        fi
-    else
-        # Only remove if path is safely under WORKTREE_BASE
-        if [[ "$wt_path" != "${WORKTREE_BASE}/"* ]]; then
-            error "Refusing to remove path outside of ${WORKTREE_BASE}: $wt_path"
-            exit 1
-        fi
-        log "Main clone not found at $main_clone, removing directory..."
-        rm -rf "$wt_path"
+    local common_git_dir repo_root
+    common_git_dir=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir)
+    repo_root=$(dirname "$common_git_dir")
+    if ! worktree_registered_in_repo "$repo_root" "$wt_path"; then
+        error "Worktree is not registered in repository metadata: $wt_path"
+        exit 1
     fi
 
-    # Clean up empty parent dirs
-    rmdir "${WORKTREE_BASE}/${found_org}/${found_repo}" 2>/dev/null || true
-    rmdir "${WORKTREE_BASE}/${found_org}" 2>/dev/null || true
+    log "Removing worktree: $wt_path"
+    git -C "$repo_root" worktree remove "$wt_path" --force
+    git -C "$repo_root" worktree prune
 
-    echo
-    echo "✓ Worktree '$name' deleted (${found_org}/${found_repo})."
+    local parent
+    parent=$(dirname "$wt_path")
+    while [[ "$parent" == "${WORKTREE_BASE}/${repo}"* ]]; do
+        rmdir "$parent" 2>/dev/null || break
+        parent=$(dirname "$parent")
+    done
+
+    echo "✓ Deleted worktree: ${repo}/$(worktree_display_name "$wt_path" "$repo")"
 }
 
 cmd_clean() {
     detect_repo_info
 
-    if [[ ! -d "$REPO_WT_DIR" ]]; then
-        echo "No worktrees for ${REPO_ORG}/${REPO_NAME}."
-        return 0
-    fi
-
-    local names=()
+    local paths=()
     while IFS= read -r line; do
         local wt_path
         wt_path=$(echo "$line" | awk '{print $1}')
         [[ "$wt_path" == "$REPO_DIR" ]] && continue
         [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
-        names+=("$(basename "$wt_path")")
+        paths+=("$wt_path")
     done < <(git -C "$REPO_DIR" worktree list 2>/dev/null || true)
 
-    if [[ ${#names[@]} -eq 0 ]]; then
-        echo "No worktrees to clean."
+    if [[ ${#paths[@]} -eq 0 ]]; then
+        echo "No managed worktrees for ${REPO_NAME}."
         return 0
     fi
 
-    echo "Will delete ${#names[@]} worktree(s) for ${REPO_ORG}/${REPO_NAME}:"
-    printf "  %s\n" "${names[@]}"
+    echo "Will delete ${#paths[@]} worktree(s) for ${REPO_NAME}:"
+    printf '  %s\n' "${paths[@]#${REPO_WT_DIR}/}"
     echo
-
     read -rp "Continue? [y/N] " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        return 0
-    fi
+    [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; return 0; }
 
-    for name in "${names[@]}"; do
-        cmd_delete "$name"
+    local wt
+    for wt in "${paths[@]}"; do
+        cmd_delete "$wt"
     done
-
-    # Clean up empty directory
-    rmdir "$REPO_WT_DIR" 2>/dev/null || true
-    rmdir "${WORKTREE_BASE}/${REPO_ORG}" 2>/dev/null || true
-
-    echo
-    echo "✓ All worktrees cleaned."
 }
-
-# --- main -------------------------------------------------------------------
 
 if [[ $# -eq 0 ]]; then
     show_help
@@ -513,13 +833,31 @@ fi
 case "${1:-}" in
     -h|--help)
         show_help
-        exit 0
         ;;
-    new)    shift; cmd_new "$@" ;;
-    list)   shift; cmd_list "$@" ;;
-    open)   shift; cmd_open "$@" ;;
-    delete) shift; cmd_delete "$@" ;;
-    clean)  shift; cmd_clean "$@" ;;
+    new)
+        shift
+        cmd_new "$@"
+        ;;
+    pr)
+        shift
+        cmd_pr "$@"
+        ;;
+    open)
+        shift
+        cmd_open "$@"
+        ;;
+    list)
+        shift
+        cmd_list "$@"
+        ;;
+    delete)
+        shift
+        cmd_delete "$@"
+        ;;
+    clean)
+        shift
+        cmd_clean "$@"
+        ;;
     *)
         error "Unknown command '${1:-}'"
         echo "Run 'ws --help' for usage" >&2

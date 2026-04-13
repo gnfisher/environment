@@ -82,9 +82,7 @@ opt.wildmenu = true
 opt.wildmode = "longest:full,full"
 opt.wildoptions = "pum"
 
--- Folding managed by nvim-ufo
 opt.foldlevelstart = 99
-opt.foldenable = true
 
 vim.opt.wildignore = {
   "*/node_modules/*",
@@ -111,7 +109,3 @@ if vim.fn.executable("rg") == 1 then
   opt.grepprg = "rg --vimgrep --smart-case --hidden --glob '!{node_modules,.git,dist,build}/*'"
   opt.grepformat = "%f:%l:%c:%m"
 end
-
--- Set the colorscheme
--- vim.cmd.colorscheme "github_modern"
--- vim.cmd.colorscheme "tango-dark"

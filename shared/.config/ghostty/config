@@ -1,7 +1,7 @@
 # Font
-font-family = Menlo
-font-size = 13
-#font-thicken = true
+font-family = Consolas
+font-size = 17
+font-thicken = true
 
 # macOS options
 macos-option-as-alt = true

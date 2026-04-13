@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+env_file="${XDG_STATE_HOME:-$HOME/.local/state}/todoist-mcp.env"
+
+if [[ ! -f "$env_file" ]]; then
+    cat >&2 <<EOF
+todoist-mcp: missing $env_file
+
+Create it with:
+  mkdir -p "$(dirname "$env_file")"
+  printf '%s\n' 'TODOIST_API_KEY=<todoist-token-or-op-reference>' > "$env_file"
+
+Use either a plain token:
+  TODOIST_API_KEY=your_todoist_api_token
+
+or a 1Password reference:
+  TODOIST_API_KEY=op://Vault/Todoist/credential
+
+You can inspect 1Password item fields with:
+  op item get "<item>" --vault "<vault>" --format json
+EOF
+    exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$env_file"
+set +a
+
+if [[ -z "${TODOIST_API_KEY:-}" ]]; then
+    echo "todoist-mcp: TODOIST_API_KEY is not set in $env_file" >&2
+    exit 1
+fi
+
+if [[ "$TODOIST_API_KEY" == op://* ]]; then
+    if ! command -v op >/dev/null 2>&1; then
+        echo "todoist-mcp: 1Password CLI 'op' is required for op:// references." >&2
+        exit 1
+    fi
+    exec op run --env-file "$env_file" -- npx -y @doist/todoist-ai
+fi
+
+exec env TODOIST_API_KEY="$TODOIST_API_KEY" npx -y @doist/todoist-ai

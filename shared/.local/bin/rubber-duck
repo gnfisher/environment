@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# copilot-critic: Run the critic agent with explicit model and reasoning settings.
+#
+# Usage:
+#   copilot-critic                         # start an interactive critic session
+#   copilot-critic -i "Review this plan"   # interactive with an initial prompt
+#   copilot-critic -p "Critique this diff" # non-interactive critique
+#
+
+set -euo pipefail
+
+needs_auto_approval=false
+for arg in "$@"; do
+    case "$arg" in
+        -p|--prompt|--prompt=*)
+            needs_auto_approval=true
+            ;;
+    esac
+done
+
+extra_args=()
+if [[ "$needs_auto_approval" == "true" ]]; then
+    extra_args+=(--allow-all-tools)
+fi
+
+exec copilot \
+    --agent critic \
+    --model gpt-5.4 \
+    --effort high \
+    --enable-reasoning-summaries \
+    "${extra_args[@]}" \
+    "$@"

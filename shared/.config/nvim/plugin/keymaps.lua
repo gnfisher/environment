@@ -6,7 +6,6 @@ set("n", "<C-space>", ":noh<CR>", opts)
 
 set({ "i", "v" }, "<C-space>", "<Esc>", opts)
 
-
 -- Paste from clipboard
 set("x", "<Leader>p", [["_dP]], opts)
 
@@ -63,5 +62,3 @@ end, { silent = true, desc = "Restore saved window layout or equalize" })
 -- Quickfix jump
 set("n", "]q", "<Cmd>cnext<CR>zz", opts)
 set("n", "[q", "<Cmd>cprev<CR>zz", opts)
-
-

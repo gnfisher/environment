@@ -2,7 +2,7 @@ vim.loader.enable()
 
 vim.g.mapleader = " "
 
-vim.cmd.colorscheme("standard-light")
+vim.cmd.colorscheme("grb-lucius")
 
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then

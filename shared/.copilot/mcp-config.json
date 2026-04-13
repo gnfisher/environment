@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "todoist": {
+      "tools": [
+        "*"
+      ],
+      "type": "local",
+      "command": "todoist-mcp",
+      "args": []
+    },
+  }
+}

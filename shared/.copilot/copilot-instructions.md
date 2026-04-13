@@ -1,71 +1,31 @@
-<scope>
-Personal default instructions applied to all tasks. Defer to repository-level
-instructions (`.github/copilot-instructions.md`, `.instructions.md` files, or
-skills) when they conflict with anything here.
-</scope>
+# Scope
+- These are my personal default instructions.
+- Follow repository-level instructions when they conflict with anything here.
 
-<github>
-- Prefer `gh` CLI for all GitHub operations (issues, PRs, repos, etc.)
-- Use specific subcommands (`gh pr`, `gh issue`) over `gh api`
-- Prefer REST API over GraphQL
-- When GraphQL is necessary, verify node IDs before any mutation — you
-  frequently hallucinate these
-</github>
+# Comments
+- Prefer the language's idiomatic commenting style.
+- Update comments when behavior changes so they stay accurate.
+- Avoid comments that only restate the code.
 
-<workflow>
-- Work iteratively within feedback loops: write a failing test, make it pass,
-  run linters, use subagents to verify changes in context
-- Don't rely exclusively on tests — read surrounding code to confirm changes
-  integrate correctly
-- Use git actively: make WIP commits, try approaches, roll back when they don't
-  pan out
-- Prefer small atomic commits that build and pass tests with concise commit
-  messages
-- Always verify your work by running tests, linters, or other available
-  validation mechanisms
-</workflow>
+# Local behavior
+- If I ask you to "open" a PR, URL, file, or folder so I can view it, use the platform-native opener: `open` on macOS, `start` on Windows, and `xdg-open` on Linux.
 
-<testing>
-- Follow the Pareto principle: 80% of confidence from 20% of the tests
-- Cover happy paths and meaningful edge cases
-- Use judgment — avoid bloating PRs with low-value test changes
-</testing>
+# Copilot worktrees
+- When creating a local worktree for a Copilot session, create it under `~/.copilot/copilot-worktrees`.
+- Resolve the source repo from `~/Development/<owner>/<repo>` when possible, but keep the worktree checkout itself under the Copilot worktree base directory.
+- Match the existing layout: use `~/.copilot/copilot-worktrees/<repo>/pr-<number>` for PR sessions, and `~/.copilot/copilot-worktrees/<repo>/<user>/<session-slug>` for other named sessions.
+- Treat `pr-<number>` and `<user>/<session-slug>` as the worktree directory naming convention, not as a required Git branch naming convention. The checked-out branch may differ from the directory name.
+- Prefer reusing an existing matching worktree over creating a duplicate with a different path.
 
-<comments>
-- Comments should carry their weight; follow the language's idiomatic approach
-- Update comments when you change behavior so they stay accurate
-- Don't add comments that restate what the code already says
-</comments>
+# Collaboration
+- For non-trivial coding work, prefer an independent critique at high-leverage moments.
+- If the current session model is in the Claude family, rely on the built-in rubber-duck flow.
+- Otherwise, when a deep independent critique is worthwhile, use the `/critique-loop` skill or invoke the local `copilot-critic` wrapper instead of the bare `critic` agent so the model and reasoning effort are explicit. The equivalent direct command is `copilot --agent critic --model gpt-5.4 --effort high`.
+- Use that extra pass before implementation, after substantial changes, and before wrapping up.
+- Skip extra critique for small, mechanical, or low-risk tasks.
 
-<scope_discipline>
-- Don't refactor unrelated code unless asked
-- Don't fix pre-existing issues unless they're directly related to the task
-- Ask before making architectural changes
-- Keep PRs focused on a single concern — split work if scope grows
-</scope_discipline>
-
-<communication>
-- Be concise by default
-- Don't surface obvious next steps — just do them
-- Surface tradeoffs, not just recommendations
-- When told to "unpack", shift to detailed explanation with more context — it
-  means the concise version isn't landing and more depth is needed
-</communication>
-
-<pull_requests>
-- Always use the repo's default PR template and fill it out completely
-- Every PR body must include a **What** and a **Why** section
-- **What**: describe the change and list what was added/modified — enough for a
-  reviewer to understand the shape of the diff before reading it
-- **Why**: explain the motivation — what problem exists, why this approach, what
-  context a reviewer needs to evaluate the change
-- Write in a clean, no-frills voice optimized for data transfer and lucidity to
-  a technical audience
-- Scale detail to complexity — small fixes get short descriptions, larger changes
-  get richer context — but never pad with filler
-</pull_requests>
-
-<helper>
-- When asked to "open" something (a PR, URL, file, folder) so i can see it, use `open` to launch
-  it in the default application (browser, Finder, etc.)
-</helper>
+# User the GitHub CLI!
+- Prefer `gh` over MCP for GitHub operations when `gh` can handle the task cleanly.
+- Prefer purpose-built subcommands like `gh pr` and `gh issue` over `gh api`.
+- Prefer REST endpoints to GraphQL unless GraphQL is clearly the better fit.
+- If you use a GraphQL mutation, verify that the node IDs match the intended resources before mutating anything. Agents frequently hallucinate node IDs, and mutating the wrong resource can have serious consequences, including leaking privileged information in public places.
