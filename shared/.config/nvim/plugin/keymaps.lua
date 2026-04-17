@@ -12,6 +12,11 @@ set("x", "<Leader>p", [["_dP]], opts)
 -- Yank to clipboard
 set({ "n", "v" }, "<Leader>y", [["+y]], opts)
 set("n", "<Leader>Y", [["+Y]], opts)
+set("n", "<leader>cr", "<Cmd>CopyCopilotRef<CR>", { silent = true, desc = "Copy Copilot line reference" })
+set("x", "<leader>cr", ":CopyCopilotRef<CR>", { silent = true, desc = "Copy Copilot range reference" })
+set("n", "<leader>cR", "<Cmd>CopyCopilotFileRef<CR>", { silent = true, desc = "Copy Copilot file reference" })
+set("n", "<leader>cL", "<Cmd>CopilotLintFix<CR>", { silent = true, desc = "Run Copilot lint-fix agent" })
+set("x", "<leader>cL", ":CopilotLintFix<CR>", { silent = true, desc = "Run Copilot lint-fix agent for selection" })
 
 -- Move highlighted lines up/down
 set("v", "J", ":m '>+1<CR>gv=gv", opts)

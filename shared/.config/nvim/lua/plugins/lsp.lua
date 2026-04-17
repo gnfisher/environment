@@ -141,6 +141,11 @@ return {
           "gopls",
           "lua_ls",
         },
+        -- VS Code's default Go experience is closer to "gopls live, heavier
+        -- linting separately", so avoid auto-enabling golangci_lint_ls.
+        automatic_enable = {
+          exclude = { "golangci_lint_ls" },
+        },
       })
     end
   },
