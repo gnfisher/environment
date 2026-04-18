@@ -9,12 +9,69 @@ return {
     },
     config = function()
       local lspconfig_defaults = require("lspconfig").util.default_config
+      local lsp_util = require("vim.lsp.util")
 
       lspconfig_defaults.capabilities = vim.tbl_deep_extend(
         "force",
         lspconfig_defaults.capabilities,
         require('blink.cmp').get_lsp_capabilities(lspconfig_defaults.capabilities)
       )
+
+      vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
+        config = config or {}
+        config.focus_id = ctx.method
+        if vim.api.nvim_get_current_buf() ~= ctx.bufnr then
+          return
+        end
+
+        if not (result and result.contents) then
+          if config.silent ~= true then
+            vim.notify("No information available")
+          end
+          return
+        end
+
+        local contents
+        local syntax = "markdown"
+        if type(result.contents) == "table" and result.contents.kind == "plaintext" then
+          syntax = "plaintext"
+          contents = vim.split(result.contents.value or "", "\n", { trimempty = true })
+        else
+          contents = lsp_util.convert_input_to_markdown_lines(result.contents)
+        end
+
+        if vim.tbl_isempty(contents) then
+          if config.silent ~= true then
+            vim.notify("No information available")
+          end
+          return
+        end
+
+        if syntax == "plaintext" then
+          return lsp_util.open_floating_preview(contents, syntax, config)
+        end
+
+        local bufnr, winnr = lsp_util.open_floating_preview(contents, nil, config)
+        if not bufnr then
+          return
+        end
+
+        vim.bo[bufnr].modifiable = true
+        lsp_util.stylize_markdown(bufnr, contents, {
+          separator = true,
+          wrap_at = config.wrap_at,
+          max_width = config.max_width,
+          max_height = config.max_height,
+        })
+        vim.bo[bufnr].modifiable = false
+
+        if winnr and vim.api.nvim_win_is_valid(winnr) then
+          vim.wo[winnr].conceallevel = 2
+          vim.wo[winnr].concealcursor = ""
+        end
+
+        return bufnr, winnr
+      end
 
       -- Configure diagnostics to show inline
       vim.diagnostic.config({
