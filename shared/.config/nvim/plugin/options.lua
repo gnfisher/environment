@@ -82,7 +82,9 @@ opt.wildmenu = true
 opt.wildmode = "longest:full,full"
 opt.wildoptions = "pum"
 
+-- Folding is provided by nvim-ufo.
 opt.foldlevelstart = 99
+opt.foldenable = true
 
 vim.opt.wildignore = {
   "*/node_modules/*",
