@@ -1,0 +1,14 @@
+name: Task Callback
+
+on:
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: POST to task API
+        run: |
+          curl -fsS -X POST "${{ secrets.THE_TASK_API }}" \
+            -H "Authorization: Bearer ${{ secrets.TASK_TOKEN }}"
