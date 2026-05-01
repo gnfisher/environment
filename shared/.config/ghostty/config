@@ -4,7 +4,8 @@ font-size = 17
 #font-thicken = true
 
 # Theme (managed by ~/.local/bin/theme)
-theme = mono-dark
+#theme = mono-dark
+#theme = Apple System Colors Light
 
 # macOS options
 macos-option-as-alt = true

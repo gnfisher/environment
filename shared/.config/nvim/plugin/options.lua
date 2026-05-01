@@ -82,7 +82,9 @@ opt.wildmenu = true
 opt.wildmode = "longest:full,full"
 opt.wildoptions = "pum"
 
--- Folding is provided by nvim-ufo.
+opt.foldmethod = "expr"
+opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+opt.foldlevel = 99
 opt.foldlevelstart = 99
 opt.foldenable = true
 

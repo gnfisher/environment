@@ -3,7 +3,7 @@
 # Unified theme switcher for light/dark mode
 # Switches: Ghostty, Neovim, Tmux, FZF, Copilot CLI
 # OpenCode auto-follows system appearance.
-# Color scheme: mono (light: Terminal Basic + mono, dark: mono-dark + mono)
+# Color scheme: Catppuccin (light: latte, dark: frappe)
 #
 # Usage:
 #   theme light    - Switch to light mode
@@ -99,7 +99,7 @@ switch_neovim() {
     else
         bg_mode="dark"
     fi
-    scheme="mono"
+    scheme="catppuccin"
 
     if [[ -f "$nvim_color_file" ]]; then
         nvim_color_file=$(resolve_path "$nvim_color_file")

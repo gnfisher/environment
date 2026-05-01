@@ -6,6 +6,7 @@
   user = gnfisher
 [core]
   excludesfile = ~/.gitignore
+  pager = delta
 [alias]
   uncommit = reset --soft HEAD^
   unstage = reset
@@ -23,11 +24,14 @@
   s = status -sb
   d = diff
   dc = diff --cached
+  dft = difftool --tool=difftastic
   amend = commit --amend --no-edit
   pushf = push --force-with-lease
   wip = !git add -A && git commit -m 'WIP'
 [color]
 	ui = auto
+[interactive]
+  diffFilter = delta --color-only
 [fetch]
   prune = true
 [commit]
@@ -39,8 +43,14 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
-[diff]
-  external = difft --background=light
+[delta]
+  navigate = true
+  line-numbers = true
+  side-by-side = true
+[difftool]
+  prompt = false
+[difftool "difftastic"]
+  cmd = difft --background=light "$LOCAL" "$REMOTE"
 [credential "https://github.com"]
 	helper = 
 	helper = !/opt/homebrew/bin/gh auth git-credential

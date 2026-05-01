@@ -87,6 +87,30 @@ else
     echo "✅ lazydocker already installed"
 fi
 
+# Install delta
+echo "🔍 Installing delta..."
+DELTA_VERSION=$(curl -fsSL "https://api.github.com/repos/dandavison/delta/releases/latest" | jq -r '.tag_name')
+case "$(uname -m)" in
+    x86_64|amd64) DELTA_ARCH="x86_64-unknown-linux-gnu" ;;
+    aarch64|arm64) DELTA_ARCH="aarch64-unknown-linux-gnu" ;;
+    *)
+        echo "⚠️  Unsupported architecture for delta: $(uname -m)"
+        DELTA_ARCH=""
+        ;;
+esac
+if [[ -n "$DELTA_ARCH" ]] && { ! command -v delta &>/dev/null || [[ "$(delta --version | awk 'NR==1 {print $2}')" != "$DELTA_VERSION" ]]; }; then
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    curl -Lo delta.tar.gz "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${DELTA_ARCH}.tar.gz"
+    tar -xzf delta.tar.gz
+    sudo install "$(find "$TEMP_DIR" -type f -name delta | head -n1)" /usr/local/bin
+    cd "$SCRIPT_DIR"
+    rm -rf "$TEMP_DIR"
+    echo "✅ delta ${DELTA_VERSION} installed"
+elif command -v delta &>/dev/null; then
+    echo "✅ delta already installed"
+fi
+
 # Install difftastic
 echo "🔍 Installing difftastic..."
 DIFFT_VERSION="0.67.0"
@@ -117,6 +141,15 @@ for dir in .config/nvim .config/fish; do
     if [[ -d "$HOME/$dir" && ! -L "$HOME/$dir" ]]; then
         mv "$HOME/$dir" "$HOME/${dir}.bak"
         echo "  Backed up $dir"
+    fi
+done
+
+# Remove existing config files that would conflict with stow while preserving
+# neighboring files like gh auth state in the same directory.
+for file in .config/gh/config.yml; do
+    if [[ -f "$HOME/$file" && ! -L "$HOME/$file" ]]; then
+        mv "$HOME/$file" "$HOME/${file}.bak"
+        echo "  Backed up $file"
     fi
 done
 

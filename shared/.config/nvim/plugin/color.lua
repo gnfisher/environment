@@ -25,5 +25,5 @@ set("n", "<F6>", function()
   persist_background(new_bg)
   vim.cmd("source " .. vim.fn.fnameescape(color_config))
   -- Re-apply colorscheme so it picks up the new background
-  vim.cmd.colorscheme(vim.g.colors_name or "mono")
+  vim.cmd.colorscheme(vim.g.colors_name or "catppuccin")
 end, opts)
