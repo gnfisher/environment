@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Unified theme switcher for light/dark mode
-# Switches: Ghostty, Neovim, Tmux, FZF, Copilot CLI
+# Switches: Ghostty, Neovim, FZF, Copilot CLI
 # OpenCode auto-follows system appearance.
 # Color scheme: Catppuccin (light: latte, dark: frappe)
 #
@@ -121,41 +121,6 @@ switch_neovim() {
     done
 }
 
-# Switch Tmux theme (matches layout from .tmux.conf)
-switch_tmux() {
-    local mode="$1"
-
-    if ! command -v tmux &>/dev/null || ! tmux list-sessions &>/dev/null; then
-        return
-    fi
-
-    if [[ "$mode" == "light" ]]; then
-        # Mono Light - transparent bg, minimal
-        tmux set -g status-style "bg=default,fg=#777777"
-        tmux set -g status-left "#[fg=#222222,bold]  #S #[default]"
-        tmux set -g status-right "#[fg=#777777]󰒋 #H "
-        tmux set -g window-status-format "#[bg=#eeeeee,fg=#777777] #I #[bg=default,fg=#777777] #W "
-        tmux set -g window-status-current-format "#[bg=#222222,fg=#ffffff,bold] #I #[bg=default,fg=#222222,bold] #W "
-        tmux set -g pane-border-style "fg=#cccccc"
-        tmux set -g pane-active-border-style "fg=#222222"
-        tmux set -g message-style "bg=#eeeeee,fg=#222222"
-        tmux set -g message-command-style "bg=#eeeeee,fg=#222222"
-        tmux set -g mode-style "bg=#f5d87a,fg=#222222"
-    else
-        # Mono Dark - transparent bg, minimal
-        tmux set -g status-style "bg=default,fg=#777777"
-        tmux set -g status-left "#[fg=#d4d4d4,bold]  #S #[default]"
-        tmux set -g status-right "#[fg=#777777]󰒋 #H "
-        tmux set -g window-status-format "#[bg=#2d2d2d,fg=#606060] #I #[bg=default,fg=#606060] #W "
-        tmux set -g window-status-current-format "#[bg=#d4d4d4,fg=#191919,bold] #I #[bg=default,fg=#d4d4d4,bold] #W "
-        tmux set -g pane-border-style "fg=#3a3a3a"
-        tmux set -g pane-active-border-style "fg=#d4d4d4"
-        tmux set -g message-style "bg=#2d2d2d,fg=#d4d4d4"
-        tmux set -g message-command-style "bg=#2d2d2d,fg=#d4d4d4"
-        tmux set -g mode-style "bg=#504000,fg=#d4d4d4"
-    fi
-}
-
 # Update FZF colors via environment variable
 switch_fzf() {
     local mode="$1"
@@ -206,10 +171,6 @@ EOF
     # Export for current shell session
     export FZF_DEFAULT_OPTS="$fzf_opts"
 
-    # Update tmux server environment so popups pick up the new colors
-    if command -v tmux &>/dev/null && tmux list-sessions &>/dev/null; then
-        tmux set-environment -g FZF_DEFAULT_OPTS "$fzf_opts"
-    fi
 }
 
 # Switch Copilot CLI theme
@@ -249,7 +210,6 @@ switch_all() {
     
     switch_ghostty "$mode"
     switch_neovim "$mode"
-    switch_tmux "$mode"
     switch_fzf "$mode"
     switch_copilot "$mode"
     

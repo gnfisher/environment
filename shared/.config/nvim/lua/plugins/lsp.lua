@@ -1,6 +1,7 @@
 return {
   {
     "neovim/nvim-lspconfig",
+    event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "mason-org/mason.nvim",
       "mason-org/mason-lspconfig.nvim",
@@ -86,10 +87,9 @@ return {
         desc = "LSP actions",
         callback = function(event)
           local opts = { buffer = event.buf }
-          local telescope_builtin = require("telescope.builtin")
-          local telescope_actions = require("telescope.actions")
 
           local function telescope_jump_with_zz(picker)
+            local telescope_actions = require("telescope.actions")
             picker({
               attach_mappings = function(prompt_bufnr, map)
                 local function select_and_center()
@@ -106,14 +106,20 @@ return {
             })
           end
 
+          local function telescope_picker(name)
+            return function()
+              telescope_jump_with_zz(require("telescope.builtin")[name])
+            end
+          end
+
           vim.keymap.set("n", "K", "<cmd>lua vim.lsp.buf.hover()<cr>", opts)
-          vim.keymap.set("n", "gd", function() telescope_jump_with_zz(telescope_builtin.lsp_definitions) end, opts)
-          vim.keymap.set("n", "<F12>", function() telescope_jump_with_zz(telescope_builtin.lsp_definitions) end, opts)
-          vim.keymap.set("n", "gD", function() telescope_jump_with_zz(telescope_builtin.lsp_type_definitions) end, opts)
-          vim.keymap.set("n", "gi", function() telescope_jump_with_zz(telescope_builtin.lsp_implementations) end, opts)
-          vim.keymap.set("n", "go", function() telescope_jump_with_zz(telescope_builtin.lsp_type_definitions) end, opts)
-          vim.keymap.set("n", "gr", function() telescope_jump_with_zz(telescope_builtin.lsp_references) end, opts)
-          vim.keymap.set("n", "<S-F12>", function() telescope_jump_with_zz(telescope_builtin.lsp_references) end, opts)
+          vim.keymap.set("n", "gd", telescope_picker("lsp_definitions"), opts)
+          vim.keymap.set("n", "<F12>", telescope_picker("lsp_definitions"), opts)
+          vim.keymap.set("n", "gD", telescope_picker("lsp_type_definitions"), opts)
+          vim.keymap.set("n", "gi", telescope_picker("lsp_implementations"), opts)
+          vim.keymap.set("n", "go", telescope_picker("lsp_type_definitions"), opts)
+          vim.keymap.set("n", "gr", telescope_picker("lsp_references"), opts)
+          vim.keymap.set("n", "<S-F12>", telescope_picker("lsp_references"), opts)
           vim.keymap.set("i", "<C-s>", "<cmd>lua vim.lsp.buf.signature_help()<cr>", opts)
           vim.keymap.set("n", "<leader>vd", function()
             local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line('.') - 1 })
@@ -197,6 +203,7 @@ return {
           "vtsls",
           "gopls",
           "lua_ls",
+          "jsonls",
         },
         -- VS Code's default Go experience is closer to "gopls live, heavier
         -- linting separately", so avoid auto-enabling golangci_lint_ls.
@@ -220,6 +227,7 @@ return {
   {
     'saghen/blink.cmp',
     version = '1.*',
+    event = "InsertEnter",
     opts = {
       keymap = {
         preset = 'default',
