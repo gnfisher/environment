@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ws - Copilot worktree + tmux session manager
+# ws - Copilot worktree manager
 #
 # Conventions:
 # - Worktrees live under ~/.copilot/copilot-worktrees/<repo>/...
@@ -11,8 +11,12 @@ set -euo pipefail
 WORKTREE_BASE="${WS_WORKTREE_BASE:-$HOME/.copilot/copilot-worktrees}"
 COPILOT_DB="${WS_COPILOT_DB:-$HOME/.copilot/data.db}"
 WS_USER="${WS_USER:-$USER}"
-WS_OPEN_COPILOT="${WS_OPEN_COPILOT:-1}"
-WS_OPEN_LAZYGIT="${WS_OPEN_LAZYGIT:-1}"
+WS_OPEN_MODE="${WS_OPEN_MODE:-ghostty}"
+WS_STATE_DIR="${WS_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ws}"
+WS_BLESSED_CODESPACE_STATE="${WS_BLESSED_CODESPACE_STATE:-$WS_STATE_DIR/blessed-codespace.json}"
+WS_CODESPACE_REPO_MAP="${WS_CODESPACE_REPO_MAP:-$WS_STATE_DIR/codespace-repos.tsv}"
+WS_CODESPACE_REMOTE_ROOT="${WS_CODESPACE_REMOTE_ROOT:-/workspace}"
+WS_CODESPACE_WEB_PORTS="${WS_CODESPACE_WEB_PORTS:-80 2206 2208 2210 3011 8091 8088}"
 
 REPO_ORG=""
 REPO_NAME=""
@@ -22,7 +26,7 @@ LOCK_PATH=""
 
 show_help() {
     cat << 'EOF'
-ws - Copilot worktree + tmux session manager
+ws - Copilot worktree manager
 
 Usage: ws <command> [options]
 
@@ -30,18 +34,22 @@ Commands:
   new <session-slug>        Create named worktree from default branch
   new --pr <n|url>          Create/reuse PR worktree (pr-<number>)
   pr <n|url>                Shortcut for: ws new --pr <n|url>
-  open <name|path>          Open an existing worktree in tmux
+  open <name|path>          Print an existing worktree path for shell cd wrappers
+  path <name|path>          Print the resolved worktree path
+  pick                      Pick a worktree with fzf and open it
   list                      List managed worktrees for current repo (default: simple view)
   list --all                List managed worktrees across repos
-  list --full               Include tmux session + Copilot session metadata
-  list --json               Emit JSON for scripts/fzf/tmux pipelines
-  delete <name|path>        Remove one managed worktree + tmux session
+  list --full               Include path + Copilot session metadata
+  list --json               Emit JSON for scripts/fzf/Raycast
+  delete [--force] <...>    Remove one or more managed worktrees
   clean                     Remove all managed worktrees for current repo
+  cs <command>              Manage the blessed dotcom Codespace
 
 Notes:
   - Source repo is resolved from ~/Development/<owner>/<repo> when needed.
-  - On open, ws starts Copilot with --resume=<session-id> when it finds
-    a prior session mapped to that checkout path in ~/.copilot/data.db.
+  - In fish, 'ws open <name>' changes directory via the shell wrapper.
+  - Set WS_OPEN_MODE=print to make new/pr print paths instead of launching Ghostty.
+  - Use ws cs bless to choose one mothership Codespace for repo sync.
 
 Options:
   -h, --help    Show this help message
@@ -51,14 +59,52 @@ Examples:
   ws pr 426638
   ws new --pr https://github.com/github/github/pull/426638
   ws open pr-426638
+  cd "$(ws path pr-426638)"
+  ws pick
   ws list
   ws list --full
   ws list --all --json
-  ws delete pr-426638
+  ws delete pr-426638 gnfisher/other-session
+  ws cs bless
+  ws cs sync
 EOF
 }
 
-log() { echo "==> $*"; }
+show_cs_help() {
+    cat << 'EOF'
+ws cs - blessed dotcom Codespace workflow
+
+Usage: ws cs <command> [options]
+
+Commands:
+  bless [codespace]        Save/select the mothership Codespace
+  status                   Show local branch and remote checkout status
+  sync [--force-remote]    Push local HEAD and update /workspace/<repo>
+  ssh [command...]         SSH into the blessed Codespace
+  repo                     SSH into the matching remote repo directory
+  ports [options...]       List ports for the blessed Codespace
+  forward <remote>:<local> Forward ports in the foreground
+  web-ports [action]       Toggle browser-facing github/github ports
+
+Web port actions:
+  toggle                   Start if stopped; stop if running (default)
+  start                    Start managed forwarding in the background
+  stop                     Stop the managed forwarder started by ws
+  status, --status         Show managed forwarding status
+
+State:
+  ~/.local/state/ws/blessed-codespace.json by default
+
+Overrides:
+  WS_BLESSED_CODESPACE     Temporary Codespace name override
+  WS_CODESPACE_REMOTE_PATH Override remote path for current repo
+  WS_CODESPACE_REMOTE_ROOT Remote root; defaults to /workspace
+  WS_CODESPACE_REPO_MAP    TSV mapping file: owner/repo<TAB>/remote/path
+  WS_CODESPACE_WEB_PORTS   Space-separated remote ports to forward locally
+EOF
+}
+
+log() { echo "==> $*" >&2; }
 error() { echo "Error: $*" >&2; }
 
 cleanup_lock() {
@@ -71,6 +117,25 @@ canonical_dir() {
     local dir="$1"
     (cd "$dir" 2>/dev/null && pwd -P)
 }
+
+canonical_path_maybe() {
+    local path="$1"
+    if [[ -d "$path" ]]; then
+        canonical_dir "$path"
+        return 0
+    fi
+
+    local parent base
+    parent=$(dirname "$path")
+    base=$(basename "$path")
+    if [[ -d "$parent" ]]; then
+        printf '%s/%s\n' "$(canonical_dir "$parent")" "$base"
+    else
+        printf '%s\n' "$path"
+    fi
+}
+
+WORKTREE_BASE=$(canonical_path_maybe "$WORKTREE_BASE")
 
 path_under_base() {
     local path="$1"
@@ -121,7 +186,7 @@ acquire_lock() {
 
 detect_repo_info() {
     local url
-    url=$(git remote get-url origin 2>/dev/null) || {
+    url=$(git config --get remote.origin.url 2>/dev/null) || {
         error "Not in a git repository or no 'origin' remote"
         exit 1
     }
@@ -207,16 +272,6 @@ worktree_display_name() {
     else
         basename "$wt_path"
     fi
-}
-
-tmux_session_name_from_path() {
-    local repo="$1"
-    local display="$2"
-    local wt_path="$3"
-    local base="${repo}#${display}"
-    local safe
-    safe=$(echo "$base" | tr './: ' '_---')
-    echo "${safe}-$(short_hash "$wt_path")"
 }
 
 latest_copilot_session_for_path() {
@@ -344,6 +399,20 @@ json_escape() {
     printf '%s' "$s"
 }
 
+shell_quote() {
+    local s="$1"
+    s=${s//\'/\'\\\'\'}
+    printf "'%s'" "$s"
+}
+
+require_command() {
+    local command_name="$1"
+    command -v "$command_name" >/dev/null 2>&1 || {
+        error "$command_name is required"
+        exit 1
+    }
+}
+
 output_list_rows() {
     local output_format="$1"
     local output_view="$2"
@@ -355,7 +424,7 @@ output_list_rows() {
 
     while IFS= read -r record; do
         sorted_records+=("$record")
-    done < <(printf '%s\n' "${records[@]}" | LC_ALL=C sort -t "$sep" -k1,1 -k9,9r -k2,2)
+    done < <(printf '%s\n' "${records[@]}" | LC_ALL=C sort -t "$sep" -k1,1 -k7,7r -k2,2)
 
     records=("${sorted_records[@]}")
 
@@ -363,31 +432,26 @@ output_list_rows() {
         local first=1
         printf "[\n"
         for record in "${records[@]}"; do
-            local repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active
-            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active <<<"$record"
-            local tmux_bool="false"
-            [[ "$tmux_status" == "yes" ]] && tmux_bool="true"
+            local repo name path branch copilot_session resume_id last_active_iso last_active
+            IFS="$sep" read -r repo name path branch copilot_session resume_id last_active_iso last_active <<<"$record"
             [[ "$first" -eq 1 ]] || printf ",\n"
             first=0
 
             if [[ "$output_view" == "simple" ]]; then
-                printf '  {"repo":"%s","name":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s","tmux":%s}' \
+                printf '  {"repo":"%s","name":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s"}' \
                     "$(json_escape "$repo")" \
                     "$(json_escape "$name")" \
                     "$(json_escape "$branch")" \
                     "$(json_escape "$last_active_iso")" \
-                    "$(json_escape "$last_active")" \
-                    "$tmux_bool"
+                    "$(json_escape "$last_active")"
             else
-                printf '  {"repo":"%s","name":"%s","path":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s","tmux":%s,"tmuxSession":"%s","copilotSession":"%s","resumeId":"%s"}' \
+                printf '  {"repo":"%s","name":"%s","path":"%s","branch":"%s","lastActive":"%s","lastActiveHuman":"%s","copilotSession":"%s","resumeId":"%s"}' \
                     "$(json_escape "$repo")" \
                     "$(json_escape "$name")" \
                     "$(json_escape "$path")" \
                     "$(json_escape "$branch")" \
                     "$(json_escape "$last_active_iso")" \
                     "$(json_escape "$last_active")" \
-                    "$tmux_bool" \
-                    "$(json_escape "$tmux_session")" \
                     "$(json_escape "$copilot_session")" \
                     "$(json_escape "$resume_id")"
             fi
@@ -398,75 +462,62 @@ output_list_rows() {
 
     {
         if [[ "$output_view" == "simple" ]]; then
-            printf "REPO\tNAME\tBRANCH\tLAST_ACTIVE\tTMUX\n"
+            printf "REPO\tNAME\tBRANCH\tLAST_ACTIVE\n"
         else
-            printf "REPO\tNAME\tPATH\tBRANCH\tLAST_ACTIVE\tTMUX\tTMUX_SESSION\tCOPILOT_SESSION\tRESUME_ID\n"
+            printf "REPO\tNAME\tPATH\tBRANCH\tLAST_ACTIVE\tCOPILOT_SESSION\tRESUME_ID\n"
         fi
         local record
         for record in "${records[@]}"; do
-            local repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active
-            IFS="$sep" read -r repo name path branch tmux_status tmux_session copilot_session resume_id last_active_iso last_active <<<"$record"
+            local repo name path branch copilot_session resume_id last_active_iso last_active
+            IFS="$sep" read -r repo name path branch copilot_session resume_id last_active_iso last_active <<<"$record"
             if [[ "$output_view" == "simple" ]]; then
-                printf "%s\t%s\t%s\t%s\t%s\n" "$repo" "$name" "$branch" "$last_active" "$tmux_status"
+                printf "%s\t%s\t%s\t%s\n" "$repo" "$name" "$branch" "$last_active"
             else
-                printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                    "$repo" "$name" "$path" "$branch" "$last_active" "$tmux_status" "$tmux_session" "$copilot_session" "$resume_id"
+                printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+                    "$repo" "$name" "$path" "$branch" "$last_active" "$copilot_session" "$resume_id"
             fi
         done
     } | render_table
 }
 
-attach_or_switch_tmux_session() {
-    local session="$1"
-    if [[ -z "${TMUX:-}" ]]; then
-        tmux attach-session -t "$session"
-    else
-        tmux switch-client -t "$session"
-    fi
-}
-
-tmux_open_worktree() {
+worktree_title_from_path() {
     local wt_path="$1"
-    wt_path=$(canonical_dir "$wt_path")
-
     local repo display session
     repo=$(repo_name_from_worktree_path "$wt_path")
     display=$(worktree_display_name "$wt_path" "$repo")
-    session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
+    printf '%s:%s' "$repo" "$display"
+}
 
-    if tmux has-session -t="$session" 2>/dev/null; then
-        log "Switching to tmux session '$session'..."
-        attach_or_switch_tmux_session "$session"
-        return 0
-    fi
+set_terminal_title() {
+    local title="$1"
+    printf '\033]0;%s\007' "$title"
+}
 
-    log "Creating tmux session '$session'..."
-    local sid
-    sid=$(tmux new-session -d -P -F '#{session_id}' -c "$wt_path" -n "$repo")
-    tmux rename-session -t "$sid" "$session"
-    tmux set-option -t "$sid" automatic-rename off
-    tmux send-keys -t "$sid" "nvim" C-m
+open_worktree() {
+    local wt_path="$1"
+    wt_path=$(canonical_dir "$wt_path")
 
-    if [[ "$WS_OPEN_COPILOT" == "1" ]]; then
-        local copilot_cmd="copilot --yolo"
-        local resume_id=""
-        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
-        if [[ -n "$resume_id" ]]; then
-            log "Resuming Copilot session: $resume_id"
-            copilot_cmd="${copilot_cmd} --resume=${resume_id}"
-        fi
+    ensure_managed_path "$wt_path"
 
-        tmux new-window -t "$sid" -c "$wt_path" -n "copilot"
-        tmux send-keys -t "${sid}:copilot" "$copilot_cmd" C-m
-    fi
-
-    if [[ "$WS_OPEN_LAZYGIT" == "1" ]]; then
-        tmux new-window -t "$sid" -c "$wt_path" -n "lazygit"
-        tmux send-keys -t "${sid}:lazygit" "lazygit" C-m
-    fi
-
-    tmux select-window -t "${sid}:1"
-    attach_or_switch_tmux_session "$session"
+    case "$WS_OPEN_MODE" in
+        print|path|none)
+            printf '%s\n' "$wt_path"
+            ;;
+        ghostty)
+            local title
+            title=$(worktree_title_from_path "$wt_path")
+            if [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then
+                log "Opening Ghostty: $title"
+                open -na "Ghostty" --args "--working-directory=${wt_path}" "--title=${title}"
+            else
+                printf '%s\n' "$wt_path"
+            fi
+            ;;
+        *)
+            error "Invalid WS_OPEN_MODE '$WS_OPEN_MODE' (expected: ghostty|print)"
+            exit 1
+            ;;
+    esac
 }
 
 parse_pr_ref() {
@@ -538,6 +589,25 @@ resolve_worktree_for_delete() {
         return 0
     fi
 
+    local candidate=""
+    candidate="${WORKTREE_BASE}/${input}"
+    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+        && git config --get remote.origin.url >/dev/null 2>&1; then
+        detect_repo_info
+        if [[ "$input" =~ ^pr-[0-9]+$ ]]; then
+            candidate="${REPO_WT_DIR}/${input}"
+            [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+        fi
+
+        candidate="$(worktree_path_for_named "$input")"
+        [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+        candidate="${REPO_WT_DIR}/${input}"
+        [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+    fi
+
     local matches=()
     while IFS= read -r wt; do
         matches+=("$wt")
@@ -564,6 +634,637 @@ resolve_worktree_for_delete() {
 
     error "Worktree '$input' not found under ${WORKTREE_BASE}/"
     exit 1
+}
+
+codespace_list_json() {
+    require_command gh
+    gh cs list --limit 100 --json name,displayName,repository,state,lastUsedAt
+}
+
+codespace_jq_repo_expr='
+def repo_name:
+  .repository
+  | if type == "object" then (.nameWithOwner // .fullName // .name // "")
+    else (. // "")
+    end;
+'
+
+codespace_lookup() {
+    local query="$1"
+    require_command jq
+    codespace_list_json \
+        | jq -r --arg query "$query" "${codespace_jq_repo_expr}
+            .[]
+            | select(.name == \$query or .displayName == \$query)
+            | [.name, (.displayName // \"\"), repo_name, (.state // \"\"), (.lastUsedAt // \"\")]
+            | @tsv" \
+        | head -n1
+}
+
+codespace_saved_name() {
+    if [[ -n "${WS_BLESSED_CODESPACE:-}" ]]; then
+        printf '%s\n' "$WS_BLESSED_CODESPACE"
+        return 0
+    fi
+
+    [[ -f "$WS_BLESSED_CODESPACE_STATE" ]] || return 1
+    require_command jq
+    jq -r '.name // empty' "$WS_BLESSED_CODESPACE_STATE"
+}
+
+codespace_write_state() {
+    local name="$1"
+    local display_name="$2"
+    local repo="$3"
+    local state="$4"
+    local last_used="$5"
+
+    mkdir -p "$WS_STATE_DIR"
+    cat > "$WS_BLESSED_CODESPACE_STATE" <<JSON
+{
+  "name": "$(json_escape "$name")",
+  "displayName": "$(json_escape "$display_name")",
+  "repository": "$(json_escape "$repo")",
+  "state": "$(json_escape "$state")",
+  "lastUsedAt": "$(json_escape "$last_used")",
+  "remoteRoot": "$(json_escape "$WS_CODESPACE_REMOTE_ROOT")"
+}
+JSON
+}
+
+codespace_select() {
+    require_command jq
+
+    if command -v fzf >/dev/null 2>&1; then
+        local selection
+        selection=$(
+            codespace_list_json \
+                | jq -r "${codespace_jq_repo_expr}
+                    .[]
+                    | [.name, (.displayName // \"\"), repo_name, (.state // \"\"), (.lastUsedAt // \"\")]
+                    | @tsv" \
+                | awk -F'\t' '{
+                    printf "%-34s  %-22s  %-28s  %-10s\t%s\n", $1, $2, $3, $4, $1
+                }' \
+                | fzf --reverse \
+                      --prompt 'codespace> ' \
+                      --delimiter $'\t' \
+                      --with-nth=1 \
+                      --preview 'printf "%s\n" {} | cut -f2' \
+                      --preview-window 'down,3,wrap'
+        )
+        [[ -n "$selection" ]] || exit 0
+        printf '%s\n' "$selection" | cut -f2
+        return 0
+    fi
+
+    local names=()
+    local line index=1
+    while IFS= read -r line; do
+        names+=("$(printf '%s' "$line" | cut -f1)")
+        printf '%2d) %s\n' "$index" "$line" >&2
+        index=$((index + 1))
+    done < <(
+        codespace_list_json \
+            | jq -r "${codespace_jq_repo_expr}
+                .[]
+                | [.name, (.displayName // \"\"), repo_name, (.state // \"\"), (.lastUsedAt // \"\")]
+                | @tsv"
+    )
+
+    [[ ${#names[@]} -gt 0 ]] || {
+        error "No Codespaces found."
+        exit 1
+    }
+
+    local choice
+    read -rp "Codespace number: " choice
+    [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#names[@]} )) || {
+        error "Invalid Codespace selection."
+        exit 1
+    }
+    printf '%s\n' "${names[$((choice - 1))]}"
+}
+
+codespace_resolve() {
+    local allow_interactive="${1:-false}"
+    local candidate=""
+
+    candidate=$(codespace_saved_name || true)
+    if [[ -z "$candidate" && "$allow_interactive" == "true" ]]; then
+        candidate=$(codespace_select)
+        cmd_cs_bless "$candidate" >/dev/null
+    fi
+
+    [[ -n "$candidate" ]] || {
+        error "No blessed Codespace configured."
+        echo "Run 'ws cs bless [codespace]' first, or set WS_BLESSED_CODESPACE." >&2
+        exit 1
+    }
+
+    local record
+    record=$(codespace_lookup "$candidate")
+    [[ -n "$record" ]] || {
+        error "Blessed Codespace not found: $candidate"
+        echo "Run 'ws cs bless' to choose a current Codespace." >&2
+        exit 1
+    }
+
+    printf '%s\n' "$record" | cut -f1
+}
+
+codespace_remote_path() {
+    detect_repo_info
+
+    local key="${REPO_ORG}/${REPO_NAME}"
+    if [[ -n "${WS_CODESPACE_REMOTE_PATH:-}" ]]; then
+        printf '%s\n' "$WS_CODESPACE_REMOTE_PATH"
+        return 0
+    fi
+
+    if [[ -f "$WS_CODESPACE_REPO_MAP" ]]; then
+        local mapped
+        mapped=$(awk -F'\t' -v key="$key" -v repo="$REPO_NAME" '
+            $1 == key || $1 == repo { print $2; exit }
+        ' "$WS_CODESPACE_REPO_MAP")
+        if [[ -n "$mapped" ]]; then
+            printf '%s\n' "$mapped"
+            return 0
+        fi
+    fi
+
+    [[ -n "$REPO_NAME" ]] || {
+        error "Cannot infer Codespace repo path."
+        exit 1
+    }
+    printf '%s/%s\n' "$WS_CODESPACE_REMOTE_ROOT" "$REPO_NAME"
+}
+
+current_branch() {
+    local branch
+    branch=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
+    if [[ "$branch" == "HEAD" ]]; then
+        error "Cannot sync from detached HEAD."
+        exit 1
+    fi
+    printf '%s\n' "$branch"
+}
+
+codespace_remote_command() {
+    local codespace="$1"
+    shift
+    local command="$1"
+    shift
+
+    local quoted_args=()
+    local arg
+    for arg in "$@"; do
+        quoted_args+=("$(shell_quote "$arg")")
+    done
+
+    gh cs ssh -c "$codespace" "bash -s -- ${quoted_args[*]}" <<<"$command"
+}
+
+cmd_cs_bless() {
+    local requested="${1:-}"
+    local name
+
+    if [[ -n "$requested" ]]; then
+        name="$requested"
+    else
+        name=$(codespace_select)
+    fi
+
+    local record
+    record=$(codespace_lookup "$name")
+    [[ -n "$record" ]] || {
+        error "Codespace not found: $name"
+        exit 1
+    }
+
+    local actual display repo state last_used
+    IFS=$'\t' read -r actual display repo state last_used <<<"$record"
+    codespace_write_state "$actual" "$display" "$repo" "$state" "$last_used"
+    echo "Blessed Codespace: ${actual}"
+}
+
+cmd_cs_status() {
+    local codespace
+    codespace=$(codespace_resolve false)
+
+    detect_repo_info
+    local branch head remote_path record display repo state last_used
+    branch=$(current_branch)
+    head=$(git -C "$REPO_DIR" rev-parse HEAD)
+    remote_path=$(codespace_remote_path)
+    record=$(codespace_lookup "$codespace")
+    IFS=$'\t' read -r codespace display repo state last_used <<<"$record"
+
+    printf "Codespace\t%s\n" "$codespace"
+    printf "Display\t%s\n" "${display:-"-"}"
+    printf "State\t%s\n" "${state:-"-"}"
+    printf "Codespace repo\t%s\n" "${repo:-"-"}"
+    printf "Local repo\t%s/%s\n" "$REPO_ORG" "$REPO_NAME"
+    printf "Local branch\t%s\n" "$branch"
+    printf "Local HEAD\t%s\n" "$head"
+    printf "Remote path\t%s\n" "$remote_path"
+
+    local remote_script='
+set -euo pipefail
+owner="$1"
+repo="$2"
+branch="$3"
+head="$4"
+remote_path="$5"
+
+if [[ ! -e "$remote_path" ]]; then
+    echo "Remote found	no"
+    exit 0
+fi
+
+cd "$remote_path"
+remote_url=$(git config --get remote.origin.url 2>/dev/null || true)
+if [[ "$remote_url" != *"${owner}/${repo}"* ]]; then
+    echo "Remote found	yes"
+    echo "Remote repo match	no"
+    echo "Remote origin	${remote_url:-"-"}"
+    exit 0
+fi
+
+remote_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+remote_head=$(git rev-parse HEAD 2>/dev/null || echo "?")
+if [[ -n "$(git status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+    dirty=yes
+else
+    dirty=no
+fi
+if [[ "$remote_head" == "$head" ]]; then
+    synced=yes
+else
+    synced=no
+fi
+
+echo "Remote found	yes"
+echo "Remote repo match	yes"
+echo "Remote branch	$remote_branch"
+echo "Remote HEAD	$remote_head"
+echo "Remote dirty	$dirty"
+echo "Synced	$synced"
+'
+    if ! codespace_remote_command "$codespace" "$remote_script" "$REPO_ORG" "$REPO_NAME" "$branch" "$head" "$remote_path"; then
+        error "Could not query remote Codespace checkout."
+        exit 1
+    fi
+}
+
+cmd_cs_sync() {
+    local force_remote=false
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force-remote)
+                force_remote=true
+                shift
+                ;;
+            *)
+                error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    local codespace
+    codespace=$(codespace_resolve true)
+
+    detect_repo_info
+    local branch head remote_path
+    branch=$(current_branch)
+    head=$(git -C "$REPO_DIR" rev-parse HEAD)
+    remote_path=$(codespace_remote_path)
+
+    if [[ -n "$(git -C "$REPO_DIR" status --porcelain --untracked-files=all)" ]]; then
+        log "Local worktree has uncommitted changes; syncing committed HEAD only."
+    fi
+
+    log "Pushing ${REPO_ORG}/${REPO_NAME} ${branch} (${head:0:12}) to origin..."
+    git -C "$REPO_DIR" push origin "HEAD:${branch}"
+
+    local remote_script='
+set -euo pipefail
+owner="$1"
+repo="$2"
+branch="$3"
+head="$4"
+remote_path="$5"
+force_remote="$6"
+
+if [[ ! -e "$remote_path" ]]; then
+    echo "Remote repo path does not exist: $remote_path" >&2
+    exit 1
+fi
+
+cd "$remote_path"
+remote_url=$(git config --get remote.origin.url 2>/dev/null || true)
+if [[ "$remote_url" != *"${owner}/${repo}"* ]]; then
+    echo "Remote origin does not match ${owner}/${repo}: ${remote_url:-"(missing)"}" >&2
+    exit 1
+fi
+
+if [[ -n "$(git status --porcelain --untracked-files=all)" && "$force_remote" != "true" ]]; then
+    echo "Remote checkout has local changes: $remote_path" >&2
+    echo "Use ws cs sync --force-remote to discard them." >&2
+    exit 1
+fi
+if [[ "$force_remote" == "true" ]]; then
+    git reset --hard
+    git clean -fd
+fi
+
+git fetch origin "$branch"
+git cat-file -e "${head}^{commit}"
+git checkout -B "$branch" "$head"
+git reset --hard "$head"
+if [[ "$force_remote" == "true" ]]; then
+    git clean -fd
+fi
+
+actual=$(git rev-parse HEAD)
+if [[ "$actual" != "$head" ]]; then
+    echo "Remote sync ended at $actual, expected $head" >&2
+    exit 1
+fi
+
+echo "Synced ${owner}/${repo} ${branch} to ${head}"
+'
+    codespace_remote_command "$codespace" "$remote_script" "$REPO_ORG" "$REPO_NAME" "$branch" "$head" "$remote_path" "$force_remote"
+}
+
+cmd_cs_ssh() {
+    local codespace
+    codespace=$(codespace_resolve false)
+    gh cs ssh -c "$codespace" "$@"
+}
+
+cmd_cs_repo() {
+    local codespace remote_path
+    codespace=$(codespace_resolve false)
+    remote_path=$(codespace_remote_path)
+    gh cs ssh -c "$codespace" "cd $(shell_quote "$remote_path") && exec \${SHELL:-bash} -l"
+}
+
+cmd_cs_ports() {
+    local codespace
+    codespace=$(codespace_resolve false)
+    gh cs ports -c "$codespace" "$@"
+}
+
+cmd_cs_forward() {
+    [[ $# -ge 1 ]] || {
+        error "Usage: ws cs forward <remote-port>:<local-port>..."
+        exit 1
+    }
+    local codespace
+    codespace=$(codespace_resolve false)
+    gh cs ports forward "$@" -c "$codespace"
+}
+
+codespace_web_port_label() {
+    case "$1" in
+        80) echo "web" ;;
+        2206) echo "Copilot API" ;;
+        2208) echo "sweagentd-http" ;;
+        2210) echo "copilot-mission-control-http" ;;
+        3011) echo "web-alt" ;;
+        8091) echo "authzd" ;;
+        8088) echo "notifyd" ;;
+        *) echo "custom" ;;
+    esac
+}
+
+codespace_web_ports() {
+    local port
+    for port in $WS_CODESPACE_WEB_PORTS; do
+        [[ "$port" =~ ^[0-9]+$ ]] || {
+            error "Invalid port in WS_CODESPACE_WEB_PORTS: $port"
+            exit 1
+        }
+        printf '%s\n' "$port"
+    done
+}
+
+codespace_state_key() {
+    printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
+}
+
+codespace_web_state_dir() {
+    printf '%s/web-ports-%s\n' "$WS_STATE_DIR" "$(codespace_state_key "$1")"
+}
+
+codespace_web_pid_file() {
+    printf '%s/port-%s.pid\n' "$(codespace_web_state_dir "$1")" "$2"
+}
+
+codespace_web_log_file() {
+    printf '%s/port-%s.log\n' "$(codespace_web_state_dir "$1")" "$2"
+}
+
+codespace_web_pid() {
+    local file
+    file=$(codespace_web_pid_file "$1" "$2")
+    [[ -f "$file" ]] || return 1
+    sed -n '1p' "$file"
+}
+
+codespace_web_pid_is_forwarder() {
+    local pid="$1"
+    local port="$2"
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+
+    local command_line
+    command_line=$(ps -p "$pid" -o command= 2>/dev/null || true)
+    [[ "$command_line" == *"gh"* && "$command_line" == *"ports forward"* && "$command_line" == *"${port}:${port}"* ]]
+}
+
+codespace_web_port_running() {
+    local codespace="$1"
+    local port="$2"
+    local pid_file pid
+    pid_file=$(codespace_web_pid_file "$codespace" "$port")
+    pid=$(codespace_web_pid "$codespace" "$port" || true)
+
+    if codespace_web_pid_is_forwarder "$pid" "$port"; then
+        return 0
+    fi
+
+    [[ -f "$pid_file" ]] && rm -f "$pid_file"
+    return 1
+}
+
+codespace_web_running() {
+    local codespace="$1"
+    local port
+    while IFS= read -r port; do
+        if codespace_web_port_running "$codespace" "$port"; then
+            return 0
+        fi
+    done < <(codespace_web_ports)
+    return 1
+}
+
+cmd_cs_web_ports_status() {
+    local codespace state_dir state="stopped"
+    codespace=$(codespace_resolve false)
+    state_dir=$(codespace_web_state_dir "$codespace")
+
+    if codespace_web_running "$codespace"; then
+        state="running"
+    fi
+
+    printf "Codespace\t%s\n" "$codespace"
+    printf "Forwarder\t%s\n" "$state"
+    printf "State dir\t%s\n" "$state_dir"
+    printf "Ports\n"
+
+    local port port_state pid log_file
+    while IFS= read -r port; do
+        port_state="stopped"
+        pid="-"
+        log_file=$(codespace_web_log_file "$codespace" "$port")
+        if codespace_web_port_running "$codespace" "$port"; then
+            port_state="running"
+            pid=$(codespace_web_pid "$codespace" "$port")
+        fi
+        printf "  %s:%s\t%s\t%s\t%s\t%s\n" \
+            "$port" "$port" "$(codespace_web_port_label "$port")" "$port_state" "$pid" "$log_file"
+    done < <(codespace_web_ports)
+}
+
+cmd_cs_web_ports_start() {
+    local codespace state_dir
+    codespace=$(codespace_resolve false)
+    state_dir=$(codespace_web_state_dir "$codespace")
+
+    local ports=()
+    local configured_port
+    while IFS= read -r configured_port; do
+        ports+=("$configured_port")
+    done < <(codespace_web_ports)
+    [[ ${#ports[@]} -gt 0 ]] || {
+        error "No web ports configured."
+        exit 1
+    }
+
+    mkdir -p "$state_dir"
+
+    local port pid pid_file log_file started=0 failed=0
+    for port in "${ports[@]}"; do
+        if codespace_web_port_running "$codespace" "$port"; then
+            echo "Port ${port} already forwarding for ${codespace} (PID $(codespace_web_pid "$codespace" "$port"))."
+            continue
+        fi
+
+        pid_file=$(codespace_web_pid_file "$codespace" "$port")
+        log_file=$(codespace_web_log_file "$codespace" "$port")
+        log "Starting web port forwarding for ${codespace}: ${port}:${port} ($(codespace_web_port_label "$port"))"
+        nohup gh cs ports forward "${port}:${port}" -c "$codespace" >"$log_file" 2>&1 &
+        pid=$!
+        printf '%s\n' "$pid" > "$pid_file"
+        started=$((started + 1))
+    done
+
+    sleep 2
+
+    for port in "${ports[@]}"; do
+        if ! codespace_web_port_running "$codespace" "$port"; then
+            failed=$((failed + 1))
+            log_file=$(codespace_web_log_file "$codespace" "$port")
+            error "Port ${port} forwarder exited. Log:"
+            tail -n 20 "$log_file" >&2 2>/dev/null || true
+        fi
+    done
+
+    if [[ "$failed" -gt 0 ]]; then
+        error "${failed} web port forwarder(s) failed."
+        exit 1
+    fi
+
+    echo "Started ${started} web port forwarder(s) for ${codespace}."
+    echo "State: ${state_dir}"
+}
+
+cmd_cs_web_ports_stop() {
+    local codespace stopped=0
+    codespace=$(codespace_resolve false)
+
+    local port pid pid_file
+    while IFS= read -r port; do
+        if ! codespace_web_port_running "$codespace" "$port"; then
+            continue
+        fi
+
+        pid=$(codespace_web_pid "$codespace" "$port")
+        pid_file=$(codespace_web_pid_file "$codespace" "$port")
+        kill "$pid"
+        sleep 1
+        if kill -0 "$pid" 2>/dev/null; then
+            error "Forwarder did not stop yet: port ${port}, PID ${pid}"
+            exit 1
+        fi
+        rm -f "$pid_file"
+        stopped=$((stopped + 1))
+        echo "Stopped ${port}:${port} for ${codespace}."
+    done < <(codespace_web_ports)
+
+    if [[ "$stopped" -eq 0 ]]; then
+        echo "Web port forwarding is not running for ${codespace}."
+    fi
+}
+
+cmd_cs_web_ports() {
+    local action="${1:-toggle}"
+    case "$action" in
+        toggle)
+            local codespace
+            codespace=$(codespace_resolve false)
+            if codespace_web_running "$codespace"; then
+                cmd_cs_web_ports_stop
+            else
+                cmd_cs_web_ports_start
+            fi
+            ;;
+        start) cmd_cs_web_ports_start ;;
+        stop) cmd_cs_web_ports_stop ;;
+        status|--status) cmd_cs_web_ports_status ;;
+        *)
+            error "Usage: ws cs web-ports [toggle|start|stop|status|--status]"
+            exit 1
+            ;;
+    esac
+}
+
+cmd_cs() {
+    local subcommand="${1:-}"
+    [[ -n "$subcommand" ]] || {
+        show_cs_help
+        exit 0
+    }
+    shift
+
+    case "$subcommand" in
+        -h|--help|help) show_cs_help ;;
+        bless) cmd_cs_bless "$@" ;;
+        status) cmd_cs_status "$@" ;;
+        sync) cmd_cs_sync "$@" ;;
+        ssh) cmd_cs_ssh "$@" ;;
+        repo) cmd_cs_repo "$@" ;;
+        ports) cmd_cs_ports "$@" ;;
+        forward) cmd_cs_forward "$@" ;;
+        web-ports|web) cmd_cs_web_ports "$@" ;;
+        *)
+            error "Unknown ws cs command '$subcommand'"
+            exit 1
+            ;;
+    esac
 }
 
 cmd_new() {
@@ -598,7 +1299,7 @@ cmd_new() {
 
         if [[ -d "$wt_path" ]]; then
             log "Worktree already exists: $wt_path"
-            tmux_open_worktree "$wt_path"
+            open_worktree "$wt_path"
             return 0
         fi
 
@@ -611,13 +1312,13 @@ cmd_new() {
         local pr_branch="pr-${PR_NUMBER}"
         if branch_exists "$REPO_DIR" "$pr_branch"; then
             log "Local branch '${pr_branch}' already exists; reusing it."
-            git -C "$REPO_DIR" worktree add "$wt_path" "$pr_branch"
+            git -C "$REPO_DIR" worktree add --quiet "$wt_path" "$pr_branch"
         else
             log "Creating worktree: $wt_path"
-            git -C "$REPO_DIR" worktree add -b "$pr_branch" "$wt_path" "refs/remotes/origin/pr/${PR_NUMBER}"
+            git -C "$REPO_DIR" worktree add --quiet -b "$pr_branch" "$wt_path" "refs/remotes/origin/pr/${PR_NUMBER}"
         fi
 
-        tmux_open_worktree "$wt_path"
+        open_worktree "$wt_path"
         return 0
     fi
 
@@ -635,7 +1336,7 @@ cmd_new() {
 
     if [[ -d "$wt_path" ]]; then
         log "Worktree already exists: $wt_path"
-        tmux_open_worktree "$wt_path"
+        open_worktree "$wt_path"
         return 0
     fi
 
@@ -651,13 +1352,13 @@ cmd_new() {
 
     if branch_exists "$REPO_DIR" "$branch"; then
         log "Local branch '${branch}' already exists; reusing it."
-        git -C "$REPO_DIR" worktree add "$wt_path" "$branch"
+        git -C "$REPO_DIR" worktree add --quiet "$wt_path" "$branch"
     else
         log "Creating branch '${branch}' from origin/${default_branch}..."
-        git -C "$REPO_DIR" worktree add -b "$branch" "$wt_path" "origin/${default_branch}"
+        git -C "$REPO_DIR" worktree add --quiet -b "$branch" "$wt_path" "origin/${default_branch}"
     fi
 
-    tmux_open_worktree "$wt_path"
+    open_worktree "$wt_path"
 }
 
 cmd_pr() {
@@ -669,13 +1370,29 @@ cmd_pr() {
 }
 
 cmd_open() {
-    [[ $# -ge 1 ]] || {
-        error "Usage: ws open <name|path>"
+    local target=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --print|--path|--no-open) shift ;;
+            -*)
+                error "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                target="$1"
+                shift
+                ;;
+        esac
+    done
+
+    [[ -n "$target" ]] || {
+        error "Usage: ws open [--print] <name|path>"
         exit 1
     }
 
     local wt_path
-    wt_path=$(resolve_worktree_for_open "$1")
+    wt_path=$(resolve_worktree_for_open "$target")
 
     if ! path_under_base "$wt_path"; then
         error "Refusing to open unmanaged path: $wt_path"
@@ -683,7 +1400,66 @@ cmd_open() {
         exit 1
     fi
 
-    tmux_open_worktree "$wt_path"
+    printf '%s\n' "$wt_path"
+}
+
+cmd_path() {
+    [[ $# -ge 1 ]] || {
+        error "Usage: ws path <name|path>"
+        exit 1
+    }
+
+    local wt_path
+    wt_path=$(resolve_worktree_for_open "$1")
+    ensure_managed_path "$wt_path"
+    printf '%s\n' "$wt_path"
+}
+
+cmd_title() {
+    local wt_path="${1:-$(pwd)}"
+    if [[ -d "$wt_path" ]]; then
+        wt_path=$(canonical_dir "$wt_path")
+    else
+        wt_path=$(resolve_worktree_for_open "$wt_path")
+    fi
+    ensure_managed_path "$wt_path"
+    set_terminal_title "$(worktree_title_from_path "$wt_path")"
+}
+
+cmd_pick() {
+    command -v jq >/dev/null 2>&1 || { error "jq is required for ws pick"; exit 1; }
+    command -v fzf >/dev/null 2>&1 || { error "fzf is required for ws pick"; exit 1; }
+
+    local selection path
+    selection=$(
+        cmd_list_all json full \
+            | jq -r '.[] | [.repo, .name, .branch, (.lastActiveHuman // "-"), .path] | @tsv' \
+            | awk -F'\t' '
+                function fit(s, w) {
+                    if (length(s) <= w) return s
+                    return substr(s, 1, w - 3) "..."
+                }
+                {
+                    printf "%-12s  %-28s  %-38s  %-11s\t%s\n",
+                        fit($1, 12),
+                        fit($2, 28),
+                        fit($3, 38),
+                        fit($4, 11),
+                        $5
+                }
+            ' \
+            | fzf --reverse \
+                  --prompt 'worktree> ' \
+                  --delimiter $'\t' \
+                  --with-nth=1 \
+                  --preview 'printf "%s\n" {} | cut -f2' \
+                  --preview-window 'down,3,wrap'
+    )
+
+    [[ -n "$selection" ]] || exit 0
+    path=$(printf '%s' "$selection" | cut -f2)
+    [[ -n "$path" ]] || exit 1
+    open_worktree "$path"
 }
 
 cmd_list() {
@@ -728,27 +1504,24 @@ cmd_list() {
         [[ "$wt_path" == "$REPO_DIR" ]] && continue
         [[ "$wt_path" != "${REPO_WT_DIR}/"* ]] && continue
 
-        local display branch session tmux_status resume_id resume_title resume_updated_at last_active
+        local display branch resume_id="-" resume_title="-" resume_updated_at="" last_active="-"
         display="${wt_path#${REPO_WT_DIR}/}"
         branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
-        session=$(tmux_session_name_from_path "$REPO_NAME" "$display" "$wt_path")
-        tmux_status="no"
-        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
-        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
-        resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
-        resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
-        last_active=$(format_updated_at "$resume_updated_at")
-        [[ -z "$resume_title" ]] && resume_title="-"
-        [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
-        [[ -z "$resume_id" ]] && resume_id="-"
+        if [[ "$output_view" == "full" ]]; then
+            resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
+            resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+            resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
+            last_active=$(format_updated_at "$resume_updated_at")
+            [[ -z "$resume_title" ]] && resume_title="-"
+            [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
+            [[ -z "$resume_id" ]] && resume_id="-"
+        fi
 
-        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
             "$(normalize_cell "$REPO_NAME")" "$sep" \
             "$(normalize_cell "$display")" "$sep" \
             "$(normalize_cell "$wt_path")" "$sep" \
             "$(normalize_cell "$branch")" "$sep" \
-            "$tmux_status" "$sep" \
-            "$(normalize_cell "$session")" "$sep" \
             "$(normalize_cell "$resume_title")" "$sep" \
             "$resume_id" "$sep" \
             "$(normalize_cell "$resume_updated_at")" "$sep" \
@@ -774,28 +1547,25 @@ cmd_list_all() {
     local rows=()
     local sep=$'\x1f'
     while IFS= read -r wt_path; do
-        local repo display branch session tmux_status resume_id resume_title resume_updated_at last_active
+        local repo display branch resume_id="-" resume_title="-" resume_updated_at="" last_active="-"
         repo=$(repo_name_from_worktree_path "$wt_path")
         display=$(worktree_display_name "$wt_path" "$repo")
         branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
-        session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
-        tmux_status="no"
-        tmux has-session -t="$session" 2>/dev/null && tmux_status="yes"
-        resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
-        resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
-        resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
-        last_active=$(format_updated_at "$resume_updated_at")
-        [[ -z "$resume_title" ]] && resume_title="-"
-        [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
-        [[ -z "$resume_id" ]] && resume_id="-"
+        if [[ "$output_view" == "full" ]]; then
+            resume_id=$(latest_copilot_session_for_path "$wt_path" || true)
+            resume_title=$(latest_copilot_session_title_for_id "$resume_id" || true)
+            resume_updated_at=$(latest_copilot_session_updated_at_for_id "$resume_id" || true)
+            last_active=$(format_updated_at "$resume_updated_at")
+            [[ -z "$resume_title" ]] && resume_title="-"
+            [[ -n "$resume_id" ]] && resume_id="${resume_id:0:12}"
+            [[ -z "$resume_id" ]] && resume_id="-"
+        fi
 
-        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
+        rows+=("$(printf '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s' \
             "$(normalize_cell "$repo")" "$sep" \
             "$(normalize_cell "$display")" "$sep" \
             "$(normalize_cell "$wt_path")" "$sep" \
             "$(normalize_cell "$branch")" "$sep" \
-            "$tmux_status" "$sep" \
-            "$(normalize_cell "$session")" "$sep" \
             "$(normalize_cell "$resume_title")" "$sep" \
             "$resume_id" "$sep" \
             "$(normalize_cell "$resume_updated_at")" "$sep" \
@@ -810,15 +1580,9 @@ cmd_list_all() {
     output_list_rows "$output_format" "$output_view" "${rows[@]}"
 }
 
-cmd_delete() {
-    [[ $# -ge 1 ]] || {
-        error "Usage: ws delete <name|path>"
-        exit 1
-    }
-
-    local wt_path
-    wt_path=$(resolve_worktree_for_delete "$1")
-
+delete_worktree() {
+    local wt_path="$1"
+    local force="$2"
     if ! path_under_base "$wt_path"; then
         error "Refusing to remove path outside managed root: $wt_path"
         exit 1
@@ -828,15 +1592,9 @@ cmd_delete() {
         exit 1
     fi
 
-    local repo display session
+    local repo display
     repo=$(repo_name_from_worktree_path "$wt_path")
     display=$(worktree_display_name "$wt_path" "$repo")
-    session=$(tmux_session_name_from_path "$repo" "$display" "$wt_path")
-
-    if tmux has-session -t="$session" 2>/dev/null; then
-        log "Killing tmux session '$session'..."
-        tmux kill-session -t "$session"
-    fi
 
     acquire_lock "$(short_hash "$wt_path")"
 
@@ -849,8 +1607,14 @@ cmd_delete() {
     fi
 
     log "Removing worktree: $wt_path"
-    git -C "$repo_root" worktree remove "$wt_path" --force
+    if [[ "$force" == "true" ]]; then
+        git -C "$repo_root" worktree remove "$wt_path" --force
+    else
+        git -C "$repo_root" worktree remove "$wt_path"
+    fi
     git -C "$repo_root" worktree prune
+    cleanup_lock
+    LOCK_PATH=""
 
     local parent
     parent=$(dirname "$wt_path")
@@ -860,6 +1624,68 @@ cmd_delete() {
     done
 
     echo "✓ Deleted worktree: ${repo}/$(worktree_display_name "$wt_path" "$repo")"
+}
+
+cmd_delete() {
+    local force=false
+    local yes=false
+    local inputs=()
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -f|--force)
+                force=true
+                shift
+                ;;
+            -y|--yes)
+                yes=true
+                shift
+                ;;
+            -*)
+                error "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                inputs+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    [[ ${#inputs[@]} -ge 1 ]] || {
+        error "Usage: ws delete [--force] [--yes] <name|path>..."
+        exit 1
+    }
+
+    local paths=()
+    local input wt_path
+    for input in "${inputs[@]}"; do
+        wt_path=$(resolve_worktree_for_delete "$input")
+        ensure_managed_path "$wt_path"
+        paths+=("$wt_path")
+    done
+
+    if [[ "$force" != "true" ]]; then
+        for wt_path in "${paths[@]}"; do
+            if [[ -n "$(git -C "$wt_path" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+                error "Worktree has local changes: $wt_path"
+                echo "Use 'ws delete --force ...' to remove it anyway." >&2
+                exit 1
+            fi
+        done
+    fi
+
+    if [[ ${#paths[@]} -gt 1 && "$yes" != "true" ]]; then
+        echo "Will delete ${#paths[@]} worktree(s):"
+        printf '  %s\n' "${paths[@]}"
+        echo
+        read -rp "Continue? [y/N] " confirm
+        [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; return 0; }
+    fi
+
+    for wt_path in "${paths[@]}"; do
+        delete_worktree "$wt_path" "$force"
+    done
 }
 
 cmd_clean() {
@@ -912,6 +1738,18 @@ case "${1:-}" in
         shift
         cmd_open "$@"
         ;;
+    path)
+        shift
+        cmd_path "$@"
+        ;;
+    pick)
+        shift
+        cmd_pick "$@"
+        ;;
+    title)
+        shift
+        cmd_title "$@"
+        ;;
     list)
         shift
         cmd_list "$@"
@@ -923,6 +1761,10 @@ case "${1:-}" in
     clean)
         shift
         cmd_clean "$@"
+        ;;
+    cs)
+        shift
+        cmd_cs "$@"
         ;;
     *)
         error "Unknown command '${1:-}'"

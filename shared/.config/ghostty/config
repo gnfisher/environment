@@ -5,18 +5,25 @@ font-size = 17
 
 # Theme (managed by ~/.local/bin/theme)
 #theme = mono-dark
-#theme = Apple System Colors Light
+theme = Doom One
 
 # macOS options
 macos-option-as-alt = true
+window-show-tab-bar = always
+macos-titlebar-style = tabs
 
 # Clipboard
 clipboard-read = allow
 clipboard-write = allow
 
+# Tabs
+keybind = cmd+shift+r=prompt_tab_title
+
 # Split panes (match WezTerm)
 keybind = cmd+d=new_split:right
 keybind = cmd+shift+d=new_split:down
+keybind = cmd+shift+enter=toggle_split_zoom
+keybind = cmd+ctrl+equal=equalize_splits
 
 # Navigate panes (match WezTerm)
 keybind = cmd+shift+h=goto_split:left
