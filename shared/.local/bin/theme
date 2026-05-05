@@ -3,7 +3,7 @@
 # Unified theme switcher for light/dark mode
 # Switches: Ghostty, Neovim, FZF, Copilot CLI
 # OpenCode auto-follows system appearance.
-# Color scheme: Catppuccin (light: latte, dark: frappe)
+# Color scheme: standard-light for Neovim, doom-one-light/mono-dark for Ghostty
 #
 # Usage:
 #   theme light    - Switch to light mode
@@ -44,7 +44,7 @@ get_current_theme() {
     if [[ -f "$THEME_STATE_FILE" ]]; then
         cat "$THEME_STATE_FILE"
     else
-        echo "dark"
+        echo "light"
     fi
 }
 
@@ -65,7 +65,7 @@ switch_ghostty() {
 
     local theme_value
     if [[ "$mode" == "light" ]]; then
-        theme_value="Terminal Basic"
+        theme_value="doom-one-light"
     else
         theme_value="mono-dark"
     fi
@@ -94,12 +94,8 @@ switch_neovim() {
     done < <(find /tmp -name 'nvim*' -type s 2>/dev/null | tr '\n' '\0')
     
     local bg_mode scheme
-    if [[ "$mode" == "light" ]]; then
-        bg_mode="light"
-    else
-        bg_mode="dark"
-    fi
-    scheme="catppuccin"
+    bg_mode="light"
+    scheme="standard-light"
 
     if [[ -f "$nvim_color_file" ]]; then
         nvim_color_file=$(resolve_path "$nvim_color_file")
@@ -199,7 +195,7 @@ detect_macos_appearance() {
             echo "light"
         fi
     else
-        echo "dark"
+        echo "light"
     fi
 }
 

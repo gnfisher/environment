@@ -299,6 +299,7 @@ hi("DiagnosticUnderlineHint",  { gui = "undercurl", sp = c.dim_fg })
 hi("LspReferenceText",  { bg = c.bg_cyan_subtle })
 hi("LspReferenceRead",  { bg = c.bg_cyan_subtle })
 hi("LspReferenceWrite", { bg = c.bg_yellow_subtle })
+hi("LspSignatureActiveParameter", { fg = c.fg, bg = c.bg_yellow_subtle, gui = "bold" })
 
 -- ============================================================================
 -- Git Signs
@@ -415,6 +416,37 @@ hi("TelescopeSelectionCaret", { fg = c.blue, bg = c.bg_completion, gui = "bold" 
 hi("TelescopeMatching",       { fg = c.red_warmer, gui = "bold" })
 
 -- ============================================================================
+-- Completion / Blink.cmp
+-- ============================================================================
+
+hi("BlinkCmpMenu",              { fg = c.fg, bg = c.bg_popup })
+hi("BlinkCmpMenuBorder",        { fg = c.border, bg = c.bg_popup })
+hi("BlinkCmpMenuSelection",     { fg = c.fg, bg = c.bg_completion })
+hi("BlinkCmpScrollBarThumb",    { bg = c.active_bg })
+hi("BlinkCmpLabel",             { fg = c.fg })
+hi("BlinkCmpLabelDeprecated",   { fg = c.dim_fg, gui = "strikethrough" })
+hi("BlinkCmpLabelMatch",        { fg = c.red_warmer, gui = "bold" })
+hi("BlinkCmpLabelDetail",       { fg = c.dim_fg })
+hi("BlinkCmpLabelDescription",  { fg = c.dim_fg })
+hi("BlinkCmpKind",              { fg = c.blue })
+hi("BlinkCmpSource",            { fg = c.dim_fg })
+hi("BlinkCmpGhostText",         { fg = c.dim_fg, gui = "italic" })
+hi("BlinkCmpDoc",               { fg = c.fg, bg = c.bg_popup })
+hi("BlinkCmpDocBorder",         { fg = c.border, bg = c.bg_popup })
+hi("BlinkCmpDocSeparator",      { fg = c.border, bg = c.bg_popup })
+hi("BlinkCmpSignatureHelp",     { fg = c.fg, bg = c.bg_popup })
+hi("BlinkCmpSignatureHelpBorder", { fg = c.border, bg = c.bg_popup })
+
+for _, kind in ipairs({
+  "Class", "Constructor", "Enum", "EnumMember", "Event", "Field", "File",
+  "Folder", "Function", "Interface", "Keyword", "Method", "Module",
+  "Operator", "Property", "Reference", "Snippet", "Struct", "Text",
+  "TypeParameter", "Unit", "Value", "Variable",
+}) do
+  link("BlinkCmpKind" .. kind, "BlinkCmpKind")
+end
+
+-- ============================================================================
 -- Oil.nvim
 -- ============================================================================
 
@@ -429,6 +461,36 @@ link("OilChange",    "DiffChange")
 link("OilSocket",    "Special")
 link("OilLink",      "Underlined")
 link("OilLinkTarget", "Comment")
+
+-- ============================================================================
+-- NvimTree / web-devicons
+-- ============================================================================
+
+hi("NvimTreeNormal",       { fg = c.fg, bg = c.bg })
+hi("NvimTreeNormalNC",     { fg = c.fg, bg = c.bg })
+hi("NvimTreeEndOfBuffer",  { fg = c.alt_bg, bg = c.bg })
+hi("NvimTreeWinSeparator", { fg = c.border, bg = c.border })
+hi("NvimTreeCursorLine",   { bg = c.inactive_bg })
+hi("NvimTreeRootFolder",   { fg = c.fg, gui = "bold" })
+hi("NvimTreeFolderName",   { fg = c.blue })
+hi("NvimTreeOpenedFolderName", { fg = c.blue, gui = "bold" })
+hi("NvimTreeEmptyFolderName",  { fg = c.blue_faint })
+hi("NvimTreeFolderIcon",   { fg = c.blue })
+hi("NvimTreeIndentMarker", { fg = c.border })
+hi("NvimTreeSymlink",      { fg = c.cyan_cooler })
+hi("NvimTreeExecFile",     { fg = c.green })
+hi("NvimTreeSpecialFile",  { fg = c.magenta_cooler, gui = "bold" })
+hi("NvimTreeImageFile",    { fg = c.yellow_warmer })
+hi("NvimTreeGitDirty",     { fg = c.fg_changed })
+hi("NvimTreeGitNew",       { fg = c.fg_added })
+hi("NvimTreeGitDeleted",   { fg = c.fg_removed })
+hi("NvimTreeGitStaged",    { fg = c.fg_added, gui = "bold" })
+hi("NvimTreeGitMerge",     { fg = c.magenta_cooler })
+hi("NvimTreeGitRenamed",   { fg = c.fg_changed })
+hi("NvimTreeGitIgnored",   { fg = c.dim_fg })
+hi("NvimTreeBookmark",     { fg = c.yellow_warmer })
+hi("NvimTreeWindowPicker", { fg = c.bg, bg = c.blue, gui = "bold" })
+hi("NvimWebDeviconsDefault", { fg = c.blue })
 
 -- ============================================================================
 -- Lazy.nvim
@@ -446,6 +508,25 @@ hi("LazyButtonActive", { fg = c.bg, bg = c.blue, gui = "bold" })
 
 hi("WhichKeyFloat",  { bg = c.bg_popup })
 hi("WhichKeyBorder", { fg = c.border, bg = c.bg_popup })
+hi("WhichKey",       { fg = c.blue })
+hi("WhichKeyGroup",  { fg = c.magenta_cooler })
+hi("WhichKeyDesc",   { fg = c.fg })
+hi("WhichKeySeparator", { fg = c.dim_fg })
+hi("WhichKeyValue",  { fg = c.dim_fg })
+
+-- ============================================================================
+-- Mason
+-- ============================================================================
+
+hi("MasonNormal",         { fg = c.fg, bg = c.bg_popup })
+hi("MasonHeader",         { fg = c.bg, bg = c.blue, gui = "bold" })
+hi("MasonHeaderSecondary", { fg = c.bg, bg = c.magenta_cooler, gui = "bold" })
+hi("MasonHighlight",      { fg = c.blue })
+hi("MasonHighlightBlock", { fg = c.bg, bg = c.blue })
+hi("MasonHighlightBlockBold", { fg = c.bg, bg = c.blue, gui = "bold" })
+hi("MasonMuted",          { fg = c.dim_fg })
+hi("MasonMutedBlock",     { fg = c.dim_fg, bg = c.dim_bg })
+hi("MasonError",          { fg = c.red_warmer })
 
 -- ============================================================================
 -- Fugitive
@@ -457,6 +538,13 @@ link("fugitiveStagedHeading", "Title")
 link("fugitiveUnstagedHeading", "Title")
 link("fugitiveStagedModifier", "Statement")
 link("fugitiveUnstagedModifier", "Statement")
+
+-- ============================================================================
+-- Copilot
+-- ============================================================================
+
+hi("CopilotSuggestion", { fg = c.dim_fg, gui = "italic" })
+hi("CopilotAnnotation", { fg = c.dim_fg })
 
 -- ============================================================================
 -- Terminal colors

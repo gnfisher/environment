@@ -539,6 +539,45 @@ parse_pr_ref() {
     fi
 }
 
+resolve_worktree_globally() {
+    local input="$1"
+    local candidate=""
+
+    candidate="${WORKTREE_BASE}/${input}"
+    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+    [[ -d "$WORKTREE_BASE" ]] || return 1
+
+    local matches=()
+    while IFS= read -r wt; do
+        matches+=("$wt")
+    done < <(
+        find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null \
+            | while IFS= read -r wt_path; do
+                local rel repo display
+                rel="${wt_path#${WORKTREE_BASE}/}"
+                repo="${rel%%/*}"
+                display="${rel#*/}"
+                if [[ "$rel" == "$input" || "$display" == "$input" || "$(basename "$wt_path")" == "$input" ]]; then
+                    echo "$wt_path"
+                fi
+            done | sort
+    )
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        canonical_dir "${matches[0]}"
+        return 0
+    fi
+
+    if [[ ${#matches[@]} -gt 1 ]]; then
+        error "Ambiguous worktree '$input'. Use full path or repo-relative path."
+        printf '  %s\n' "${matches[@]}" >&2
+        exit 1
+    fi
+
+    return 1
+}
+
 resolve_worktree_for_open() {
     local input="$1"
 
@@ -547,37 +586,44 @@ resolve_worktree_for_open() {
         return 0
     fi
 
-    detect_repo_info
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+        && git config --get remote.origin.url >/dev/null 2>&1; then
+        detect_repo_info
 
-    local candidate=""
-    if [[ "$input" =~ ^pr-[0-9]+$ ]]; then
+        local candidate=""
+        if [[ "$input" =~ ^pr-[0-9]+$ ]]; then
+            candidate="${REPO_WT_DIR}/${input}"
+            [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+        fi
+
+        candidate="$(worktree_path_for_named "$input")"
+        [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
         candidate="${REPO_WT_DIR}/${input}"
         [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
+
+        local matches=()
+        while IFS= read -r d; do
+            matches+=("$d")
+        done < <(find "$REPO_WT_DIR" -mindepth 1 -maxdepth 4 -type d -name "$input" 2>/dev/null | sort)
+
+        if [[ ${#matches[@]} -eq 1 ]]; then
+            canonical_dir "${matches[0]}"
+            return 0
+        fi
+
+        if [[ ${#matches[@]} -gt 1 ]]; then
+            error "Ambiguous worktree name '$input'."
+            printf '  %s\n' "${matches[@]}" >&2
+            exit 1
+        fi
     fi
 
-    candidate="$(worktree_path_for_named "$input")"
-    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
-
-    candidate="${REPO_WT_DIR}/${input}"
-    [[ -d "$candidate" ]] && { canonical_dir "$candidate"; return 0; }
-
-    local matches=()
-    while IFS= read -r d; do
-        matches+=("$d")
-    done < <(find "$REPO_WT_DIR" -mindepth 1 -maxdepth 4 -type d -name "$input" 2>/dev/null | sort)
-
-    if [[ ${#matches[@]} -eq 1 ]]; then
-        canonical_dir "${matches[0]}"
+    if resolve_worktree_globally "$input"; then
         return 0
     fi
 
-    if [[ ${#matches[@]} -gt 1 ]]; then
-        error "Ambiguous worktree name '$input'."
-        printf '  %s\n' "${matches[@]}" >&2
-        exit 1
-    fi
-
-    error "Worktree '$input' not found for repo '$REPO_NAME'."
+    error "Worktree '$input' not found under ${WORKTREE_BASE}/"
     exit 1
 }
 

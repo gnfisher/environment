@@ -11,7 +11,7 @@ complete -c ws -f
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "new" -d "Create named worktree"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "pr" -d "Create/reuse PR worktree"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "list" -d "List managed worktrees"
-complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "open" -d "Open worktree in Ghostty"
+complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "open" -d "Change to worktree"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "path" -d "Print worktree path"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "pick" -d "Pick worktree with fzf"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "title" -d "Set terminal title for worktree"
@@ -92,6 +92,27 @@ function __ws_worktree_names_all
     test $found -eq 1; or printf '\tNo managed worktrees\n'
 end
 
+function __ws_worktree_open_names_all
+    set -l wt_base "$HOME/.copilot/copilot-worktrees"
+    test -d "$wt_base"; or begin
+        printf '\tNo managed worktrees\n'
+        return
+    end
+
+    set -l found 0
+    for gitfile in (find $wt_base -mindepth 2 -maxdepth 5 -type f -name .git 2>/dev/null)
+        set found 1
+        set -l wt_dir (dirname $gitfile)
+        set -l rel (string replace -r "^$wt_base/" "" -- $wt_dir)
+        set -l repo (string split -m1 / -- $rel)[1]
+        set -l display (string replace -r "^[^/]+/" "" -- $rel)
+        printf '%s\t%s\n' $display $repo
+        printf '%s\t%s\n' $rel $rel
+        printf '%s\t%s\n' (basename $wt_dir) $rel
+    end
+    test $found -eq 1; or printf '\tNo managed worktrees\n'
+end
+
 # Current repo PR suggestions from gh
 function __ws_pr_numbers
     if not command -sq gh
@@ -113,7 +134,7 @@ complete -c ws -f -n "__fish_seen_subcommand_from cs; and not __fish_seen_subcom
 complete -c ws -f -n "__fish_seen_subcommand_from cs; and __fish_seen_subcommand_from bless" -a "(__ws_codespace_names)"
 complete -c ws -f -n "__fish_seen_subcommand_from cs; and __fish_seen_subcommand_from web-ports web; and not __fish_seen_subcommand_from $web_port_actions" -a "$web_port_actions"
 
-complete -c ws -f -n "__fish_seen_subcommand_from open" -a "(__ws_worktree_names)"
+complete -c ws -f -n "__fish_seen_subcommand_from open" -a "(__ws_worktree_open_names_all)"
 complete -c ws -f -n "__fish_seen_subcommand_from path" -a "(__ws_worktree_names)"
 complete -c ws -f -n "__fish_seen_subcommand_from title" -a "(__ws_worktree_names)"
 complete -c ws -f -n "__fish_seen_subcommand_from delete" -a "(__ws_worktree_names_all)"
