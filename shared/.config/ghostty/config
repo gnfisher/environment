@@ -1,10 +1,11 @@
 # Font
-font-family = Menlo
-font-size = 17
-font-thicken = true
+font-family = Go mono
+#font-size = 17
+#font-thicken = true
+#adjust-cell-height = 25%
 
 # Theme (managed by ~/.local/bin/theme)
-theme = doom-one-light
+theme = builtin light
 
 # macOS options
 macos-option-as-alt = true

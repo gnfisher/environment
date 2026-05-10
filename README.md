@@ -37,5 +37,3 @@ cd ~/dotfiles
 ## Key Configs
 
 - `shared/.copilot/mcp-config.json` - Copilot CLI MCP server definitions
-- `shared/.local/bin/todoist-mcp` - Launches the official Todoist MCP via 1Password CLI
-- `~/.local/state/todoist-mcp.env` - Local-only 1Password secret reference file used by Todoist MCP (not committed)

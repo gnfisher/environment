@@ -20,6 +20,28 @@ return {
     config = function() end,
   },
   {
+    "sindrets/diffview.nvim",
+    cmd = {
+      "DiffviewClose",
+      "DiffviewFileHistory",
+      "DiffviewFocusFiles",
+      "DiffviewLog",
+      "DiffviewOpen",
+      "DiffviewRefresh",
+      "DiffviewToggleFiles",
+    },
+    keys = {
+      { "<leader>dv", "<Cmd>DiffviewOpen<CR>", desc = "Diffview open" },
+      { "<leader>dV", "<Cmd>DiffviewFileHistory %<CR>", desc = "Diffview file history" },
+      { "<leader>dq", "<Cmd>DiffviewClose<CR>", desc = "Diffview close" },
+    },
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-web-devicons",
+    },
+    opts = {},
+  },
+  {
     "esmuellert/codediff.nvim",
     cmd = "CodeDiff",
     keys = {

@@ -170,6 +170,56 @@ alias g='git'
 alias dots='cd ~/Development/gnfisher/environment/'
 alias dev='cd ~/Development'
 
+# Workspaces
+alias wl='ws list'
+alias wla='ws list --all'
+alias wlf='ws list --full'
+
+wo() {
+    local path
+    path=$(ws open "$@") || return
+    cd "$path"
+}
+
+wp() {
+    local path
+    path=$(WS_OPEN_MODE=print ws pick "$@") || return
+    cd "$path"
+}
+
+wn() {
+    local path
+    path=$(WS_OPEN_MODE=print ws new "$@") || return
+    cd "$path"
+}
+
+wpr() {
+    local path
+    path=$(WS_OPEN_MODE=print ws pr "$@") || return
+    cd "$path"
+}
+
+wop() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: wop <pr-number|pr-name>"
+        return 1
+    fi
+
+    local target="$1"
+    shift
+    if [[ "$target" =~ ^[0-9]+$ ]]; then
+        target="pr-${target}"
+    fi
+
+    wo "$target" "$@"
+}
+
+# Repo jumps
+alias ghswe='cd ~/Development/github/sweagentd'
+alias ghcmc='cd ~/Development/github/copilot-mission-control'
+alias ghcar='cd ~/Development/github/copilot-agent-runtime'
+alias ghgh='cd ~/Development/github/github'
+
 # cd with ls
 cd() {
     builtin cd "${@:-$HOME}" && ls

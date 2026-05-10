@@ -1,2 +1,2 @@
 vim.o.background = "light"
-vim.cmd.colorscheme("standard-light")
+vim.cmd.colorscheme("dookie")
