@@ -11,6 +11,73 @@ return {
     config = function()
       local lspconfig_defaults = require("lspconfig").util.default_config
       local lsp_util = require("vim.lsp.util")
+      local hover_float_ns = vim.api.nvim_create_namespace("custom-lsp-hover-float")
+
+      local function set_hover_float_highlights()
+        local ok, highlights = pcall(vim.api.nvim_get_hl, 0, {})
+        if not ok then
+          return
+        end
+
+        for name, highlight in pairs(highlights) do
+          if highlight.bg then
+            local hover_highlight = vim.deepcopy(highlight)
+            hover_highlight.bg = 0xffffff
+            vim.api.nvim_set_hl(hover_float_ns, name, hover_highlight)
+          end
+        end
+
+        vim.api.nvim_set_hl(hover_float_ns, "Normal", { fg = 0x000000, bg = 0xffffff })
+        vim.api.nvim_set_hl(hover_float_ns, "NormalFloat", { fg = 0x000000, bg = 0xffffff })
+        vim.api.nvim_set_hl(hover_float_ns, "FloatBorder", { fg = 0x000000, bg = 0xffffff })
+        vim.api.nvim_set_hl(hover_float_ns, "FloatTitle", { fg = 0x000000, bg = 0xffffff, bold = true })
+        vim.api.nvim_set_hl(hover_float_ns, "FloatFooter", { fg = 0x000000, bg = 0xffffff })
+      end
+
+      local function style_hover_float(winnr)
+        if not (winnr and vim.api.nvim_win_is_valid(winnr)) then
+          return
+        end
+
+        vim.api.nvim_win_set_hl_ns(winnr, hover_float_ns)
+        vim.wo[winnr].winhighlight = table.concat({
+          "Normal:NormalFloat",
+          "NormalFloat:NormalFloat",
+          "FloatBorder:FloatBorder",
+          "FloatTitle:FloatTitle",
+          "FloatFooter:FloatFooter",
+        }, ",")
+      end
+
+      set_hover_float_highlights()
+
+      vim.api.nvim_create_autocmd("ColorScheme", {
+        callback = set_hover_float_highlights,
+      })
+
+      if not lsp_util._custom_hover_float_wrapped then
+        local open_floating_preview = lsp_util.open_floating_preview
+
+        lsp_util.open_floating_preview = function(contents, syntax, config)
+          config = config or {}
+          local is_hover = config.focus_id == "textDocument/hover"
+
+          if is_hover then
+            config = vim.tbl_extend("force", config, {
+              border = config.border or "single",
+            })
+          end
+
+          local bufnr, winnr = open_floating_preview(contents, syntax, config)
+          if is_hover then
+            style_hover_float(winnr)
+          end
+
+          return bufnr, winnr
+        end
+
+        lsp_util._custom_hover_float_wrapped = true
+      end
 
       lspconfig_defaults.capabilities = vim.tbl_deep_extend(
         "force",
@@ -21,6 +88,7 @@ return {
       vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
         config = config or {}
         config.focus_id = ctx.method
+        config.border = config.border or "single"
         if vim.api.nvim_get_current_buf() ~= ctx.bufnr then
           return
         end
@@ -49,7 +117,9 @@ return {
         end
 
         if syntax == "plaintext" then
-          return lsp_util.open_floating_preview(contents, syntax, config)
+          local bufnr, winnr = lsp_util.open_floating_preview(contents, syntax, config)
+          style_hover_float(winnr)
+          return bufnr, winnr
         end
 
         local bufnr, winnr = lsp_util.open_floating_preview(contents, nil, config)
@@ -67,6 +137,7 @@ return {
         vim.bo[bufnr].modifiable = false
 
         if winnr and vim.api.nvim_win_is_valid(winnr) then
+          style_hover_float(winnr)
           vim.wo[winnr].conceallevel = 2
           vim.wo[winnr].concealcursor = ""
         end
