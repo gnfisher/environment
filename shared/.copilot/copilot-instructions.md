@@ -10,6 +10,10 @@
 # Local behavior
 - If I ask you to "open" a PR, URL, file, or folder so I can view it, use the platform-native opener: `open` on macOS, `start` on Windows, and `xdg-open` on Linux.
 
+# Session privacy
+- Do not share, export, delegate, remotely sync, or upload Copilot CLI sessions unless I explicitly ask for that specific action.
+- Keep Copilot CLI session sharing and remote control local-only by default.
+
 # Copilot worktrees
 - When creating a local worktree for a Copilot session, create it under `~/.copilot/copilot-worktrees`.
 - Resolve the source repo from `~/Development/<owner>/<repo>` when possible, but keep the worktree checkout itself under the Copilot worktree base directory.
