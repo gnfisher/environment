@@ -14,6 +14,10 @@ return {
       local hover_float_ns = vim.api.nvim_create_namespace("custom-lsp-hover-float")
 
       local function set_hover_float_highlights()
+        if vim.o.background ~= "light" then
+          return
+        end
+
         local ok, highlights = pcall(vim.api.nvim_get_hl, 0, {})
         if not ok then
           return
@@ -36,6 +40,10 @@ return {
 
       local function style_hover_float(winnr)
         if not (winnr and vim.api.nvim_win_is_valid(winnr)) then
+          return
+        end
+
+        if vim.o.background ~= "light" then
           return
         end
 

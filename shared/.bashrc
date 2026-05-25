@@ -53,6 +53,14 @@ alias rg='rg --hidden'
 export EDITOR=nvim
 export VISUAL=nvim
 
+# Local private environment variables; keep secrets out of stowed dotfiles.
+if [[ -r "$HOME/.config/environment/splunk-token.bash" ]]; then
+    . "$HOME/.config/environment/splunk-token.bash"
+fi
+if [[ -r "$HOME/.config/environment/private.bash" ]]; then
+    . "$HOME/.config/environment/private.bash"
+fi
+
 # PATH additions
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 

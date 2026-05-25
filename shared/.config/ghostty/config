@@ -1,8 +1,9 @@
 # Font
-# font-family = Go mono
+font-family = Berkeley Mono
 #font-size = 17
 #font-thicken = true
-#adjust-cell-height = 25%
+adjust-cell-height = 10%
+unfocused-split-opacity = 1
 
 # Theme (managed by ~/.local/bin/theme)
 # theme = builtin light

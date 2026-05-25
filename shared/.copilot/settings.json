@@ -15,27 +15,7 @@
   "exportSessions": false,
   "steerableSessions": false,
   "storeSessionsRemotely": false,
-  "lastLoggedInUser": {
-    "host": "https://github.com",
-    "login": "gnfisher"
-  },
-  "loggedInUsers": [
-    {
-      "host": "https://github.com",
-      "login": "gnfisher"
-    }
-  ],
-  "trustedFolders": [
-    "/Users/gnfisher/Development/gnfisher/environment",
-    "/Users/gnfisher/Development/github/copilot-api",
-    "/Users/gnfisher/Development/github",
-    "/Users/gnfisher"
-  ],
-  "askedSetupTerminals": [
-    "vscode-insiders"
-  ],
   "undo_without_confirmation": true,
-  "firstLaunchAt": "2026-03-11T00:00:00.000Z",
   "sessionSync": [
     {
       "origin": "*",
