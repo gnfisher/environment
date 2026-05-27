@@ -12,6 +12,7 @@
   "experimental": true,
   "logLevel": "all",
   "model": "gpt-5.5",
+  "remoteSessions": false,
   "exportSessions": false,
   "steerableSessions": false,
   "storeSessionsRemotely": false,

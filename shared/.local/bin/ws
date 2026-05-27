@@ -233,6 +233,59 @@ get_default_branch() {
         | sed 's@^refs/remotes/origin/@@' || echo "main"
 }
 
+prune_stale_origin_refs() {
+    local repo_dir="$1"
+    local tmp_dir local_refs remote_refs stale_refs count ref
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/ws-stale-refs.XXXXXX")
+    local_refs="$tmp_dir/local"
+    remote_refs="$tmp_dir/remote"
+    stale_refs="$tmp_dir/stale"
+
+    git -C "$repo_dir" for-each-ref --format='%(refname)' refs/remotes/origin \
+        | grep -v '^refs/remotes/origin/HEAD$' \
+        | sort > "$local_refs"
+    git -C "$repo_dir" ls-remote --heads origin \
+        | awk '{sub("refs/heads/", "refs/remotes/origin/", $2); print $2}' \
+        | sort > "$remote_refs"
+    comm -23 "$local_refs" "$remote_refs" > "$stale_refs"
+
+    count=$(wc -l < "$stale_refs" | tr -d ' ')
+    if [[ "$count" -gt 0 ]]; then
+        log "Pruning ${count} stale origin remote-tracking ref(s)..."
+        while IFS= read -r ref; do
+            [[ -n "$ref" ]] || continue
+            git -C "$repo_dir" update-ref -d "$ref"
+        done < "$stale_refs"
+    fi
+
+    rm -rf "$tmp_dir"
+}
+
+fetch_origin_quiet() {
+    local repo_dir="$1"
+    shift
+    local err_file
+    err_file=$(mktemp "${TMPDIR:-/tmp}/ws-fetch.XXXXXX")
+
+    if git -C "$repo_dir" fetch --quiet origin "$@" 2>"$err_file"; then
+        rm -f "$err_file"
+        return 0
+    fi
+
+    if grep -q "could not delete references: cannot lock ref 'refs/remotes/origin/" "$err_file"; then
+        cat "$err_file" >&2
+        log "Fetch failed while pruning stale origin refs; cleaning stale refs and retrying..."
+        rm -f "$err_file"
+        prune_stale_origin_refs "$repo_dir"
+        git -C "$repo_dir" fetch --quiet origin "$@"
+        return
+    fi
+
+    cat "$err_file" >&2
+    rm -f "$err_file"
+    return 1
+}
+
 branch_exists() {
     local repo_dir="$1"
     local branch="$2"
@@ -255,6 +308,17 @@ worktree_path_for_named() {
 worktree_path_for_pr() {
     local pr_number="$1"
     echo "${REPO_WT_DIR}/pr-${pr_number}"
+}
+
+managed_worktree_paths() {
+    local gitfile
+    shopt -s nullglob
+    for gitfile in \
+        "$WORKTREE_BASE"/*/*/.git \
+        "$WORKTREE_BASE"/*/*/*/.git \
+        "$WORKTREE_BASE"/*/*/*/*/.git; do
+        [[ -f "$gitfile" ]] && dirname "$gitfile"
+    done | sort
 }
 
 repo_name_from_worktree_path() {
@@ -552,7 +616,7 @@ resolve_worktree_globally() {
     while IFS= read -r wt; do
         matches+=("$wt")
     done < <(
-        find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null \
+        managed_worktree_paths \
             | while IFS= read -r wt_path; do
                 local rel repo display
                 rel="${wt_path#${WORKTREE_BASE}/}"
@@ -658,7 +722,7 @@ resolve_worktree_for_delete() {
     while IFS= read -r wt; do
         matches+=("$wt")
     done < <(
-        find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null \
+        managed_worktree_paths \
             | while IFS= read -r wt_path; do
                 rel=""
                 rel="${wt_path#${WORKTREE_BASE}/}"
@@ -1353,7 +1417,7 @@ cmd_new() {
         acquire_lock "$(short_hash "$wt_path")"
 
         log "Fetching PR #${PR_NUMBER} for ${PR_ORG}/${PR_REPO}..."
-        git -C "$REPO_DIR" fetch origin "pull/${PR_NUMBER}/head:refs/remotes/origin/pr/${PR_NUMBER}" --quiet
+        fetch_origin_quiet "$REPO_DIR" "pull/${PR_NUMBER}/head:refs/remotes/origin/pr/${PR_NUMBER}"
 
         local pr_branch="pr-${PR_NUMBER}"
         if branch_exists "$REPO_DIR" "$pr_branch"; then
@@ -1394,7 +1458,7 @@ cmd_new() {
     branch="${WS_USER}/${name}"
 
     log "Fetching latest from origin..."
-    git -C "$REPO_DIR" fetch origin --quiet
+    fetch_origin_quiet "$REPO_DIR"
 
     if branch_exists "$REPO_DIR" "$branch"; then
         log "Local branch '${branch}' already exists; reusing it."
@@ -1616,7 +1680,7 @@ cmd_list_all() {
             "$resume_id" "$sep" \
             "$(normalize_cell "$resume_updated_at")" "$sep" \
             "$(normalize_cell "$last_active")")")
-    done < <(find "$WORKTREE_BASE" -mindepth 2 -maxdepth 5 -type f -name .git -exec dirname {} \; 2>/dev/null | sort)
+    done < <(managed_worktree_paths)
 
     if [[ ${#rows[@]} -eq 0 ]]; then
         echo "No managed worktrees."
