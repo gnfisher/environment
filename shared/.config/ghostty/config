@@ -6,6 +6,7 @@ adjust-cell-height = 10%
 unfocused-split-opacity = 1
 
 # Theme (managed by ~/.local/bin/theme)
+theme = iTerm2 Light Background
 
 # macOS options
 macos-option-as-alt = true
