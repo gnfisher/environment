@@ -63,6 +63,7 @@ fi
 
 # PATH additions
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
+[[ -d "$HOME/.cargo/bin" ]] && PATH="$HOME/.cargo/bin:$PATH"
 
 # Homebrew (macOS/Linux) - cached shellenv for faster startup
 __brew_bin=""
@@ -182,6 +183,17 @@ alias dev='cd ~/Development'
 alias wl='ws list'
 alias wla='ws list --all'
 alias wlf='ws list --full'
+
+ws() {
+    if [[ "${1:-}" == "dd" ]]; then
+        local path
+        path=$(command ws "$@") || return
+        cd "$path"
+        return
+    fi
+
+    command ws "$@"
+}
 
 wo() {
     local path

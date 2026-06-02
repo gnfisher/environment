@@ -1,6 +1,6 @@
 # Fish completion for ws (Copilot worktree manager)
 
-set -l commands new pr list open path pick title delete clean cs
+set -l commands new pr list open path pick title delete dd clean cs
 set -l cs_commands bless status sync ssh repo ports forward web-ports web
 set -l web_port_actions toggle start stop status
 
@@ -16,6 +16,7 @@ complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "path" -d "P
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "pick" -d "Pick worktree with fzf"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "title" -d "Set terminal title for worktree"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "delete" -d "Delete managed worktree(s)"
+complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "dd" -d "Delete current worktree and cd to base repo"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "clean" -d "Delete all worktrees for repo"
 complete -c ws -f -n "not __fish_seen_subcommand_from $commands" -a "cs" -d "Manage blessed Codespace"
 
@@ -32,6 +33,7 @@ complete -c ws -f -n "__fish_seen_subcommand_from new" -l pr -d "Create from PR 
 # open/delete options
 complete -c ws -f -n "__fish_seen_subcommand_from delete" -s f -l force -d "Delete dirty worktrees too"
 complete -c ws -f -n "__fish_seen_subcommand_from delete" -s y -l yes -d "Skip multi-delete confirmation"
+complete -c ws -f -n "__fish_seen_subcommand_from dd" -s f -l force -d "Delete dirty current worktree too"
 complete -c ws -f -n "__fish_seen_subcommand_from cs; and __fish_seen_subcommand_from sync" -l force-remote -d "Discard dirty remote checkout"
 complete -c ws -f -n "__fish_seen_subcommand_from cs; and __fish_seen_subcommand_from web-ports web" -l status -d "Show managed web port forwarding status"
 
@@ -63,12 +65,13 @@ function __ws_worktree_names
     end
 
     set -l found 0
-    for gitfile in (find $repo_dir -mindepth 1 -maxdepth 3 -type f -name .git 2>/dev/null)
+    for gitfile in $repo_dir/*/.git $repo_dir/*/*/.git $repo_dir/*/*/runtime/.git
+        test -f "$gitfile"; or continue
         set found 1
-        set -l wt_dir (dirname $gitfile)
+        set -l wt_dir (path dirname $gitfile)
         set -l rel (string replace -r "^$repo_dir/" "" -- $wt_dir)
         echo $rel
-        echo (basename $wt_dir)
+        echo (path basename $wt_dir)
     end
     test $found -eq 1; or printf '\tNo managed worktrees for repo\n'
 end
@@ -82,11 +85,14 @@ function __ws_worktree_names_all
     end
 
     set -l found 0
-    for gitfile in (find $wt_base -mindepth 2 -maxdepth 5 -type f -name .git 2>/dev/null)
+    for gitfile in $wt_base/*/*/.git $wt_base/*/*/*/.git $wt_base/*/*/*/runtime/.git
+        test -f "$gitfile"; or continue
         set found 1
-        set -l wt_dir (dirname $gitfile)
+        set -l wt_dir (path dirname $gitfile)
         set -l rel (string replace -r "^$wt_base/" "" -- $wt_dir)
-        printf '%s\t%s\n' (basename $wt_dir) $rel
+        set -l display (string replace -r "^[^/]+/" "" -- $rel)
+        printf '%s\t%s\n' (path basename $wt_dir) $rel
+        printf '%s\t%s\n' $display $rel
         printf '%s\t%s\n' $rel $rel
     end
     test $found -eq 1; or printf '\tNo managed worktrees\n'
@@ -100,15 +106,16 @@ function __ws_worktree_open_names_all
     end
 
     set -l found 0
-    for gitfile in (find $wt_base -mindepth 2 -maxdepth 5 -type f -name .git 2>/dev/null)
+    for gitfile in $wt_base/*/*/.git $wt_base/*/*/*/.git $wt_base/*/*/*/runtime/.git
+        test -f "$gitfile"; or continue
         set found 1
-        set -l wt_dir (dirname $gitfile)
+        set -l wt_dir (path dirname $gitfile)
         set -l rel (string replace -r "^$wt_base/" "" -- $wt_dir)
         set -l repo (string split -m1 / -- $rel)[1]
         set -l display (string replace -r "^[^/]+/" "" -- $rel)
         printf '%s\t%s\n' $display $repo
         printf '%s\t%s\n' $rel $rel
-        printf '%s\t%s\n' (basename $wt_dir) $rel
+        printf '%s\t%s\n' (path basename $wt_dir) $rel
     end
     test $found -eq 1; or printf '\tNo managed worktrees\n'
 end

@@ -17,7 +17,21 @@ return {
     dependencies = {
       "tpope/vim-rhubarb",
     },
-    config = function() end,
+    config = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("custom_fugitive_layout", { clear = true }),
+        pattern = "fugitive",
+        callback = function()
+          vim.schedule(function()
+            if vim.bo.filetype ~= "fugitive" or #vim.api.nvim_list_wins() == 1 then
+              return
+            end
+
+            pcall(vim.api.nvim_win_set_height, 0, math.max(8, math.floor(vim.o.lines / 3)))
+          end)
+        end,
+      })
+    end,
   },
   {
     "sindrets/diffview.nvim",
@@ -32,6 +46,15 @@ return {
     },
     keys = {
       { "<leader>dv", "<Cmd>DiffviewOpen<CR>", desc = "Diffview open" },
+      {
+        "<leader>dp",
+        function()
+          local remote_head = vim.fn.systemlist({ "git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD" })[1]
+          local base = remote_head ~= nil and remote_head ~= "" and remote_head or "origin/main"
+          vim.cmd("DiffviewOpen " .. vim.fn.fnameescape(base) .. "...HEAD")
+        end,
+        desc = "Diffview PR diff",
+      },
       { "<leader>dV", "<Cmd>DiffviewFileHistory %<CR>", desc = "Diffview file history" },
       { "<leader>dq", "<Cmd>DiffviewClose<CR>", desc = "Diffview close" },
     },

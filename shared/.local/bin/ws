@@ -42,6 +42,7 @@ Commands:
   list --full               Include path + Copilot session metadata
   list --json               Emit JSON for scripts/fzf/Raycast
   delete [--force] <...>    Remove one or more managed worktrees
+  dd [--force]              Delete current worktree and print base repo path
   clean                     Remove all managed worktrees for current repo
   cs <command>              Manage the blessed dotcom Codespace
 
@@ -65,6 +66,7 @@ Examples:
   ws list --full
   ws list --all --json
   ws delete pr-426638 gnfisher/other-session
+  ws dd
   ws cs bless
   ws cs sync
 EOF
@@ -226,6 +228,12 @@ set_repo_from_owner_repo() {
     REPO_NAME="$repo"
     REPO_DIR=$(canonical_dir "$repo_dir")
     REPO_WT_DIR="${WORKTREE_BASE}/${REPO_NAME}"
+}
+
+base_repo_dir_for_owner_repo() {
+    local owner="$1"
+    local repo="$2"
+    printf '%s/Development/%s/%s\n' "$HOME" "$owner" "$repo"
 }
 
 get_default_branch() {
@@ -618,11 +626,15 @@ resolve_worktree_globally() {
     done < <(
         managed_worktree_paths \
             | while IFS= read -r wt_path; do
-                local rel repo display
+                local rel repo display branch
                 rel="${wt_path#${WORKTREE_BASE}/}"
                 repo="${rel%%/*}"
                 display="${rel#*/}"
-                if [[ "$rel" == "$input" || "$display" == "$input" || "$(basename "$wt_path")" == "$input" ]]; then
+                branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+                if [[ "$rel" == "$input" \
+                    || "$display" == "$input" \
+                    || "$(basename "$wt_path")" == "$input" \
+                    || "$branch" == "$input" ]]; then
                     echo "$wt_path"
                 fi
             done | sort
@@ -724,9 +736,15 @@ resolve_worktree_for_delete() {
     done < <(
         managed_worktree_paths \
             | while IFS= read -r wt_path; do
-                rel=""
+                local rel repo display branch
                 rel="${wt_path#${WORKTREE_BASE}/}"
-                if [[ "$rel" == "$input" || "$(basename "$wt_path")" == "$input" ]]; then
+                repo="${rel%%/*}"
+                display="${rel#*/}"
+                branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+                if [[ "$rel" == "$input" \
+                    || "$display" == "$input" \
+                    || "$(basename "$wt_path")" == "$input" \
+                    || "$branch" == "$input" ]]; then
                     echo "$wt_path"
                 fi
             done | sort
@@ -1709,20 +1727,48 @@ delete_worktree() {
     acquire_lock "$(short_hash "$wt_path")"
 
     local common_git_dir repo_root
-    common_git_dir=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir)
+    if ! common_git_dir=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+        log "Worktree metadata is missing; deleting managed directory: $wt_path"
+        rm -rf -- "$wt_path"
+        cleanup_lock
+        LOCK_PATH=""
+        echo "✓ Deleted stale worktree directory: ${repo}/$(worktree_display_name "$wt_path" "$repo")"
+        return 0
+    fi
     repo_root=$(dirname "$common_git_dir")
     if ! worktree_registered_in_repo "$repo_root" "$wt_path"; then
-        error "Worktree is not registered in repository metadata: $wt_path"
-        exit 1
+        log "Worktree is not registered in repository metadata; deleting managed directory: $wt_path"
+        rm -rf -- "$wt_path"
+        if git -C "$repo_root" rev-parse --git-dir >/dev/null 2>&1; then
+            git -C "$repo_root" worktree prune --expire now 2>/dev/null || true
+        fi
+        cleanup_lock
+        LOCK_PATH=""
+        echo "✓ Deleted stale worktree directory: ${repo}/$(worktree_display_name "$wt_path" "$repo")"
+        return 0
     fi
 
     log "Removing worktree: $wt_path"
+    local remove_err remove_status=0
+    remove_err=$(mktemp "${TMPDIR:-/tmp}/ws-worktree-remove.XXXXXX")
     if [[ "$force" == "true" ]]; then
-        git -C "$repo_root" worktree remove "$wt_path" --force
+        git -C "$repo_root" worktree remove "$wt_path" --force 2>"$remove_err" || remove_status=$?
     else
-        git -C "$repo_root" worktree remove "$wt_path"
+        git -C "$repo_root" worktree remove "$wt_path" 2>"$remove_err" || remove_status=$?
     fi
-    git -C "$repo_root" worktree prune
+
+    if [[ "$remove_status" -ne 0 ]]; then
+        if grep -q "working trees containing submodules cannot be moved or removed" "$remove_err"; then
+            log "Git refuses to remove worktrees containing submodules; deleting managed directory and pruning metadata..."
+            rm -rf -- "$wt_path"
+        else
+            cat "$remove_err" >&2
+            rm -f "$remove_err"
+            exit "$remove_status"
+        fi
+    fi
+    rm -f "$remove_err"
+    git -C "$repo_root" worktree prune --expire now
     cleanup_lock
     LOCK_PATH=""
 
@@ -1775,15 +1821,21 @@ cmd_delete() {
         paths+=("$wt_path")
     done
 
-    if [[ "$force" != "true" ]]; then
-        for wt_path in "${paths[@]}"; do
-            if [[ -n "$(git -C "$wt_path" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
-                error "Worktree has local changes: $wt_path"
-                echo "Use 'ws delete --force ...' to remove it anyway." >&2
-                exit 1
-            fi
-        done
-    fi
+    local expanded_paths=("${paths[@]}")
+    for wt_path in "${paths[@]}"; do
+        local nested_path
+        while IFS= read -r nested_path; do
+            [[ "$nested_path" != "$wt_path" && "$nested_path" == "$wt_path/"* ]] || continue
+            expanded_paths+=("$nested_path")
+        done < <(managed_worktree_paths)
+    done
+    paths=("${expanded_paths[@]}")
+
+    local sorted_paths=()
+    while IFS= read -r wt_path; do
+        sorted_paths+=("$wt_path")
+    done < <(printf '%s\n' "${paths[@]}" | awk '!seen[$0]++ { print length($0) "\t" $0 }' | sort -rn | cut -f2-)
+    paths=("${sorted_paths[@]}")
 
     if [[ ${#paths[@]} -gt 1 && "$yes" != "true" ]]; then
         echo "Will delete ${#paths[@]} worktree(s):"
@@ -1794,8 +1846,67 @@ cmd_delete() {
     fi
 
     for wt_path in "${paths[@]}"; do
+        if [[ "$force" != "true" && -n "$(git -C "$wt_path" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+            error "Worktree has local changes: $wt_path"
+            echo "Use 'ws delete --force ...' to remove it anyway." >&2
+            exit 1
+        fi
         delete_worktree "$wt_path" "$force"
     done
+}
+
+cmd_dd() {
+    local force=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -f|--force)
+                force=true
+                shift
+                ;;
+            -*)
+                error "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                error "Usage: ws dd [--force]"
+                exit 1
+                ;;
+        esac
+    done
+
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+        error "Not in a git worktree."
+        exit 1
+    }
+
+    detect_repo_info
+
+    local wt_path base_dir
+    wt_path=$(git rev-parse --show-toplevel)
+    wt_path=$(canonical_dir "$wt_path")
+    ensure_managed_path "$wt_path"
+
+    if [[ ! -f "$wt_path/.git" ]]; then
+        error "Current checkout is not a managed linked worktree: $wt_path"
+        exit 1
+    fi
+
+    base_dir=$(base_repo_dir_for_owner_repo "$REPO_ORG" "$REPO_NAME")
+    if [[ ! -d "$base_dir/.git" ]]; then
+        error "Base repository not found at ${base_dir}"
+        exit 1
+    fi
+    base_dir=$(canonical_dir "$base_dir")
+
+    if [[ "$force" != "true" && -n "$(git -C "$wt_path" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+        error "Worktree has local changes: $wt_path"
+        echo "Use 'ws dd --force' to remove it anyway." >&2
+        exit 1
+    fi
+
+    delete_worktree "$wt_path" "$force" >&2
+    printf '%s\n' "$base_dir"
 }
 
 cmd_clean() {
@@ -1867,6 +1978,10 @@ case "${1:-}" in
     delete)
         shift
         cmd_delete "$@"
+        ;;
+    dd)
+        shift
+        cmd_dd "$@"
         ;;
     clean)
         shift

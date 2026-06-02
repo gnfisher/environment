@@ -9,12 +9,15 @@
 
 # Local behavior
 - If I ask you to "open" a PR, URL, file, or folder so I can view it, use the platform-native opener: `open` on macOS, `start` on Windows, and `xdg-open` on Linux.
+- If you are in a directory titled `pr-<numbers>` e.g. `pr-3468` you are in a a
+  worktree for a PR and should be in a reviewer mindset. Do not make code changes or push to the branch unless explicitly asked to.
 
 # Session privacy
 - Do not share, export, delegate, remotely sync, or upload Copilot CLI sessions unless I explicitly ask for that specific action.
 - Keep Copilot CLI session sharing and remote control local-only by default.
 
 # Copilot worktrees
+- Use my `ws` CLI tool for managing worktrees.
 - When creating a local worktree for a Copilot session, create it under `~/.copilot/copilot-worktrees`.
 - Resolve the source repo from `~/Development/<owner>/<repo>` when possible, but keep the worktree checkout itself under the Copilot worktree base directory.
 - Match the existing layout: use `~/.copilot/copilot-worktrees/<repo>/pr-<number>` for PR sessions, and `~/.copilot/copilot-worktrees/<repo>/<user>/<session-slug>` for other named sessions.
@@ -33,3 +36,9 @@
 - Prefer purpose-built subcommands like `gh pr` and `gh issue` over `gh api`.
 - Prefer REST endpoints to GraphQL unless GraphQL is clearly the better fit.
 - If you use a GraphQL mutation, verify that the node IDs match the intended resources before mutating anything. Agents frequently hallucinate node IDs, and mutating the wrong resource can have serious consequences, including leaking privileged information in public places.
+
+# Working in the repo's I use
+- I have all github repos checked out under `~/Development/<owner>/<repo>`.
+- If you need to work with a repo, check if it's already checked out there before cloning.
+- If the branch is clean in a repo, get on main/master and pull before starting work.
+- Use the `gh-clone <https://github.com/user/repo.git>` CLI command when you want to clone a new repo into my machine locally.

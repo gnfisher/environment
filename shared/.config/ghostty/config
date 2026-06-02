@@ -1,12 +1,11 @@
 # Font
-font-family = Berkeley Mono
-#font-size = 17
+font-family = Go Mono
+font-size = 15
 #font-thicken = true
 adjust-cell-height = 10%
 unfocused-split-opacity = 1
 
 # Theme (managed by ~/.local/bin/theme)
-# theme = builtin light
 
 # macOS options
 macos-option-as-alt = true

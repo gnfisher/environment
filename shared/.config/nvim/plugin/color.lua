@@ -1,7 +1,7 @@
 local themes = {
   dark = {
     background = "dark",
-    colorscheme = "tokyonight",
+    colorscheme = "rose-pine",
   },
   light = {
     background = "light",
@@ -10,6 +10,8 @@ local themes = {
 }
 
 local set_custom_highlights
+local current_colorscheme
+local default_guicursor = vim.o.guicursor
 local function reset_highlights()
   vim.cmd("highlight clear")
 
@@ -18,18 +20,41 @@ local function reset_highlights()
   end
 end
 
-set_custom_highlights = function()
-  if vim.o.background ~= "light" then
+local function is_acme()
+  return current_colorscheme == "acme" or vim.g.colors_name == "acme"
+end
+
+set_custom_highlights = function(event)
+  if event and event.match then
+    current_colorscheme = event.match
+  end
+
+  if is_acme() then
+    vim.o.background = "light"
+  elseif vim.o.background ~= "light" then
+    vim.o.guicursor = default_guicursor
+    local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    vim.api.nvim_set_hl(0, "Folded", { fg = normal.fg, bg = "none" })
     return
   end
 
   local foreground = "#000000"
-  local background = "#ffffea"
   local comment = "#555555"
+  local background = "#ffffea"
+  local cursor = "#005fff"
 
-  vim.api.nvim_set_hl(0, "Cursor", { fg = background, bg = foreground })
-  vim.api.nvim_set_hl(0, "CursorIM", { fg = background, bg = foreground })
-  vim.api.nvim_set_hl(0, "TermCursor", { fg = background, bg = foreground })
+  vim.o.guicursor = table.concat({
+    "n-v-c-sm:block-Cursor",
+    "i-ci-ve:ver25-Cursor",
+    "r-cr-o:hor20-Cursor",
+    "t:block-TermCursor",
+  }, ",")
+
+  vim.api.nvim_set_hl(0, "Cursor", { fg = background, bg = cursor })
+  vim.api.nvim_set_hl(0, "CursorIM", { fg = background, bg = cursor })
+  vim.api.nvim_set_hl(0, "lCursor", { fg = background, bg = cursor })
+  vim.api.nvim_set_hl(0, "TermCursor", { fg = background, bg = cursor })
+  vim.api.nvim_set_hl(0, "TermCursorNC", { fg = background, bg = cursor })
 
   -- Comments should recede without becoming faint or stylized.
   vim.api.nvim_set_hl(0, "Comment", { fg = comment })
@@ -73,6 +98,7 @@ local function apply_theme(mode)
 
   reset_highlights()
   vim.o.background = theme.background
+  current_colorscheme = theme.colorscheme
   vim.cmd.colorscheme(theme.colorscheme)
   vim.o.background = theme.background
   vim.g.theme_mode = mode
@@ -81,7 +107,7 @@ local function apply_theme(mode)
     vim.g.colors_name = "acme"
   end
 
-  set_custom_highlights()
+  set_custom_highlights({ match = theme.colorscheme })
 end
 
 vim.api.nvim_create_autocmd("ColorScheme", {

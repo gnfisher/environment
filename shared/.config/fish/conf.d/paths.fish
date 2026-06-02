@@ -3,6 +3,9 @@ status is-interactive; or return
 if test -d "$HOME/.local/bin"
     fish_add_path -m "$HOME/.local/bin"
 end
+if test -d "$HOME/.cargo/bin"
+    fish_add_path -m "$HOME/.cargo/bin"
+end
 if test -d "$HOME/.bun"
     set -gx BUN_INSTALL "$HOME/.bun"
     fish_add_path -m "$BUN_INSTALL/bin"

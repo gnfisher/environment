@@ -33,6 +33,18 @@ function ws
                     return 1
                 end
                 return
+
+            case dd
+                set -l path (command ws $argv)
+                or return $status
+
+                if test -d "$path"
+                    cd "$path"
+                else
+                    echo "$path"
+                    return 1
+                end
+                return
         end
     end
 
