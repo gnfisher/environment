@@ -33,10 +33,24 @@ local function get_copilot_mention_path()
   return display_path
 end
 
+local function copy_to_clipboard(value)
+  vim.fn.setreg("+", value)
+  vim.fn.setreg('"', value)
+  vim.notify("Copied " .. value)
+end
+
 local function set_copilot_reference(reference)
-  vim.fn.setreg("+", reference)
-  vim.fn.setreg('"', reference)
-  vim.notify("Copied " .. reference)
+  copy_to_clipboard(reference)
+end
+
+local function get_current_buffer_absolute_path()
+  local path = vim.api.nvim_buf_get_name(0)
+  if path == "" then
+    vim.notify("Current buffer has no file path", vim.log.levels.ERROR)
+    return nil
+  end
+
+  return vim.fn.fnamemodify(path, ":p")
 end
 
 local function get_project_root(path)
@@ -106,6 +120,17 @@ vim.api.nvim_create_user_command("CopyCopilotFileRef", function()
   set_copilot_reference("@" .. path)
 end, {
   desc = "Copy current file as a Copilot @mention",
+})
+
+vim.api.nvim_create_user_command("CopyBufferPath", function()
+  local path = get_current_buffer_absolute_path()
+  if not path then
+    return
+  end
+
+  copy_to_clipboard(path)
+end, {
+  desc = "Copy the current buffer absolute path",
 })
 
 vim.api.nvim_create_user_command("CopyCopilotRef", function(opts)

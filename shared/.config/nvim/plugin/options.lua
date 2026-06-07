@@ -60,7 +60,7 @@ opt.expandtab = true
 
 opt.shiftround = true
 opt.smartindent = true
-opt.wrap = true
+opt.wrap = false
 
 opt.mouse = "a"
 opt.smoothscroll = true

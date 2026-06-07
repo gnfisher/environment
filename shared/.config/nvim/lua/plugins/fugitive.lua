@@ -62,7 +62,49 @@ return {
       "nvim-lua/plenary.nvim",
       "nvim-tree/nvim-web-devicons",
     },
-    opts = {},
+    config = function(_, opts)
+      require("diffview").setup(opts)
+
+      local group = vim.api.nvim_create_augroup("custom_diffview_lsp", { clear = true })
+
+      local function attach_go_lsp()
+        if vim.bo.filetype ~= "go" or vim.bo.buftype ~= "" then
+          return
+        end
+
+        require("lazy").load({ plugins = { "nvim-lspconfig" } })
+        vim.lsp.enable("gopls")
+      end
+
+      vim.api.nvim_create_autocmd("BufWinEnter", {
+        group = group,
+        pattern = "*.go",
+        callback = function()
+          vim.schedule(attach_go_lsp)
+        end,
+      })
+
+      vim.api.nvim_create_autocmd("FileType", {
+        group = group,
+        pattern = "go",
+        callback = function()
+          vim.schedule(attach_go_lsp)
+        end,
+      })
+
+      vim.api.nvim_create_autocmd("User", {
+        group = group,
+        pattern = "DiffviewViewOpened",
+        callback = function()
+          vim.schedule(attach_go_lsp)
+        end,
+      })
+    end,
+    opts = {
+      default_args = {
+        DiffviewOpen = { "--imply-local" },
+      },
+    },
   },
   {
     "esmuellert/codediff.nvim",

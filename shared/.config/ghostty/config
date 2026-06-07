@@ -1,7 +1,7 @@
 # Font
-font-family = Go Mono
-font-size = 15
-#font-thicken = true
+font-family = Monaco
+#font-size = 15
+font-thicken = true
 adjust-cell-height = 10%
 unfocused-split-opacity = 1
 

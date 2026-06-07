@@ -15,6 +15,28 @@ return {
 			git_files = {
 				hidden = true,
 			},
+			lsp_document_symbols = {
+				layout_strategy = "horizontal",
+				layout_config = {
+					width = 0.99,
+					height = 0.99,
+					preview_width = 0.45,
+					prompt_position = "bottom",
+				},
+				symbol_width = 80,
+				symbol_type_width = 14,
+			},
+			lsp_workspace_symbols = {
+				layout_strategy = "horizontal",
+				layout_config = {
+					width = 0.99,
+					height = 0.99,
+					preview_width = 0.45,
+					prompt_position = "bottom",
+				},
+				symbol_width = 80,
+				symbol_type_width = 14,
+			},
 		},
 		defaults = {
 			file_ignore_patterns = {

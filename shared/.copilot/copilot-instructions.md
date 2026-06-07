@@ -34,6 +34,7 @@
 # User the GitHub CLI!
 - Prefer `gh` over MCP for GitHub operations when `gh` can handle the task cleanly.
 - Prefer purpose-built subcommands like `gh pr` and `gh issue` over `gh api`.
+- When pushing to or updating a PR branch, check the linked issue title and body and update them if they are stale.
 - Prefer REST endpoints to GraphQL unless GraphQL is clearly the better fit.
 - If you use a GraphQL mutation, verify that the node IDs match the intended resources before mutating anything. Agents frequently hallucinate node IDs, and mutating the wrong resource can have serious consequences, including leaking privileged information in public places.
 
