@@ -43,3 +43,7 @@
 - If you need to work with a repo, check if it's already checked out there before cloning.
 - If the branch is clean in a repo, get on main/master and pull before starting work.
 - Use the `gh-clone <https://github.com/user/repo.git>` CLI command when you want to clone a new repo into my machine locally.
+
+# Style
+- Never use smart quotes or fancy hyphens. Use simple straight quotes and simple
+  hyphens and dashes only, always, in all situations.

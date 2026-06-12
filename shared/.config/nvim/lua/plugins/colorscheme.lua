@@ -1,32 +1,15 @@
 return {
   {
-    "rose-pine/neovim",
-    name = "rose-pine",
+    "olimorris/onedarkpro.nvim",
+    name = "onedarkpro.nvim",
     lazy = false,
     priority = 1000,
-    opts = {
-      variant = "main",
-      dark_variant = "main",
-      styles = {
-        transparency = true,
-      },
-      highlight_groups = {
-        Normal = { bg = "none" },
-        NormalNC = { bg = "none" },
-        NormalFloat = { bg = "none" },
-        FloatBorder = { bg = "none" },
-        SignColumn = { bg = "none" },
-        LineNr = { bg = "none" },
-        CursorLineNr = { bg = "none" },
-        StatusLine = { bg = "none" },
-        StatusLineNC = { bg = "none" },
-        TabLine = { bg = "none" },
-        TabLineFill = { bg = "none" },
-        WinBar = { bg = "none" },
-        WinBarNC = { bg = "none" },
-        EndOfBuffer = { bg = "none" },
-      },
-    },
+  },
+  {
+    "maxmx03/solarized.nvim",
+    name = "solarized.nvim",
+    lazy = false,
+    priority = 999,
   },
   {
     "https://gitlab.com/__tpb/acme.nvim.git",

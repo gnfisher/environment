@@ -3,8 +3,8 @@ return {
   event = { "BufReadPre", "BufNewFile" },
   opts = {
     signs = {
-      add = { text = "│" },
-      change = { text = "│" },
+      add = { text = "┃" },
+      change = { text = "┃" },
       delete = { text = "_" },
       topdelete = { text = "‾" },
       changedelete = { text = "~" },
@@ -14,6 +14,15 @@ return {
 
       local function map(mode, l, r, desc)
         vim.keymap.set(mode, l, r, { buffer = buffer, desc = desc })
+      end
+
+      local function main_merge_base()
+        for _, ref in ipairs({ "origin/main", "main" }) do
+          local output = vim.fn.systemlist({ "git", "merge-base", ref, "HEAD" })
+          if vim.v.shell_error == 0 and output[1] ~= nil and output[1] ~= "" then
+            return output[1], ref
+          end
+        end
       end
 
       -- Navigation
@@ -44,6 +53,30 @@ return {
       map("n", "<leader>hb", function() gs.blame_line({ full = true }) end, "Blame Line")
       map("n", "<leader>hd", gs.diffthis, "Diff This")
       map("n", "<leader>hD", function() gs.diffthis("~") end, "Diff This ~")
+      map("n", "<leader>hm", function()
+        if vim.b.gitsigns_main_base_enabled then
+          gs.reset_base()
+          vim.b.gitsigns_main_base_enabled = false
+          vim.notify("Gitsigns base reset to index")
+          return
+        end
+
+        local base, ref = main_merge_base()
+        if base == nil then
+          vim.notify("Could not find a merge base for origin/main or main", vim.log.levels.ERROR)
+          return
+        end
+
+        gs.change_base(base, false, function(err)
+          if err then
+            vim.notify(err, vim.log.levels.ERROR)
+            return
+          end
+
+          vim.b.gitsigns_main_base_enabled = true
+          vim.notify("Gitsigns base set to merge-base(" .. ref .. ", HEAD)")
+        end)
+      end, "Toggle Hunks Since Main")
     end,
   },
 }

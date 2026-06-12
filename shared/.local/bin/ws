@@ -294,6 +294,14 @@ fetch_origin_quiet() {
     return 1
 }
 
+fetch_remote_quiet() {
+    local repo_dir="$1"
+    local remote="$2"
+    shift 2
+
+    git -C "$repo_dir" fetch --quiet "$remote" "$@"
+}
+
 branch_exists() {
     local repo_dir="$1"
     local branch="$2"
@@ -609,6 +617,107 @@ parse_pr_ref() {
         echo "Use a PR number (in a repo) or URL: https://github.com/owner/repo/pull/123" >&2
         exit 1
     fi
+}
+
+repo_url_for_owner_repo() {
+    local owner="$1"
+    local repo="$2"
+    local origin_url origin_without_git
+
+    origin_url=$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)
+    origin_without_git="${origin_url%.git}"
+
+    if [[ "$origin_without_git" =~ ^git@([^:]+):[^/]+/[^/]+$ ]]; then
+        printf 'git@%s:%s/%s.git\n' "${BASH_REMATCH[1]}" "$owner" "$repo"
+        return 0
+    fi
+    if [[ "$origin_without_git" =~ ^https://([^/]+)/[^/]+/[^/]+$ ]]; then
+        printf 'https://%s/%s/%s.git\n' "${BASH_REMATCH[1]}" "$owner" "$repo"
+        return 0
+    fi
+    if [[ "$origin_without_git" =~ ^ssh://git@([^/]+)/[^/]+/[^/]+$ ]]; then
+        printf 'ssh://git@%s/%s/%s.git\n' "${BASH_REMATCH[1]}" "$owner" "$repo"
+        return 0
+    fi
+
+    require_command gh
+    gh repo view "${owner}/${repo}" --json sshUrl --jq '.sshUrl'
+}
+
+resolve_pr_head_ref() {
+    local owner="$1"
+    local repo="$2"
+    local number="$3"
+    local pr_info
+
+    require_command gh
+    pr_info=$(gh pr view "$number" \
+        --repo "${owner}/${repo}" \
+        --json headRefName,headRepository,headRepositoryOwner \
+        --jq 'select(.headRepository != null and .headRepositoryOwner != null and .headRefName != null) | [.headRepositoryOwner.login, .headRepository.name, .headRefName] | @tsv') || {
+        error "Failed to resolve PR #${number} for ${owner}/${repo}"
+        exit 1
+    }
+
+    if [[ -z "$pr_info" ]]; then
+        error "PR #${number} does not have an accessible head branch."
+        exit 1
+    fi
+
+    printf '%s\n' "$pr_info"
+}
+
+ensure_remote_url() {
+    local remote="$1"
+    local url="$2"
+    local existing_url
+
+    if git -C "$REPO_DIR" remote get-url "$remote" >/dev/null 2>&1; then
+        existing_url=$(git -C "$REPO_DIR" remote get-url "$remote")
+        if [[ "$existing_url" != "$url" ]]; then
+            git -C "$REPO_DIR" remote set-url "$remote" "$url"
+        fi
+    else
+        git -C "$REPO_DIR" remote add "$remote" "$url"
+    fi
+}
+
+prepare_pr_upstream_ref() {
+    local head_owner="$1"
+    local head_repo="$2"
+    local head_branch="$3"
+    local pr_number="$4"
+    local remote refspec remote_url
+
+    remote="pr-${pr_number}-head"
+    if [[ "$head_owner" == "$PR_ORG" && "$head_repo" == "$PR_REPO" ]]; then
+        remote_url=$(git -C "$REPO_DIR" remote get-url origin)
+    else
+        remote_url=$(repo_url_for_owner_repo "$head_owner" "$head_repo")
+    fi
+    ensure_remote_url "$remote" "$remote_url"
+
+    refspec="+refs/heads/${head_branch}:refs/remotes/${remote}/${head_branch}"
+    fetch_remote_quiet "$REPO_DIR" "$remote" "$refspec"
+
+    printf '%s/%s\n' "$remote" "$head_branch"
+}
+
+configure_pr_push_refspec() {
+    local remote="$1"
+    local local_branch="$2"
+    local head_branch="$3"
+
+    git -C "$REPO_DIR" config --replace-all \
+        "remote.${remote}.push" \
+        "refs/heads/${local_branch}:refs/heads/${head_branch}"
+}
+
+set_branch_upstream() {
+    local branch="$1"
+    local upstream="$2"
+
+    git -C "$REPO_DIR" branch --set-upstream-to="$upstream" "$branch" >/dev/null
 }
 
 resolve_worktree_globally() {
@@ -1425,26 +1534,44 @@ cmd_new() {
         wt_path=$(worktree_path_for_pr "$PR_NUMBER")
         ensure_managed_path "$wt_path"
 
-        if [[ -d "$wt_path" ]]; then
-            log "Worktree already exists: $wt_path"
-            open_worktree "$wt_path"
-            return 0
+        local pr_branch="pr-${PR_NUMBER}"
+        local pr_info head_owner head_repo head_branch upstream_ref upstream_remote
+
+        log "Resolving PR #${PR_NUMBER} for ${PR_ORG}/${PR_REPO}..."
+        pr_info=$(resolve_pr_head_ref "$PR_ORG" "$PR_REPO" "$PR_NUMBER")
+        IFS=$'\t' read -r head_owner head_repo head_branch <<<"$pr_info"
+
+        if [[ -z "$head_owner" || -z "$head_repo" || -z "$head_branch" ]]; then
+            error "Failed to resolve PR #${PR_NUMBER} head branch."
+            exit 1
         fi
 
         mkdir -p "$(dirname "$wt_path")"
         acquire_lock "$(short_hash "$wt_path")"
 
-        log "Fetching PR #${PR_NUMBER} for ${PR_ORG}/${PR_REPO}..."
-        fetch_origin_quiet "$REPO_DIR" "pull/${PR_NUMBER}/head:refs/remotes/origin/pr/${PR_NUMBER}"
+        log "Fetching ${head_owner}/${head_repo}:${head_branch}..."
+        upstream_ref=$(prepare_pr_upstream_ref "$head_owner" "$head_repo" "$head_branch" "$PR_NUMBER")
+        upstream_remote="${upstream_ref%%/*}"
 
-        local pr_branch="pr-${PR_NUMBER}"
+        if [[ -d "$wt_path" ]]; then
+            log "Worktree already exists: $wt_path"
+            if branch_exists "$REPO_DIR" "$pr_branch"; then
+                set_branch_upstream "$pr_branch" "$upstream_ref"
+                configure_pr_push_refspec "$upstream_remote" "$pr_branch" "$head_branch"
+            fi
+            open_worktree "$wt_path"
+            return 0
+        fi
+
         if branch_exists "$REPO_DIR" "$pr_branch"; then
             log "Local branch '${pr_branch}' already exists; reusing it."
             git -C "$REPO_DIR" worktree add --quiet "$wt_path" "$pr_branch"
         else
             log "Creating worktree: $wt_path"
-            git -C "$REPO_DIR" worktree add --quiet -b "$pr_branch" "$wt_path" "refs/remotes/origin/pr/${PR_NUMBER}"
+            git -C "$REPO_DIR" worktree add --quiet -b "$pr_branch" --track "$wt_path" "$upstream_ref"
         fi
+        set_branch_upstream "$pr_branch" "$upstream_ref"
+        configure_pr_push_refspec "$upstream_remote" "$pr_branch" "$head_branch"
 
         open_worktree "$wt_path"
         return 0

@@ -1,12 +1,12 @@
 # Font
-font-family = Monaco
-#font-size = 15
-font-thicken = true
-adjust-cell-height = 10%
+#font-family = Go Mono
+font-size = 15
+#font-thicken = true
+#adjust-cell-height = 10%
 unfocused-split-opacity = 1
 
-# Theme (managed by ~/.local/bin/theme)
-theme = iTerm2 Light Background
+# Theme
+theme = dark:iTerm2 Dark Background,light:iTerm2 Light Background
 
 # macOS options
 macos-option-as-alt = true

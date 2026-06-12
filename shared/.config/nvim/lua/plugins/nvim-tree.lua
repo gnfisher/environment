@@ -14,8 +14,11 @@ return {
   },
   dependencies = { "nvim-tree/nvim-web-devicons" },
   opts = {
-    disable_netrw = true,
-    hijack_netrw = true,
+    disable_netrw = false,
+    hijack_netrw = false,
+    hijack_directories = {
+      enable = false,
+    },
     sync_root_with_cwd = true,
     respect_buf_cwd = true,
     update_focused_file = {

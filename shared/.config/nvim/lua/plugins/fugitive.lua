@@ -48,12 +48,8 @@ return {
       { "<leader>dv", "<Cmd>DiffviewOpen<CR>", desc = "Diffview open" },
       {
         "<leader>dp",
-        function()
-          local remote_head = vim.fn.systemlist({ "git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD" })[1]
-          local base = remote_head ~= nil and remote_head ~= "" and remote_head or "origin/main"
-          vim.cmd("DiffviewOpen " .. vim.fn.fnameescape(base) .. "...HEAD")
-        end,
-        desc = "Diffview PR diff",
+        "<Cmd>DiffviewOpen origin/main...HEAD<CR>",
+        desc = "Diffview PR diff against origin/main",
       },
       { "<leader>dV", "<Cmd>DiffviewFileHistory %<CR>", desc = "Diffview file history" },
       { "<leader>dq", "<Cmd>DiffviewClose<CR>", desc = "Diffview close" },

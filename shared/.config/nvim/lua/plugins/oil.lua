@@ -1,6 +1,7 @@
 return {
   {
     "stevearc/oil.nvim",
+    lazy = false,
     cmd = "Oil",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
@@ -16,6 +17,7 @@ return {
       end
 
       require("oil").setup {
+        default_file_explorer = true,
         columns = { "icon" },
         keymaps = {
           ["<C-h>"] = false,

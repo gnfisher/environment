@@ -145,11 +145,6 @@ __git_ref_segment() {
     printf ' %s%s' "$(__git_ref_color)" "$ref"
 }
 
-__is_light_theme() {
-    local theme_file="$HOME/.local/state/theme-mode"
-    [[ -f "$theme_file" && "$(cat "$theme_file")" == "light" ]]
-}
-
 # GitHub Dark Dimmed colors (short prompt)
 PS1='\[\e[0m\]\[\e[1;38;2;83;155;245m\]\W$(__git_ref_segment)\[\e[1;38;2;83;155;245m\]\$ \[\e[0m\]'
 
