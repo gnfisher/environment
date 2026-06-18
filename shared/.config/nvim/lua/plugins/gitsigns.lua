@@ -16,6 +16,19 @@ return {
         vim.keymap.set(mode, l, r, { buffer = buffer, desc = desc })
       end
 
+      local function center_cursor()
+        vim.cmd("normal! zz")
+      end
+
+      local function nav_hunk(direction)
+        if vim.wo.diff then
+          vim.cmd.normal({ direction == "next" and "]c" or "[c", bang = true })
+        else
+          gs.nav_hunk(direction)
+        end
+        center_cursor()
+      end
+
       local function main_merge_base()
         for _, ref in ipairs({ "origin/main", "main" }) do
           local output = vim.fn.systemlist({ "git", "merge-base", ref, "HEAD" })
@@ -27,18 +40,16 @@ return {
 
       -- Navigation
       map("n", "]h", function()
-        if vim.wo.diff then
-          vim.cmd.normal({ "]c", bang = true })
-        else
-          gs.nav_hunk("next")
-        end
+        nav_hunk("next")
       end, "Next Hunk")
       map("n", "[h", function()
-        if vim.wo.diff then
-          vim.cmd.normal({ "[c", bang = true })
-        else
-          gs.nav_hunk("prev")
-        end
+        nav_hunk("prev")
+      end, "Prev Hunk")
+      map("n", "]c", function()
+        nav_hunk("next")
+      end, "Next Hunk")
+      map("n", "[c", function()
+        nav_hunk("prev")
       end, "Prev Hunk")
 
       -- Actions

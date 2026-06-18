@@ -6,7 +6,7 @@ font-size = 15
 unfocused-split-opacity = 1
 
 # Theme
-theme = dark:iTerm2 Dark Background,light:iTerm2 Light Background
+# theme = dark:iTerm2 Dark Background,light:iTerm2 Light Background
 
 # macOS options
 macos-option-as-alt = true

@@ -48,3 +48,11 @@ Guardrails:
   checked.
 - If the prompt includes file mentions or a selected range, prioritize that area
   first, but still use the project's real lint command.
+
+## CLI one-shot
+
+For a direct terminal run:
+
+```bash
+copilot --agent lint-fix --allow-all-tools --no-ask-user -p "Run this project's linter and fix the errors."
+```

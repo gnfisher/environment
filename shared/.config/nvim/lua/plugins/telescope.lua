@@ -1,3 +1,14 @@
+local function center_cursor()
+	vim.schedule(function()
+		vim.cmd("normal! zz")
+	end)
+end
+
+local function select_default_and_center(prompt_bufnr)
+	require("telescope.actions").select_default(prompt_bufnr)
+	center_cursor()
+end
+
 return {
 	"nvim-telescope/telescope.nvim",
 	dependencies = {
@@ -42,6 +53,14 @@ return {
 			file_ignore_patterns = {
 				"node_modules/*",
 			},
+			mappings = {
+				i = {
+					["<CR>"] = select_default_and_center,
+				},
+				n = {
+					["<CR>"] = select_default_and_center,
+				},
+			},
 		},
 		extensions = {
 			fzf = {},
@@ -59,7 +78,7 @@ return {
 		{ "<leader>ff", "<cmd>Telescope git_files<cr>", desc = "Find in git files" },
 		{ "<leader>fa", "<cmd>Telescope find_files<cr>", desc = "Find all files" },
 		{ "<leader>fg", function() require("custom.telescope.multi-ripgrep")() end, desc = "Multi grep" },
-    { "<space>/", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy find in buffer" },
+		{ "<space>/", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy find in buffer" },
 		{ "<leader>fw", "<cmd>Telescope grep_string<cr>", desc = "Grep word under cursor" },
 		{ "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
 		{ "<leader>fd", "<cmd>Telescope diagnostics bufnr=0<cr>", desc = "Find buffer diagnostics" },
@@ -68,8 +87,23 @@ return {
 		{ "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Find help" },
 		{ "<leader>fc", "<cmd>Telescope commands<cr>", desc = "Find commands" },
 		{ "<leader>fk", "<cmd>Telescope keymaps<cr>", desc = "Find keymaps" },
-		{ "g]", "<cmd>lua require('telescope').extensions.ctags_plus.jump_to_tag()<cr>", desc = "Jump to ctag" },
-		{ "g]", "<cmd>lua require('telescope').extensions.ctags_plus.jump_to_tag({ word_source = 'visual' })<cr>", mode = "x", desc = "Jump to ctag (visual)" },
+		{
+			"g]",
+			function()
+				require("telescope").extensions.ctags_plus.jump_to_tag()
+				center_cursor()
+			end,
+			desc = "Jump to ctag",
+		},
+		{
+			"g]",
+			function()
+				require("telescope").extensions.ctags_plus.jump_to_tag({ word_source = "visual" })
+				center_cursor()
+			end,
+			mode = "x",
+			desc = "Jump to ctag (visual)",
+		},
 		{ "<leader>ft", "<cmd>lua require('telescope').extensions.ctags_plus.select_tag()<cr>", desc = "Select ctag" },
 	},
 }

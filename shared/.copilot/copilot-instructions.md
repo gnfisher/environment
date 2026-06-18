@@ -27,22 +27,22 @@
 # Collaboration
 - For non-trivial coding work, prefer an independent critique at high-leverage moments.
 - If the current session model is in the Claude family, rely on the built-in rubber-duck flow.
-- Otherwise, when a deep independent critique is worthwhile, use the `/critique-loop` skill or invoke the local `copilot-critic` wrapper instead of the bare `critic` agent so the model and reasoning effort are explicit. The equivalent direct command is `copilot --agent critic --model gpt-5.4 --effort high`.
+- Otherwise, when a deep independent critique is worthwhile, invoke the `critic` agent directly with an explicit model and reasoning effort, e.g. `copilot --agent critic --model gpt-5.4 --effort high`.
 - Use that extra pass before implementation, after substantial changes, and before wrapping up.
 - Skip extra critique for small, mechanical, or low-risk tasks.
 
-# User the GitHub CLI!
+# Use the GitHub CLI!
 - Prefer `gh` over MCP for GitHub operations when `gh` can handle the task cleanly.
 - Prefer purpose-built subcommands like `gh pr` and `gh issue` over `gh api`.
 - When pushing to or updating a PR branch, check the linked issue title and body and update them if they are stale.
 - Prefer REST endpoints to GraphQL unless GraphQL is clearly the better fit.
 - If you use a GraphQL mutation, verify that the node IDs match the intended resources before mutating anything. Agents frequently hallucinate node IDs, and mutating the wrong resource can have serious consequences, including leaking privileged information in public places.
 
-# Working in the repo's I use
+# Working in the repos I use
 - I have all github repos checked out under `~/Development/<owner>/<repo>`.
 - If you need to work with a repo, check if it's already checked out there before cloning.
 - If the branch is clean in a repo, get on main/master and pull before starting work.
-- Use the `gh-clone <https://github.com/user/repo.git>` CLI command when you want to clone a new repo into my machine locally.
+- When cloning a new repo, put it under `~/Development/<owner>/<repo>`, e.g. `gh repo clone <owner>/<repo> ~/Development/<owner>/<repo>`.
 
 # Style
 - Never use smart quotes or fancy hyphens. Use simple straight quotes and simple

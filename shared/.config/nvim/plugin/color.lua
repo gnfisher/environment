@@ -1,11 +1,11 @@
 local themes = {
   dark = {
     background = "dark",
-    colorscheme = "onedark",
+    colorscheme = "github_dark_dimmed",
   },
   light = {
     background = "light",
-    colorscheme = "acme",
+    colorscheme = "github_light_default",
   },
 }
 
@@ -18,19 +18,6 @@ local function reset_highlights()
   if vim.fn.exists("syntax_on") == 1 then
     vim.cmd("syntax reset")
   end
-end
-
-local function macos_theme_mode()
-  if vim.uv.os_uname().sysname ~= "Darwin" then
-    return "dark"
-  end
-
-  local output = vim.fn.system({ "defaults", "read", "-g", "AppleInterfaceStyle" })
-  if vim.v.shell_error == 0 and output:match("Dark") then
-    return "dark"
-  end
-
-  return "light"
 end
 
 local function set_custom_highlights()
@@ -53,14 +40,14 @@ local function apply_mode(mode, force)
   set_custom_highlights()
 end
 
+local function toggle_mode()
+  apply_mode(current_mode == "dark" and "light" or "dark")
+end
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = set_custom_highlights,
 })
 
-vim.api.nvim_create_autocmd({ "FocusGained", "VimResume" }, {
-  callback = function()
-    apply_mode(macos_theme_mode())
-  end,
-})
+vim.keymap.set("n", "<F6>", toggle_mode, { silent = true, desc = "Toggle dark/light theme" })
 
-apply_mode(macos_theme_mode(), true)
+apply_mode("dark", true)
