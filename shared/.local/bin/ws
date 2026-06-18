@@ -1610,8 +1610,14 @@ cmd_new() {
         git -C "$REPO_DIR" worktree add --quiet "$wt_path" "$branch"
     else
         log "Creating branch '${branch}' from origin/${default_branch}..."
-        git -C "$REPO_DIR" worktree add --quiet -b "$branch" "$wt_path" "origin/${default_branch}"
+        git -C "$REPO_DIR" worktree add --quiet --no-track -b "$branch" "$wt_path" "origin/${default_branch}"
     fi
+
+    # Track origin/<branch> (same name) so a plain `git push` works. Without
+    # this the branch would inherit origin/<default-branch> as its upstream
+    # (via branch.autoSetupMerge) and push.default=simple would refuse to push.
+    git -C "$REPO_DIR" config "branch.${branch}.remote" origin
+    git -C "$REPO_DIR" config "branch.${branch}.merge" "refs/heads/${branch}"
 
     open_worktree "$wt_path"
 }
