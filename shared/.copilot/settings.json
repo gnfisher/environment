@@ -22,5 +22,8 @@
       "origin": "*",
       "level": "local"
     }
-  ]
+  ],
+  "enabledPlugins": {
+    "slack-mcp@github-slack-mcp": true
+  }
 }
