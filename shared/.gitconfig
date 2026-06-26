@@ -6,7 +6,6 @@
   user = gnfisher
 [core]
   excludesfile = ~/.gitignore
-  pager = delta
 [alias]
   uncommit = reset --soft HEAD^
   unstage = reset
@@ -30,8 +29,6 @@
   wip = !git add -A && git commit -m 'WIP'
 [color]
 	ui = auto
-[interactive]
-  diffFilter = delta --color-only
 [fetch]
   prune = true
 [commit]
@@ -43,10 +40,6 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
-[delta]
-  navigate = true
-  line-numbers = true
-  side-by-side = true
 [difftool]
   prompt = false
 [difftool "difftastic"]
