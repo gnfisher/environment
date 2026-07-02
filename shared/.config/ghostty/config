@@ -1,12 +1,13 @@
 # Font
-#font-family = Go Mono
+font-family = Menlo
 font-size = 15
-#font-thicken = true
-#adjust-cell-height = 10%
+# font-thicken = true
+adjust-cell-height = 5%
+#adjust-cell-width = -1%
 unfocused-split-opacity = 1
 
 # Theme
-# theme = dark:iTerm2 Dark Background,light:iTerm2 Light Background
+theme = dark:iTerm2 Dark Background,light:iTerm2 Light Background
 
 # macOS options
 macos-option-as-alt = true

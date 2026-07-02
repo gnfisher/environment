@@ -9,34 +9,15 @@
 
 # Local behavior
 - If I ask you to "open" a PR, URL, file, or folder so I can view it, use the platform-native opener: `open` on macOS, `start` on Windows, and `xdg-open` on Linux.
-- If you are in a directory titled `pr-<numbers>` e.g. `pr-3468` you are in a a
-  worktree for a PR and should be in a reviewer mindset. Do not make code changes or push to the branch unless explicitly asked to.
+- If you are in a directory titled `pr-<numbers>` e.g. `pr-3468` you are in a a worktree for a PR and should be in a reviewer's mindset unless told othewise. Do not make code changes or push to the branch unless explicitly asked to.
 
-# Session privacy
-- Do not share, export, delegate, remotely sync, or upload Copilot CLI sessions unless I explicitly ask for that specific action.
-- Keep Copilot CLI session sharing and remote control local-only by default.
-
-# Copilot worktrees
+# Copilot worktrees (only if running in GitHub CLI)
 - Use my `ws` CLI tool for managing worktrees.
 - When creating a local worktree for a Copilot session, create it under `~/.copilot/copilot-worktrees`.
 - Resolve the source repo from `~/Development/<owner>/<repo>` when possible, but keep the worktree checkout itself under the Copilot worktree base directory.
 - Match the existing layout: use `~/.copilot/copilot-worktrees/<repo>/pr-<number>` for PR sessions, and `~/.copilot/copilot-worktrees/<repo>/<user>/<session-slug>` for other named sessions.
 - Treat `pr-<number>` and `<user>/<session-slug>` as the worktree directory naming convention, not as a required Git branch naming convention. The checked-out branch may differ from the directory name.
 - Prefer reusing an existing matching worktree over creating a duplicate with a different path.
-
-# Collaboration
-- For non-trivial coding work, prefer an independent critique at high-leverage moments.
-- If the current session model is in the Claude family, rely on the built-in rubber-duck flow.
-- Otherwise, when a deep independent critique is worthwhile, invoke the `critic` agent directly with an explicit model and reasoning effort, e.g. `copilot --agent critic --model gpt-5.4 --effort high`.
-- Use that extra pass before implementation, after substantial changes, and before wrapping up.
-- Skip extra critique for small, mechanical, or low-risk tasks.
-
-# Use the GitHub CLI!
-- Prefer `gh` over MCP for GitHub operations when `gh` can handle the task cleanly.
-- Prefer purpose-built subcommands like `gh pr` and `gh issue` over `gh api`.
-- When pushing to or updating a PR branch, check the linked issue title and body and update them if they are stale.
-- Prefer REST endpoints to GraphQL unless GraphQL is clearly the better fit.
-- If you use a GraphQL mutation, verify that the node IDs match the intended resources before mutating anything. Agents frequently hallucinate node IDs, and mutating the wrong resource can have serious consequences, including leaking privileged information in public places.
 
 # Working in the repos I use
 - I have all github repos checked out under `~/Development/<owner>/<repo>`.
