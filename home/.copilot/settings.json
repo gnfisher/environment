@@ -1,42 +1,51 @@
 {
-  "renderMarkdown": true,
-  "screenReader": false,
-  "theme": "dark",
   "allowedUrls": [
     "https://docs.github.com",
     "https://raw.githubusercontent.com",
     "https://gist.github.com",
     "https://gist.githubusercontent.com"
   ],
-  "showReasoning": false,
-  "experimental": true,
-  "logLevel": "all",
-  "model": "gpt-5.5",
-  "remoteSessions": false,
-  "exportSessions": false,
-  "steerableSessions": false,
-  "storeSessionsRemotely": false,
-  "undo_without_confirmation": true,
-  "sessionSync": [
-    {
-      "origin": "*",
-      "level": "local"
-    }
-  ],
+  "colorMode": "default",
+  "effortLevel": "xhigh",
   "enabledPlugins": {
     "slack-mcp@github-slack-mcp": true
   },
-  "colorMode": "default",
+  "experimental": true,
+  "exportSessions": false,
   "extraKnownMarketplaces": {
     "github-slack-mcp": {
       "source": {
-        "source": "github",
-        "repo": "github/copilot-slack-mcp"
+        "repo": "github/copilot-slack-mcp",
+        "source": "github"
       }
     }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "bash": "bash '/Users/gnfisher/.copilot/hooks/herdr-agent-state.sh'",
+        "timeoutSec": 10,
+        "type": "command"
+      }
+    ]
   },
   "ide": {
     "autoConnect": true
   },
-  "effortLevel": "xhigh"
+  "logLevel": "all",
+  "model": "gpt-5.5",
+  "remoteSessions": false,
+  "renderMarkdown": true,
+  "screenReader": false,
+  "sessionSync": [
+    {
+      "level": "local",
+      "origin": "*"
+    }
+  ],
+  "showReasoning": false,
+  "steerableSessions": false,
+  "storeSessionsRemotely": false,
+  "theme": "dark",
+  "undo_without_confirmation": true
 }
