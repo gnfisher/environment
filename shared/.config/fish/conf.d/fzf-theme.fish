@@ -1,4 +1,0 @@
-# FZF theme
-status is-interactive; or return
-
-set -Ux FZF_DEFAULT_OPTS "--color=bg+:#2d2d2d,bg:#191919,spinner:#777777,hl:#ff8787 --color=fg:#d4d4d4,header:#aaaaaa,info:#777777,pointer:#d4d4d4 --color=marker:#d4d4d4,fg+:#d4d4d4,prompt:#999999,hl+:#ff8787 --color=selected-bg:#3a3a3a --color=border:#3a3a3a,label:#d4d4d4"

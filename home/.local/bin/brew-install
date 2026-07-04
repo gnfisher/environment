@@ -1,0 +1,63 @@
+#!/bin/zsh
+#
+# brew-install: install a Homebrew item and append it to the dotfiles Brewfile.
+#
+# Usage:
+#   brew-install <formula>           # Install a formula
+#   brew-install --cask <cask>       # Install a cask
+#   brew-install --tap <tap>         # Add a tap
+#
+set -euo pipefail
+
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Development/gnfisher/environment}"
+BREWFILE="$DOTFILES_DIR/Brewfile"
+
+usage() {
+    echo "Usage: brew-install [--cask|--tap] <package>"
+    echo ""
+    echo "Options:"
+    echo "  --cask    Install a cask"
+    echo "  --tap     Add a tap"
+    echo "  --help    Show this help"
+    exit 1
+}
+
+ensure_brewfile_line() {
+    local line="$1"
+
+    if ! grep -qxF "$line" "$BREWFILE"; then
+        printf '%s\n' "$line" >> "$BREWFILE"
+        echo "Added to Brewfile: $line"
+    fi
+}
+
+if [[ $# -lt 1 ]]; then
+    usage
+fi
+
+case "$1" in
+    --help|-h)
+        usage
+        ;;
+    --cask)
+        [[ $# -lt 2 ]] && usage
+        echo "Installing cask: $2"
+        brew install --cask "$2"
+        ensure_brewfile_line "cask \"$2\""
+        ;;
+    --tap)
+        [[ $# -lt 2 ]] && usage
+        echo "Tapping: $2"
+        brew tap "$2"
+        ensure_brewfile_line "tap \"$2\""
+        ;;
+    --*)
+        echo "Unknown option: $1"
+        usage
+        ;;
+    *)
+        echo "Installing formula: $1"
+        brew install "$1"
+        ensure_brewfile_line "brew \"$1\""
+        ;;
+esac

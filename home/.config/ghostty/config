@@ -1,0 +1,40 @@
+# Font
+# font-family = Menlo
+# font-size = 15
+# font-thicken = true
+# adjust-cell-height = 5%
+#adjust-cell-width = -1%
+unfocused-split-opacity = 1
+
+# Theme
+# theme = dark:iTerm2 Dark Background,light:acme
+
+# macOS options
+macos-option-as-alt = true
+# window-show-tab-bar = always
+# macos-titlebar-style = tabs
+
+# Clipboard
+clipboard-read = allow
+clipboard-write = allow
+
+# Tabs
+keybind = cmd+shift+r=prompt_tab_title
+
+# Split panes (match WezTerm)
+keybind = cmd+d=new_split:right
+keybind = cmd+shift+d=new_split:down
+keybind = cmd+shift+enter=toggle_split_zoom
+keybind = cmd+ctrl+equal=equalize_splits
+
+# Navigate panes (match WezTerm)
+keybind = cmd+shift+h=goto_split:left
+keybind = cmd+shift+l=goto_split:right
+keybind = cmd+shift+k=goto_split:top
+keybind = cmd+shift+j=goto_split:bottom
+
+# Close pane
+keybind = cmd+w=close_surface
+
+# Shift+Enter for multi-line input in TUIs
+keybind = shift+enter=text:\n

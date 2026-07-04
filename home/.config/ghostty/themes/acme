@@ -1,0 +1,40 @@
+# Acme - inspired by the Plan 9 Acme editor palette
+
+background = #ffffea
+foreground = #000000
+cursor-color = #000000
+cursor-text = #ffffea
+selection-background = #eeee9e
+selection-foreground = #000000
+
+# black
+palette = 0=#000000
+palette = 8=#666666
+
+# red
+palette = 1=#a0342f
+palette = 9=#c43e35
+
+# green
+palette = 2=#2e7d32
+palette = 10=#3c9d40
+
+# yellow
+palette = 3=#8a6f1d
+palette = 11=#a88323
+
+# blue
+palette = 4=#2554a6
+palette = 12=#326bd1
+
+# magenta
+palette = 5=#8f3f71
+palette = 13=#ad4b8c
+
+# cyan
+palette = 6=#2b747f
+palette = 14=#3f8f9c
+
+# white
+palette = 7=#f2f2d8
+palette = 15=#ffffff
