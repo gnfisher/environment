@@ -1,0 +1,18 @@
+onboarding = false
+
+[ui]
+agent_panel_scope = "all"
+agent_panel_sort = "spaces"
+
+[ui.toast]
+delivery = "herdr"
+
+[theme]
+name = "terminal"
+auto_switch = false
+
+[worktrees]
+directory = "~/.herdr/worktrees"
+
+[keys]
+prefix = "ctrl+space"

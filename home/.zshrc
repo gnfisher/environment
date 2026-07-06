@@ -22,6 +22,8 @@ fi
 
 export EDITOR=nvim
 export VISUAL=nvim
+# Keep zle in emacs mode even though EDITOR/VISUAL point at nvim.
+bindkey -e
 export GOPATH="$HOME/go"
 export GOPROXY="https://goproxy.githubapp.com/mod,https://proxy.golang.org/,direct"
 export GONOPROXY=""
@@ -77,6 +79,10 @@ alias rg='rg --hidden'
 alias copilot='copilot --yolo'
 alias dots='cd ~/Development/gnfisher/environment'
 alias dev='cd ~/Development'
+alias ghswe='cd ~/Development/github/sweagentd'
+alias ghcmc='cd ~/Development/github/copilot-mission-control'
+alias ghcar='cd ~/Development/github/copilot-agent-runtime'
+alias ghgh='cd ~/Development/github/github'
 
 autoload -Uz add-zsh-hook
 _set_terminal_title() {

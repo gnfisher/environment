@@ -102,6 +102,51 @@ local function get_copilot_focus_reference(opts)
   return "@" .. display_path
 end
 
+local function get_github_browse_target(opts)
+  local path = vim.api.nvim_buf_get_name(0)
+  if path == "" then
+    vim.notify("Current buffer has no file path", vim.log.levels.ERROR)
+    return nil
+  end
+
+  local absolute_path = vim.fn.fnamemodify(path, ":p")
+  local root = get_project_root(absolute_path)
+  local target = get_path_relative_to(root, absolute_path)
+  local start_line
+  local end_line
+
+  if opts and opts.range ~= 0 then
+    start_line = opts.line1
+    end_line = opts.line2
+  else
+    start_line = vim.api.nvim_win_get_cursor(0)[1]
+    end_line = start_line
+  end
+
+  if start_line and end_line then
+    target = target .. (start_line == end_line and string.format(":%d", start_line)
+      or string.format(":%d-%d", start_line, end_line))
+  end
+
+  return target, root
+end
+
+local function run_gh_browse(args, root)
+  if vim.fn.executable("gh") ~= 1 then
+    vim.notify("gh CLI not found in PATH", vim.log.levels.ERROR)
+    return nil
+  end
+
+  local result = vim.system(args, { cwd = root, text = true }):wait()
+  if result.code ~= 0 then
+    local message = vim.trim((result.stderr or "") ~= "" and result.stderr or result.stdout or "")
+    vim.notify(message ~= "" and message or "gh browse failed", vim.log.levels.ERROR)
+    return nil
+  end
+
+  return vim.trim(result.stdout or "")
+end
+
 local function open_terminal_command(command, cwd)
   vim.cmd.new()
   vim.cmd.wincmd("J")
@@ -131,6 +176,35 @@ vim.api.nvim_create_user_command("CopyBufferPath", function()
   copy_to_clipboard(path)
 end, {
   desc = "Copy the current buffer absolute path",
+})
+
+vim.api.nvim_create_user_command("BrowseGitHub", function(opts)
+  local target, root = get_github_browse_target(opts)
+  if not target then
+    return
+  end
+
+  run_gh_browse({ "gh", "browse", target }, root)
+end, {
+  desc = "Open the current line or range on GitHub",
+  range = true,
+})
+
+vim.api.nvim_create_user_command("CopyGitHubUrl", function(opts)
+  local target, root = get_github_browse_target(opts)
+  if not target then
+    return
+  end
+
+  local url = run_gh_browse({ "gh", "browse", "--no-browser", target }, root)
+  if not url then
+    return
+  end
+
+  copy_to_clipboard(url)
+end, {
+  desc = "Copy the current line or range GitHub URL",
+  range = true,
 })
 
 vim.api.nvim_create_user_command("CopyCopilotRef", function(opts)

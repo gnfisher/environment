@@ -1,21 +1,20 @@
 return {
   {
-    "projekt0n/github-nvim-theme",
-    name = "github-theme",
+    "rose-pine/neovim",
+    name = "rose-pine",
     lazy = false,
     priority = 1000,
+    opts = {
+      styles = {
+        transparency = true,
+      },
+    },
   },
   {
-    "olimorris/onedarkpro.nvim",
-    name = "onedarkpro.nvim",
+    "nanotech/jellybeans.vim",
+    name = "jellybeans.vim",
     lazy = false,
     priority = 999,
-  },
-  {
-    "maxmx03/solarized.nvim",
-    name = "solarized.nvim",
-    lazy = false,
-    priority = 998,
   },
   {
     "https://gitlab.com/__tpb/acme.nvim.git",

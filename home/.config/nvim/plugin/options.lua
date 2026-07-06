@@ -10,7 +10,7 @@ opt.numberwidth = 5
 opt.signcolumn = "yes"
 opt.showtabline = 2
 
--- Custom tabline with better names for oil and terminal buffers
+-- Custom tabline with better names for terminal buffers
 function _G.custom_tabline()
   local s = ""
   for tabnr = 1, vim.fn.tabpagenr("$") do
@@ -20,11 +20,7 @@ function _G.custom_tabline()
     local buftype = vim.fn.getbufvar(bufnr, "&buftype")
     local label
 
-    if bufname:match("^oil://") then
-      -- Oil buffer: show just the directory name
-      local path = bufname:gsub("oil://", "")
-      label = "/" .. vim.fn.fnamemodify(path, ":t")
-    elseif buftype == "terminal" then
+    if buftype == "terminal" then
       -- Terminal buffer: extract term name or use "term"
       local term_title = vim.fn.getbufvar(bufnr, "term_title")
       if term_title and term_title ~= "" then
