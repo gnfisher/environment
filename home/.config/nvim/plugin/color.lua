@@ -32,18 +32,21 @@ local function clear_background(group)
 end
 
 local function set_custom_highlights(colors_name)
+  local active_colors_name = colors_name or vim.g.colors_name
   vim.o.guicursor = default_guicursor
 
-  for _, group in ipairs(transparent_groups) do
-    clear_background(group)
+  if active_colors_name ~= "solarized8" then
+    for _, group in ipairs(transparent_groups) do
+      clear_background(group)
+    end
+
+    local ok, normal = pcall(vim.api.nvim_get_hl, 0, { name = "Normal", link = false })
+    if ok then
+      vim.api.nvim_set_hl(0, "Folded", { fg = normal.fg, bg = "none" })
+    end
   end
 
-  local ok, normal = pcall(vim.api.nvim_get_hl, 0, { name = "Normal", link = false })
-  if ok then
-    vim.api.nvim_set_hl(0, "Folded", { fg = normal.fg, bg = "none" })
-  end
-
-  if (colors_name or vim.g.colors_name) == "acme" then
+  if active_colors_name == "acme" then
     vim.g.colors_name = "acme"
 
     for group, highlight in pairs(acme_highlights) do
@@ -59,5 +62,6 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 })
 
 vim.o.background = "dark"
-vim.cmd.colorscheme("rose-pine-moon")
+vim.cmd("syntax enable")
+vim.cmd.colorscheme("solarized8")
 set_custom_highlights()

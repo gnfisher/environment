@@ -87,11 +87,15 @@ return {
         lsp_util._custom_hover_float_wrapped = true
       end
 
-      lspconfig_defaults.capabilities = vim.tbl_deep_extend(
+      local capabilities = vim.tbl_deep_extend(
         "force",
         lspconfig_defaults.capabilities,
         require('blink.cmp').get_lsp_capabilities(lspconfig_defaults.capabilities)
       )
+      if vim.g.legacy_syntax_highlighting then
+        capabilities.textDocument.semanticTokens = nil
+      end
+      lspconfig_defaults.capabilities = capabilities
 
       vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
         config = config or {}

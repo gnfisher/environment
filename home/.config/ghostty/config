@@ -1,9 +1,11 @@
 # Font
-font-family = CaskaydiaCove Nerd Font Mono
-font-size = 15
+#font-family = CaskaydiaCove Nerd Font Mono
+font-family = menlo
+# font-size = 15
 
 # Theme
 #theme = catppuccin macchiato
+theme = light:Solarized Classic Light,dark:Solarized Classic Dark
 
 # macOS options
 macos-option-as-alt = true

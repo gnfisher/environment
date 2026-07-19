@@ -16,3 +16,4 @@ directory = "~/.herdr/worktrees"
 
 [keys]
 prefix = "ctrl+space"
+open_worktree = "prefix+shift+o"

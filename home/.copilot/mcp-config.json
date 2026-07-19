@@ -17,6 +17,14 @@
         "-lc",
         "docker run -i --rm --env-file \"$HOME/.config/environment/splunk-token.env\" -e SPLUNK_HOST=splunkazure-api-azure-eastus.octoca.ts.net -e SPLUNK_PORT=443 -e SPLUNK_SCHEME=https -e VERIFY_SSL=true -e FASTMCP_LOG_LEVEL=DEBUG ghcr.io/github/splunk-mcp-server:latest"
       ]
+    },
+    "feature-flags": {
+      "tools": [
+        "*"
+      ],
+      "type": "local",
+      "command": "/Users/gnfisher/.local/bin/feature-flags-mcp-server",
+      "args": []
     }
   }
 }
