@@ -2,14 +2,32 @@ onboarding = false
 
 [ui]
 agent_panel_scope = "all"
-agent_panel_sort = "spaces"
+agent_panel_sort = "priority"
 
 [ui.toast]
 delivery = "herdr"
 
 [theme]
-name = "terminal"
+name = "one-light"
 auto_switch = false
+
+[theme.custom]
+accent = "#3F7069"
+panel_bg = "#F3F1E8"
+surface0 = "#E7E9E2"
+surface1 = "#CBDDD7"
+surface_dim = "#DCE3DE"
+overlay0 = "#62716D"
+overlay1 = "#566561"
+text = "#354341"
+subtext0 = "#566561"
+mauve = "#7C614B"
+green = "#617340"
+yellow = "#88681E"
+red = "#98504C"
+blue = "#456D82"
+teal = "#3F7069"
+peach = "#7C614B"
 
 [worktrees]
 directory = "~/.herdr/worktrees"

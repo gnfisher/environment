@@ -1,0 +1,4 @@
+^/\.cache
+^/\.local/share/mise
+^/\.local/state
+^/\.DS_Store

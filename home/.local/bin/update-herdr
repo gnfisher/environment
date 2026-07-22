@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+#
+# update-herdr: update the Homebrew-managed Herdr binary and its matching skill.
+#
+# Usage:
+#   update-herdr          # show version and skill status
+#   update-herdr --diff   # also show the skill diff
+#   update-herdr --apply  # update Herdr and replace the skill with the same tag
+#
+set -euo pipefail
+
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Development/gnfisher/environment}"
+SKILL_PATH="$DOTFILES_DIR/home/.copilot/skills/herdr/SKILL.md"
+VERSION_PATH="$DOTFILES_DIR/home/.copilot/skills/herdr/upstream-version"
+UPSTREAM_REPO="ogulcancelik/herdr"
+APPLY=false
+SHOW_DIFF=false
+
+usage() {
+    cat <<'USAGE'
+Usage: update-herdr [--diff] [--apply]
+
+Without arguments, report the running, Homebrew, upstream, and skill versions.
+
+Options:
+  --diff     Show differences from the skill matching installed Herdr
+  --apply    Upgrade Herdr through Homebrew and install the matching skill
+  --help     Show this help
+
+The apply operation refuses to run while a Herdr server is active because
+Homebrew cannot hand off the running server and stopping it terminates panes.
+USAGE
+}
+
+fail() {
+    echo "update-herdr: $*" >&2
+    exit 1
+}
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+}
+
+normalize_version() {
+    printf '%s' "$1" | sed 's/^v//'
+}
+
+fetch_skill() {
+    local version="$1"
+    local destination="$2"
+    local url="https://raw.githubusercontent.com/$UPSTREAM_REPO/v$version/SKILL.md"
+
+    curl -fsSL "$url" -o "$destination" ||
+        fail "could not download skill for Herdr v$version"
+
+    [[ -s "$destination" ]] || fail "downloaded skill is empty"
+    grep -Eq '^(name: herdr|# [Hh]erdr|# herdr - agent skill)' "$destination" ||
+        fail "downloaded file does not look like the Herdr skill"
+}
+
+herdr_cli_version() {
+    herdr --version | awk '{print $2}'
+}
+
+herdr_server_version() {
+    herdr status server 2>/dev/null |
+        awk '$1 == "version:" { print $2; exit }'
+}
+
+herdr_server_running() {
+    herdr status server 2>/dev/null | grep -q '^status: running$'
+}
+
+brew_installed_version() {
+    brew list --versions herdr 2>/dev/null | awk '{print $2; exit}'
+}
+
+brew_available_version() {
+    brew info --json=v2 herdr |
+        jq -r '.formulae[0].versions.stable'
+}
+
+upstream_latest_version() {
+    curl -fsSL "https://api.github.com/repos/$UPSTREAM_REPO/releases/latest" |
+        jq -r '.tag_name' |
+        sed 's/^v//'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --apply)
+            APPLY=true
+            ;;
+        --diff)
+            SHOW_DIFF=true
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        *)
+            usage >&2
+            fail "unknown option: $1"
+            ;;
+    esac
+    shift
+done
+
+for command in brew curl git herdr jq; do
+    require_command "$command"
+done
+
+[[ -f "$SKILL_PATH" ]] || fail "skill not found: $SKILL_PATH"
+
+cli_version="$(normalize_version "$(herdr_cli_version)")"
+server_version="$(normalize_version "$(herdr_server_version)")"
+installed_version="$(normalize_version "$(brew_installed_version)")"
+available_version="$(normalize_version "$(brew_available_version)")"
+latest_version="$(normalize_version "$(upstream_latest_version)")"
+recorded_version="unknown"
+[[ -r "$VERSION_PATH" ]] && recorded_version="$(<"$VERSION_PATH")"
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+installed_skill="$tmp_dir/SKILL.md"
+fetch_skill "$installed_version" "$installed_skill"
+
+if cmp -s "$SKILL_PATH" "$installed_skill"; then
+    skill_status="matches v$installed_version"
+else
+    skill_status="differs from v$installed_version"
+fi
+
+cat <<STATUS
+Herdr CLI binary:      $cli_version
+Running server:        ${server_version:-not running}
+Homebrew installed:    $installed_version
+Homebrew available:    $available_version
+Latest upstream:       $latest_version
+Skill recorded base:   $recorded_version
+Skill status:          $skill_status
+STATUS
+
+if [[ "$APPLY" != true ]]; then
+    if [[ "$SHOW_DIFF" == true ]] && ! cmp -s "$SKILL_PATH" "$installed_skill"; then
+        echo
+        diff -u "$SKILL_PATH" "$installed_skill" || true
+    fi
+    exit 0
+fi
+
+if herdr_server_running; then
+    fail "refusing to update while a Herdr server is running; finish active work, stop Herdr, and run this command from a regular terminal"
+fi
+
+relative_skill="${SKILL_PATH#"$DOTFILES_DIR"/}"
+relative_version="${VERSION_PATH#"$DOTFILES_DIR"/}"
+git -C "$DOTFILES_DIR" ls-files --error-unmatch "$relative_skill" >/dev/null 2>&1 ||
+    fail "skill is not tracked by the dotfiles repository"
+
+if [[ -n "$(git -C "$DOTFILES_DIR" status --porcelain -- "$relative_skill" "$relative_version")" ]]; then
+    fail "skill or version metadata has uncommitted changes; commit or resolve them before applying an update"
+fi
+
+echo "Updating Homebrew metadata..."
+brew update
+
+available_version="$(normalize_version "$(brew_available_version)")"
+installed_version="$(normalize_version "$(brew_installed_version)")"
+if [[ "$installed_version" != "$available_version" ]]; then
+    echo "Upgrading Herdr $installed_version -> $available_version..."
+    brew upgrade herdr
+fi
+
+installed_version="$(normalize_version "$(brew_installed_version)")"
+updated_skill="$tmp_dir/SKILL-updated.md"
+fetch_skill "$installed_version" "$updated_skill"
+
+if ! cmp -s "$SKILL_PATH" "$updated_skill"; then
+    echo
+    echo "Skill changes:"
+    diff -u "$SKILL_PATH" "$updated_skill" || true
+fi
+
+install -m 0644 "$updated_skill" "$SKILL_PATH"
+printf '%s\n' "$installed_version" > "$VERSION_PATH"
+
+echo "Updated Herdr and synchronized the skill to v$installed_version."
+echo "Review and commit the dotfiles changes before starting Herdr again."

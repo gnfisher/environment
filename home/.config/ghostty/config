@@ -5,7 +5,8 @@ font-family = menlo
 
 # Theme
 #theme = catppuccin macchiato
-theme = light:Solarized Classic Light,dark:Solarized Classic Dark
+#theme = light:Solarized Classic Light,dark:Solarized Classic Dark
+theme = Chillfocus Light
 
 # macOS options
 macos-option-as-alt = true

@@ -36,10 +36,6 @@ set("n", "<leader>cj", function()
   require("custom.context").jump()
 end, { silent = true, desc = "Jump to code context" })
 
--- Move highlighted lines up/down
-set("v", "J", ":m '>+1<CR>gv=gv", opts)
-set("v", "K", ":m '<-2<CR>gv=gv", opts)
-
 -- Center screen after jump motions
 set("n", "<C-d>", "<C-d>zz", opts)
 set("n", "<C-u>", "<C-u>zz", opts)

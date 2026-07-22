@@ -35,7 +35,11 @@ local function set_custom_highlights(colors_name)
   local active_colors_name = colors_name or vim.g.colors_name
   vim.o.guicursor = default_guicursor
 
-  if active_colors_name ~= "solarized8" then
+  if
+    active_colors_name ~= "solarized8"
+    and active_colors_name ~= "zellner"
+    and active_colors_name ~= "chillfocus"
+  then
     for _, group in ipairs(transparent_groups) do
       clear_background(group)
     end
@@ -61,7 +65,7 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   end,
 })
 
-vim.o.background = "dark"
+vim.o.background = "light"
 vim.cmd("syntax enable")
-vim.cmd.colorscheme("solarized8")
+vim.cmd.colorscheme("chillfocus")
 set_custom_highlights()

@@ -28,3 +28,12 @@
 # Style
 - Never use smart quotes or fancy hyphens. Use simple straight quotes and simple
   hyphens and dashes only, always, in all situations.
+
+# Communication improvement notes
+- When I correct unclear wording, ask what a phrase means, or have you rewrite
+  something to make it more intelligible, append the example to
+  `~/Development/agent-notes/examples.md`.
+- Record the original context, my feedback, the clearer wording, and the
+  general communication lesson that could improve future prompting.
+- Prefer concrete names for the actual system entities involved over vague
+  abstractions. If an abstraction is useful, define what it means in context.

@@ -43,6 +43,45 @@ plain shells still exist as panes, but herdr's sidebar agent section intentional
 
 important: ids can compact when tabs, panes, or workspaces are closed. do not treat them as durable ids. re-read ids from `workspace list`, `tab list`, `pane list`, or create/split responses when you need a current id. do not guess that an older `1-3` is still the same pane later.
 
+## background orchestration must not steal focus
+
+when coordinating another agent in a background tab or workspace, never call
+`workspace focus`, `tab focus`, `pane focus`, or `agent focus` merely to submit
+input, observe completion, read output, or continue the agent. those commands
+change the human's visible context and are unnecessary for orchestration.
+
+always create background layout with `--no-focus`, retain the returned pane id,
+and address that pane or its uniquely named agent directly through the cli.
+
+first inspect `herdr agent` because command availability depends on the running
+herdr version.
+
+when `agent prompt` is available, prefer the agent-aware workflow:
+
+```bash
+herdr agent prompt reviewer "review the current diff" --wait --timeout 120000
+herdr agent read reviewer --source recent-unwrapped --lines 120
+herdr agent prompt reviewer "address the remaining issue" --wait --timeout 120000
+```
+
+`agent prompt` submits text plus encoded Enter without focusing the pane.
+`--wait` settles on `idle`, `done`, or `blocked`. standalone coordination can
+use `herdr agent wait reviewer --timeout 120000`.
+
+on older versions without `agent prompt`, use the pane surface:
+
+```bash
+herdr pane run "$PANE_ID" "review the current diff"
+herdr wait agent-status "$PANE_ID" --status done --timeout 120000
+herdr pane read "$PANE_ID" --source recent-unwrapped --lines 120
+herdr pane run "$PANE_ID" "address the remaining issue"
+```
+
+`pane run` sends the text and a real Enter key through the socket without
+focusing the tab. wait for `done` rather than forcing the tab to become `idle`;
+focusing an unseen completed tab only marks its `done` state as seen and is not
+required before reading or prompting it.
+
 ## discover yourself
 
 see what panes exist and which one is focused:
