@@ -56,6 +56,24 @@ These are choices, not a checklist:
 - Explain what a fact means and how strongly the evidence supports it.
 - Use an example, sequence, or diagram when it reduces the reader's mental load.
 
+## Examples
+
+Expose the actors and causal sequence:
+
+> Less clear: The persisted claim prevents launch-state disagreement.
+>
+> Clearer: The worker records that it owns the job before starting the
+> workflow. Another worker can then see that the launch is already in progress
+> instead of treating the job as abandoned.
+
+Preserve the limits of the evidence:
+
+> Less clear: Escaping the input fixes the truncation bug.
+>
+> Clearer: The test proves that the input is now escaped before it reaches the
+> model. It does not yet prove that the unescaped input caused the reported
+> truncation.
+
 ## Preserve truth while simplifying
 
 Clarity must not smooth away distinctions that matter. State uncertainty where
