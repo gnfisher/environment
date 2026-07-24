@@ -1,7 +1,6 @@
 ---
 name: stage-runtime
-description: Instructions for how to stage the Copilot Agent Runtime submodule
-in the github/sweagentd project for e2e testing and verification.
+description: "Instructions for how to stage the Copilot Agent Runtime submodule in the github/sweagentd project for e2e testing and verification."
 ---
 
 Copilot Agent Runtime (github/copilot-agent-runtime) is a submodule in the
