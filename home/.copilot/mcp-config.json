@@ -1,11 +1,11 @@
 {
   "mcpServers": {
     "datadog": {
-      "type": "http",
-      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,ddsql",
       "tools": [
         "*"
-      ]
+      ],
+      "type": "http",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,ddsql"
     },
     "splunk": {
       "tools": [
@@ -18,13 +18,30 @@
         "docker run -i --rm --env-file \"$HOME/.config/environment/splunk-token.env\" -e SPLUNK_HOST=splunkazure-api-azure-eastus.octoca.ts.net -e SPLUNK_PORT=443 -e SPLUNK_SCHEME=https -e VERIFY_SSL=true -e FASTMCP_LOG_LEVEL=DEBUG ghcr.io/github/splunk-mcp-server:latest"
       ]
     },
-    "feature-flags": {
+    "Azure MCP Kusto Server": {
       "tools": [
         "*"
       ],
       "type": "local",
-      "command": "/Users/gnfisher/.local/bin/feature-flags-mcp-server",
-      "args": []
+      "command": "npx",
+      "args": [
+        "-y",
+        "@azure/mcp@latest",
+        "server",
+        "start",
+        "--mode",
+        "single"
+      ]
+    },
+    "apple-notes": {
+      "tools": [
+        "*"
+      ],
+      "type": "local",
+      "command": "/Users/gnfisher/.copilot/mcp-servers/apple-notes/node_modules/.bin/tsx",
+      "args": [
+        "/Users/gnfisher/.copilot/mcp-servers/apple-notes/index.ts"
+      ]
     }
   }
 }

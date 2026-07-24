@@ -1,7 +1,7 @@
 # Font
-#font-family = CaskaydiaCove Nerd Font Mono
+font-family = CaskaydiaCove Nerd Font Mono
 font-family = menlo
-# font-size = 15
+font-size = 15
 
 # Theme
 #theme = catppuccin macchiato

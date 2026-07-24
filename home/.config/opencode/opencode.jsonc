@@ -4,6 +4,7 @@
   "theme": "system",
   "autoupdate": true,
   "share": "manual",
+  "plugin": ["@plannotator/opencode@latest"],
   "permission": {
     "edit": "allow",
     "bash": "allow"

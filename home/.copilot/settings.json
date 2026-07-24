@@ -3,27 +3,49 @@
     "https://docs.github.com",
     "https://raw.githubusercontent.com",
     "https://gist.github.com",
-    "https://gist.githubusercontent.com"
+    "https://gist.githubusercontent.com",
+    "https://github.com"
   ],
   "enabledPlugins": {
-    "slack-mcp@github-slack-mcp": true
+    "slack-mcp@github-slack-mcp": true,
+    "port@agent-config": true,
+    "plannotator-copilot@plannotator": true,
+    "mattpocock-skills@mattpocock": true
   },
   "experimental": true,
   "exportSessions": false,
   "extraKnownMarketplaces": {
     "github-slack-mcp": {
       "source": {
-        "repo": "github/copilot-slack-mcp",
-        "source": "github"
+        "source": "github",
+        "repo": "github/copilot-slack-mcp"
+      }
+    },
+    "agent-config": {
+      "source": {
+        "source": "github",
+        "repo": "github/agent-skills"
+      }
+    },
+    "plannotator": {
+      "source": {
+        "source": "github",
+        "repo": "backnotprop/plannotator"
+      }
+    },
+    "mattpocock": {
+      "source": {
+        "source": "github",
+        "repo": "mattpocock/skills"
       }
     }
   },
   "hooks": {
     "sessionStart": [
       {
+        "type": "command",
         "bash": "bash '/Users/gnfisher/.copilot/hooks/herdr-agent-state.sh'",
         "timeoutSec": 10,
-        "type": "command",
         "_vsCodeCompat": "SessionStart"
       }
     ]
@@ -32,7 +54,6 @@
     "autoConnect": true
   },
   "logLevel": "all",
-  "model": "gpt-5.6-sol",
   "remoteSessions": false,
   "renderMarkdown": true,
   "screenReader": false,
@@ -47,5 +68,19 @@
   "storeSessionsRemotely": false,
   "theme": "default",
   "undo_without_confirmation": true,
-  "effortLevel": "xhigh"
+  "model": "gpt-5.6-sol",
+  "effortLevel": "high",
+  "sandbox": {
+    "enabled": false,
+    "sandboxMcpServers": true,
+    "sandboxLspServers": true,
+    "allowBypass": true,
+    "gitAuth": true,
+    "ghAuth": true,
+    "userPolicy": {
+      "network": {
+        "allowLocalNetwork": true
+      }
+    }
+  }
 }

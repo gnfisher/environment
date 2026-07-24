@@ -7,10 +7,6 @@ agent_panel_sort = "priority"
 [ui.toast]
 delivery = "herdr"
 
-[theme]
-name = "one-light"
-auto_switch = false
-
 [theme.custom]
 accent = "#3F7069"
 panel_bg = "#F3F1E8"
