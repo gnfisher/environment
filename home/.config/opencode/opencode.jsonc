@@ -1,13 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "github-copilot/claude-opus-4.5",
-  "theme": "system",
+  "theme": "tokyonight",
   "autoupdate": true,
   "share": "manual",
-  "plugin": ["@plannotator/opencode@latest"],
   "permission": {
-    "edit": "allow",
-    "bash": "allow"
+    "*": "allow"
   },
   "formatter": {
     "prettier": {

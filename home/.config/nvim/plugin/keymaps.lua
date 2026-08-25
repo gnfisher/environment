@@ -36,29 +36,69 @@ set("n", "<leader>cj", function()
   require("custom.context").jump()
 end, { silent = true, desc = "Jump to code context" })
 
--- Center screen after jump motions
-set("n", "<C-d>", "<C-d>zz", opts)
-set("n", "<C-u>", "<C-u>zz", opts)
-set("n", "<C-f>", "<C-f>zz", opts)
-set("n", "<C-b>", "<C-b>zz", opts)
-set("n", "<C-o>", "<C-o>zz", opts)
-set("n", "<C-i>", "<C-i>zz", opts)
-set("n", "n", "nzz", opts)
-set("n", "N", "Nzz", opts)
-set("n", "*", "*zz", opts)
-set("n", "#", "#zz", opts)
-set("n", "%", "%zz", opts)
-set("n", ")", ")zz", opts)
-set("n", "(", "(zz", opts)
-set("n", "}", "}zz", opts)
-set("n", "{", "{zz", opts)
-set("n", "]]", "]]zz", opts)
-set("n", "[[", "[[zz", opts)
-set("n", "][", "][zz", opts)
-set("n", "[]", "[]zz", opts)
-set("n", "''", "''zz", opts)
-set("n", "``", "``zz", opts)
-set("n", "<C-]>", "<C-]>zz", opts)
+-- Center screen after built-in jump motions.
+local centered_motions = {
+  "<C-d>",
+  "<C-u>",
+  "<C-f>",
+  "<C-b>",
+  "<C-o>",
+  "<C-i>",
+  "<C-]>",
+  "<C-t>",
+  "n",
+  "N",
+  "*",
+  "#",
+  "g*",
+  "g#",
+  "%",
+  ")",
+  "(",
+  "}",
+  "{",
+  "]]",
+  "[[",
+  "][",
+  "[]",
+  "''",
+  "``",
+  "g;",
+  "g,",
+  "gf",
+  "gF",
+  "[(",
+  "])",
+  "[{",
+  "]}",
+  "[m",
+  "]m",
+  "[M",
+  "]M",
+  "[s",
+  "]s",
+  "[z",
+  "]z",
+  "[#",
+  "]#",
+  "[*",
+  "]*",
+  "[/",
+  "]/",
+}
+
+for _, motion in ipairs(centered_motions) do
+  set("n", motion, motion .. "zz", opts)
+end
+
+vim.api.nvim_create_autocmd("CmdlineLeave", {
+  group = vim.api.nvim_create_augroup("center_after_search", { clear = true }),
+  pattern = { "/", "?" },
+  callback = function()
+    vim.schedule(center_cursor)
+  end,
+})
+
 set("n", "]c", center_after(function()
   vim.cmd.normal({ "]c", bang = true })
 end), opts)
@@ -85,9 +125,8 @@ set("n", "[w", center_after(function()
   vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.WARN })
 end), opts)
 
--- Jump to line then scroll to top
-set("n", "G", "Gzt", opts)
-set("n", "gg", "ggzt", opts)
+set("n", "G", "Gzz", opts)
+set("n", "gg", "ggzz", opts)
 
 -- Window zoom: save layout when maximizing, and let <C-w>= restore it.
 local function save_winlayout_once()

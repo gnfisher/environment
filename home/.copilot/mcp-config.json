@@ -11,12 +11,8 @@
       "tools": [
         "*"
       ],
-      "type": "local",
-      "command": "sh",
-      "args": [
-        "-lc",
-        "docker run -i --rm --env-file \"$HOME/.config/environment/splunk-token.env\" -e SPLUNK_HOST=splunkazure-api-azure-eastus.octoca.ts.net -e SPLUNK_PORT=443 -e SPLUNK_SCHEME=https -e VERIFY_SSL=true -e FASTMCP_LOG_LEVEL=DEBUG ghcr.io/github/splunk-mcp-server:latest"
-      ]
+      "type": "sse",
+      "url": "http://127.0.0.1:8001/sse"
     },
     "Azure MCP Kusto Server": {
       "tools": [
@@ -33,15 +29,46 @@
         "single"
       ]
     },
+    "todoist": {
+      "tools": [
+        "*"
+      ],
+      "type": "http",
+      "url": "https://ai.todoist.net/mcp"
+    },
     "apple-notes": {
       "tools": [
         "*"
       ],
       "type": "local",
-      "command": "/Users/gnfisher/.copilot/mcp-servers/apple-notes/node_modules/.bin/tsx",
-      "args": [
-        "/Users/gnfisher/.copilot/mcp-servers/apple-notes/index.ts"
-      ]
+      "command": "mcp-apple-notes",
+      "args": []
+    },
+    "obsidian": {
+      "tools": [
+        "*"
+      ],
+      "type": "local",
+      "command": "obsidian-mcp",
+      "args": [],
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "/Users/gnfisher/Library/Mobile Documents/iCloud~md~obsidian/Documents/github"
+      }
+    },
+    "sentry": {
+      "tools": [
+        "*"
+      ],
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp"
+    },
+    "feature-flags": {
+      "tools": [
+        "*"
+      ],
+      "type": "local",
+      "command": "/Users/gnfisher/.local/bin/feature-flags-mcp-server",
+      "args": []
     }
   }
 }

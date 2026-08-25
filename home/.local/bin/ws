@@ -11,7 +11,6 @@ set -euo pipefail
 WORKTREE_BASE="${WS_WORKTREE_BASE:-$HOME/.copilot/copilot-worktrees}"
 COPILOT_DB="${WS_COPILOT_DB:-$HOME/.copilot/data.db}"
 WS_USER="${WS_USER:-$USER}"
-WS_OPEN_MODE="${WS_OPEN_MODE:-ghostty}"
 
 REPO_ORG=""
 REPO_NAME=""
@@ -26,12 +25,12 @@ ws - Copilot worktree manager
 Usage: ws <command> [options]
 
 Commands:
-  new <session-slug>        Create named worktree from default branch
-  new --pr <n|url>          Create/reuse PR worktree (pr-<number>)
+  new <session-slug>        Create named worktree and print its path
+  new --pr <n|url>          Create/reuse PR worktree and print its path
   pr <n|url>                Shortcut for: ws new --pr <n|url>
-  open <name|path>          Print an existing worktree path for shell cd wrappers
-  path <name|path>          Print the resolved worktree path
-  pick                      Pick a worktree with fzf and open it
+  open <name|path>          Print an existing worktree's absolute path
+  path <name|path>          Print the resolved absolute worktree path
+  pick                      Pick a worktree with fzf and print its path
   list                      List managed worktrees for current repo (default: simple view)
   list --all                List managed worktrees across repos
   list --full               Include path + Copilot session metadata
@@ -42,19 +41,18 @@ Commands:
 
 Notes:
   - Source repo is resolved from ~/Development/<owner>/<repo> when needed.
-  - In fish, 'ws open <name>' changes directory via the shell wrapper.
-  - Set WS_OPEN_MODE=print to make new/pr print paths instead of launching Ghostty.
+  - new, pr, open, path, and pick print the absolute worktree path and exit.
+  - To change the current shell directory, use: cd "$(ws pick)"
 
 Options:
   -h, --help    Show this help message
 
 Examples:
-  ws new oauth-refresh-investigation
-  ws pr 426638
-  ws new --pr https://github.com/github/github/pull/426638
-  ws open pr-426638
-  cd "$(ws path pr-426638)"
-  ws pick
+  cd "$(ws new oauth-refresh-investigation)"
+  cd "$(ws pr 426638)"
+  cd "$(ws new --pr https://github.com/github/github/pull/426638)"
+  cd "$(ws open pr-426638)"
+  cd "$(ws pick)"
   ws list
   ws list --full
   ws list --all --json
@@ -524,31 +522,12 @@ set_terminal_title() {
     printf '\033]0;%s\007' "$title"
 }
 
-open_worktree() {
+print_worktree_path() {
     local wt_path="$1"
     wt_path=$(canonical_dir "$wt_path")
 
     ensure_managed_path "$wt_path"
-
-    case "$WS_OPEN_MODE" in
-        print|path|none)
-            printf '%s\n' "$wt_path"
-            ;;
-        ghostty)
-            local title
-            title=$(worktree_title_from_path "$wt_path")
-            if [[ "$(uname -s)" == "Darwin" ]] && command -v open >/dev/null 2>&1; then
-                log "Opening Ghostty: $title"
-                open -na "Ghostty" --args "--working-directory=${wt_path}" "--title=${title}"
-            else
-                printf '%s\n' "$wt_path"
-            fi
-            ;;
-        *)
-            error "Invalid WS_OPEN_MODE '$WS_OPEN_MODE' (expected: ghostty|print)"
-            exit 1
-            ;;
-    esac
+    printf '%s\n' "$wt_path"
 }
 
 parse_pr_ref() {
@@ -879,7 +858,7 @@ cmd_new() {
                 set_branch_upstream "$pr_branch" "$upstream_ref"
                 configure_pr_push_refspec "$upstream_remote" "$pr_branch" "$head_branch"
             fi
-            open_worktree "$wt_path"
+            print_worktree_path "$wt_path"
             return 0
         fi
 
@@ -893,7 +872,7 @@ cmd_new() {
         set_branch_upstream "$pr_branch" "$upstream_ref"
         configure_pr_push_refspec "$upstream_remote" "$pr_branch" "$head_branch"
 
-        open_worktree "$wt_path"
+        print_worktree_path "$wt_path"
         return 0
     fi
 
@@ -911,7 +890,7 @@ cmd_new() {
 
     if [[ -d "$wt_path" ]]; then
         log "Worktree already exists: $wt_path"
-        open_worktree "$wt_path"
+        print_worktree_path "$wt_path"
         return 0
     fi
 
@@ -939,7 +918,7 @@ cmd_new() {
     git -C "$REPO_DIR" config "branch.${branch}.remote" origin
     git -C "$REPO_DIR" config "branch.${branch}.merge" "refs/heads/${branch}"
 
-    open_worktree "$wt_path"
+    print_worktree_path "$wt_path"
 }
 
 cmd_pr() {
@@ -1040,7 +1019,7 @@ cmd_pick() {
     [[ -n "$selection" ]] || exit 0
     path=$(printf '%s' "$selection" | cut -f2)
     [[ -n "$path" ]] || exit 1
-    open_worktree "$path"
+    print_worktree_path "$path"
 }
 
 cmd_list() {

@@ -10,8 +10,8 @@
 set -euo pipefail
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/Development/gnfisher/environment}"
-SKILL_PATH="$DOTFILES_DIR/home/.copilot/skills/herdr/SKILL.md"
-VERSION_PATH="$DOTFILES_DIR/home/.copilot/skills/herdr/upstream-version"
+SKILL_PATH="$DOTFILES_DIR/home/.agents/skills/herdr/SKILL.md"
+VERSION_PATH="$DOTFILES_DIR/home/.agents/skills/herdr/upstream-version"
 UPSTREAM_REPO="ogulcancelik/herdr"
 APPLY=false
 SHOW_DIFF=false

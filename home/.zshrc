@@ -26,8 +26,10 @@ export VISUAL=nvim
 bindkey -e
 export GOPATH="$HOME/go"
 export GOPROXY="https://goproxy.githubapp.com/mod,https://proxy.golang.org/,direct"
+export GOPRIVATE=""
 export GONOPROXY=""
 export GONOSUMDB="github.com/github/*"
+export OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1
 [[ -d "$GOPATH/bin" ]] && path=("$GOPATH/bin" $path)
 
 export GPG_TTY="${TTY:-$(tty)}"

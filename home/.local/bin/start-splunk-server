@@ -1,0 +1,87 @@
+#!/bin/sh
+set -eu
+
+container_name="splunk-mcp-shared"
+health_url="http://127.0.0.1:8001/openapi.json"
+token_env="${XDG_CONFIG_HOME:-$HOME/.config}/environment/splunk-token.env"
+image="ghcr.io/github/splunk-mcp-server:latest"
+
+if ! command -v docker >/dev/null 2>&1; then
+    echo "start-splunk-server: docker is not installed" >&2
+    exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    echo "start-splunk-server: Docker is not running" >&2
+    exit 1
+fi
+
+if command -v curl >/dev/null 2>&1 &&
+    curl --fail --silent --show-error "$health_url" >/dev/null 2>&1; then
+    echo "Splunk MCP server is already running at http://127.0.0.1:8001/sse"
+    exit 0
+fi
+
+if docker container inspect "$container_name" >/dev/null 2>&1; then
+    if [ "$(docker inspect --format '{{.State.Running}}' "$container_name")" != "true" ]; then
+        docker start "$container_name" >/dev/null
+        echo "Started existing Splunk MCP container."
+    else
+        echo "Splunk MCP container is running; waiting for the server."
+    fi
+else
+    if [ ! -r "$token_env" ]; then
+        echo "start-splunk-server: token file not found: $token_env" >&2
+        echo "Run refresh-splunk-token first." >&2
+        exit 1
+    fi
+
+    docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        --dns 100.100.100.100 \
+        --publish 127.0.0.1:8001:8001 \
+        --env-file "$token_env" \
+        --env SPLUNK_HOST=splunkazure-api-azure-eastus.octoca.ts.net \
+        --env SPLUNK_PORT=443 \
+        --env SPLUNK_SCHEME=https \
+        --env VERIFY_SSL=true \
+        --env FASTMCP_LOG_LEVEL=INFO \
+        --env FASTMCP_PORT=8001 \
+        --health-cmd 'curl --fail http://localhost:8001/openapi.json' \
+        --health-interval 30s \
+        --health-timeout 5s \
+        --health-retries 5 \
+        --health-start-period 10s \
+        --log-opt max-size=10m \
+        --log-opt max-file=3 \
+        "$image" \
+        python splunk_mcp.py sse >/dev/null
+    echo "Created Splunk MCP shared container."
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "start-splunk-server: curl is required to check server readiness" >&2
+    exit 1
+fi
+
+attempt=0
+while [ "$attempt" -lt 30 ]; do
+    if curl --fail --silent --show-error "$health_url" >/dev/null 2>&1; then
+        echo "Splunk MCP server is ready at http://127.0.0.1:8001/sse"
+        exit 0
+    fi
+
+    if [ "$(docker inspect --format '{{.State.Running}}' "$container_name")" != "true" ]; then
+        echo "start-splunk-server: container stopped during startup" >&2
+        docker logs --tail 20 "$container_name" >&2
+        exit 1
+    fi
+
+    attempt=$((attempt + 1))
+    sleep 1
+done
+
+echo "start-splunk-server: server did not become ready within 30 seconds" >&2
+docker logs --tail 20 "$container_name" >&2
+exit 1

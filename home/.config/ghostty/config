@@ -1,19 +1,30 @@
 # Font
-font-family = CaskaydiaCove Nerd Font Mono
-font-family = menlo
-font-size = 15
+font-family = Berkeley Mono
+font-size = 16
 
 # Theme
-#theme = catppuccin macchiato
-#theme = light:Solarized Classic Light,dark:Solarized Classic Dark
-theme = Chillfocus Light
+theme = modus_operandi
+
+# Terminal
+cursor-style = block
+shell-integration-features = no-cursor
+term = xterm-256color
 
 # macOS options
 macos-option-as-alt = true
+macos-titlebar-style = tabs
+
+# Window
+window-padding-x = 10
+window-padding-y = 10
+# window-decoration = none
+confirm-close-surface = false
+mouse-shift-capture = false
 
 # Clipboard
 clipboard-read = allow
 clipboard-write = allow
+copy-on-select = clipboard
 
 # Tabs
 keybind = cmd+shift+r=prompt_tab_title
@@ -35,3 +46,6 @@ keybind = cmd+w=close_surface
 
 # Shift+Enter for multi-line input in TUIs
 keybind = shift+enter=text:\n
+
+# Shell
+command = /opt/homebrew/bin/fish --login

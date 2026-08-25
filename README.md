@@ -11,12 +11,15 @@ everything installed on the machine.
 
 - `Brewfile` - command-line tools and selected application casks
 - `home/` - files linked into the home directory with GNU Stow
-- `home/.config/` - Ghostty, Neovim, mise, GitHub CLI, Herdr, and OpenCode
-- `home/.copilot/` - Copilot CLI settings, hooks, agents, and skills
+- `home/.config/` - Fish, Ghostty, Neovim, mise, GitHub CLI, Herdr, OpenCode,
+  and shared agent instructions
+- `home/.agents/skills/` - portable Agent Skills shared by coding agents
+- `home/.copilot/` - Copilot CLI settings, hooks, and compatibility adapters
+- `home/.claude/` and `home/.codex/` - Claude Code and Codex adapters
 - `home/.local/bin/` - local command-line utilities
 - `home/.local/share/raycast-scripts/` - Raycast script commands
 
-The repository assumes macOS, zsh, Apple silicon Homebrew when available, and
+The repository assumes macOS, Fish, Apple silicon Homebrew when available, and
 repositories checked out under `~/Development/<owner>/<repo>`.
 
 ## Fresh Mac Setup
@@ -39,19 +42,27 @@ There is no `install.sh`. Set up a new Mac in stages:
    brew bundle
    ```
 
-4. Preview the Stow operation before creating links:
+4. Register Homebrew Fish as a login shell and select it:
+
+   ```bash
+   grep -qxF "$(brew --prefix)/bin/fish" /etc/shells \
+     || echo "$(brew --prefix)/bin/fish" | sudo tee -a /etc/shells
+   chsh -s "$(brew --prefix)/bin/fish"
+   ```
+
+5. Preview the Stow operation before creating links:
 
    ```bash
    stow --simulate --verbose --target="$HOME" home
    ```
 
-5. Resolve any reported conflicts, then create the links:
+6. Resolve any reported conflicts, then create the links:
 
    ```bash
    stow --target="$HOME" home
    ```
 
-6. Install the language runtimes declared in mise:
+7. Install the language runtimes declared in mise:
 
    ```bash
    mise install
@@ -64,6 +75,23 @@ result because it can overwrite the repository copy.
 Copilot CLI can rewrite `~/.copilot/settings.json` and
 `~/.copilot/mcp-config.json`. On an existing machine, compare those files with
 the repository versions before restowing them.
+
+## Coding Agents
+
+Personal coding-agent instructions have one canonical source at
+`~/.config/agents/AGENTS.md`. Thin adapters expose the same instructions at the
+global paths used by Copilot CLI, OpenCode, Claude Code, and Codex. Edit the
+canonical file rather than an adapter.
+
+Portable skills live under `~/.agents/skills/` using the Agent Skills format.
+Copilot CLI, OpenCode, and Codex discover that directory directly. Claude Code
+uses links under `~/.claude/skills/` because it has a different global discovery
+path. The shell sets `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` so OpenCode does
+not discover the same skills a second time through those Claude links.
+
+MCP configuration, hooks, permissions, agents, models, and interface settings
+remain in each client's native configuration. Their formats and security
+semantics are not interchangeable even when they express similar preferences.
 
 ## Homebrew
 
@@ -108,10 +136,12 @@ its panes.
 
 ## Private and Machine-Local Configuration
 
-The shell loads these files when present:
+Fish loads these files when present:
 
-- `~/.config/environment/private.zsh`
-- `~/.config/environment/splunk-token.zsh`
+- `~/.config/environment/private.fish`
+- `~/.config/environment/splunk-token.fish`
+
+The fallback Zsh configuration loads the equivalent `.zsh` files.
 
 They are intentionally not tracked. Keep credentials and license material in
 1Password rather than this repository or iCloud.
@@ -120,17 +150,21 @@ They are intentionally not tracked. Keep credentials and license material in
 permission-restricted shell and Docker environment files. The generated files
 must remain untracked.
 
+`start-splunk-server` starts one long-lived Splunk MCP container, or confirms
+that the existing shared container is ready. Copilot clients connect to it over
+SSE at `http://127.0.0.1:8001/sse`.
+
 ## Included Utilities
 
 | Command | Purpose |
 | --- | --- |
 | `brew-install` | Installs a Homebrew item and records it in the `Brewfile` |
-| `update-herdr` | Checks or updates Herdr and its version-matched Copilot skill |
+| `update-herdr` | Checks or updates Herdr and its version-matched Agent Skill |
 | `ws` | Creates, opens, lists, and removes managed Copilot worktrees |
 | `ws-pick` | Opens the interactive worktree picker |
-| `rubber-duck` | Starts the configured Copilot critic agent |
 | `gh-reauth` | Reauthenticates GitHub CLI from a local token source |
 | `refresh-splunk-token` | Generates local Splunk environment files from 1Password |
+| `start-splunk-server` | Starts or checks the shared Splunk MCP container |
 | `parse_debug` | Processes local debug output |
 
 Raycast scripts provide shortcuts for opening repositories and worktrees,

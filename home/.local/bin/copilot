@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly version="1.0.81-6"
+readonly binary="$HOME/.local/share/copilot-cli-$version/node_modules/.bin/copilot"
+
+if [[ ! -x "$binary" ]]; then
+    echo "copilot: pinned version $version is not installed" >&2
+    echo "run: npm install --prefix \"$HOME/.local/share/copilot-cli-$version\" --save-exact @github/copilot@$version" >&2
+    exit 1
+fi
+
+export COPILOT_AUTO_UPDATE=false
+exec "$binary" --no-auto-update "$@"

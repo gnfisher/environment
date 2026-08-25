@@ -2,5 +2,22 @@
 **/.DS_Store
 
 home/.cache/
-home/.local/share/mise/
+home/.local/share/
 home/.local/state/
+home/.local/session-files/
+
+# Machine-local credentials and GPG runtime state.
+home/.config/gh/hosts.yml
+home/.gnupg/*
+!home/.gnupg/gpg.conf
+!home/.gnupg/gpg-agent.conf
+
+# Installed binaries.
+home/.local/bin/plannotator
+home/.local/bin/feature-flags-mcp-server
+
+# Herdr runtime state.
+home/.config/herdr/.plugins.lock
+home/.config/herdr/*.log
+home/.config/herdr/release-notes.json
+home/.config/herdr/session.json

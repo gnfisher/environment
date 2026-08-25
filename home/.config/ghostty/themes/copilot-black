@@ -1,0 +1,32 @@
+# True-black palette with restrained, classic terminal accents.
+
+background = #000000
+foreground = #d6d6d6
+cursor-color = #e6edf3
+cursor-text = #000000
+selection-background = #243447
+selection-foreground = #f2f2f2
+
+palette = 0=#000000
+palette = 8=#5f6670
+
+palette = 1=#c94f4f
+palette = 9=#f85149
+
+palette = 2=#6f9f6f
+palette = 10=#8fbc8f
+
+palette = 3=#c49a4a
+palette = 11=#d7b45a
+
+palette = 4=#4f86b3
+palette = 12=#58a6ff
+
+palette = 5=#9b7bb5
+palette = 13=#b79ac8
+
+palette = 6=#4f9f9a
+palette = 14=#63c7bd
+
+palette = 7=#d6d6d6
+palette = 15=#f2f2f2

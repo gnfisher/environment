@@ -8,8 +8,6 @@
   ],
   "enabledPlugins": {
     "slack-mcp@github-slack-mcp": true,
-    "port@agent-config": true,
-    "plannotator-copilot@plannotator": true,
     "mattpocock-skills@mattpocock": true
   },
   "experimental": true,
@@ -19,18 +17,6 @@
       "source": {
         "source": "github",
         "repo": "github/copilot-slack-mcp"
-      }
-    },
-    "agent-config": {
-      "source": {
-        "source": "github",
-        "repo": "github/agent-skills"
-      }
-    },
-    "plannotator": {
-      "source": {
-        "source": "github",
-        "repo": "backnotprop/plannotator"
       }
     },
     "mattpocock": {
@@ -66,7 +52,7 @@
   "showReasoning": false,
   "steerableSessions": false,
   "storeSessionsRemotely": false,
-  "theme": "default",
+  "theme": "light",
   "undo_without_confirmation": true,
   "model": "gpt-5.6-sol",
   "effortLevel": "high",
