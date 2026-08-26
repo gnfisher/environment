@@ -4,13 +4,64 @@
   "theme": "tokyonight",
   "autoupdate": true,
   "share": "manual",
-  "permission": {
-    "*": "allow"
-  },
+  "permission": "allow",
   "formatter": {
     "prettier": {
-      "disabled": false
-    }
+      "disabled": false,
+    },
+  },
+  // Mirrors ~/.copilot/mcp-config.json. Local servers use absolute mise shim
+  // paths because opencode spawns them without the interactive shell PATH.
+  "mcp": {
+    "datadog": {
+      "type": "remote",
+      "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,ddsql",
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+    },
+    "todoist": {
+      "type": "remote",
+      "url": "https://ai.todoist.net/mcp",
+    },
+    // Requires the local Splunk bridge on 127.0.0.1:8001. Flip to true once it
+    // is running, otherwise opencode errors on every startup.
+    "splunk": {
+      "type": "remote",
+      "url": "http://127.0.0.1:8001/sse",
+      "enabled": false,
+    },
+    "apple-notes": {
+      "type": "local",
+      "command": ["/Users/gnfisher/.local/share/mise/shims/mcp-apple-notes"],
+    },
+    "obsidian": {
+      "type": "local",
+      "command": ["/Users/gnfisher/.local/share/mise/shims/obsidian-mcp"],
+      "environment": {
+        "OBSIDIAN_VAULT_PATH": "/Users/gnfisher/Library/Mobile Documents/iCloud~md~obsidian/Documents/github",
+      },
+    },
+    // Tool calls hit the devportal API, which routinely exceeds the 5s default.
+    "feature-flags": {
+      "type": "local",
+      "command": ["/Users/gnfisher/.local/bin/feature-flags-mcp-server"],
+      "timeout": 30000,
+    },
+    "azure-kusto": {
+      "type": "local",
+      "command": [
+        "/Users/gnfisher/.local/share/mise/shims/npx",
+        "-y",
+        "@azure/mcp@latest",
+        "server",
+        "start",
+        "--mode",
+        "single",
+      ],
+      "timeout": 30000,
+    },
   },
   // "instructions": [
   //   "AGENTS.md"
