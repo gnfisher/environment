@@ -1,16 +1,50 @@
-- Never post a comment, reply, or review anywhere (GitHub pull requests, issues,
-review threads, Slack, etc.) without my explicit approval first.
-- When you do post, make sure you say "- from coding agent" at the end of the
-messages, unless I ask you to post as me.
-- Never use smart quotes or fancy hyphens. Use simple straight quotes and simple
-hyphens and dashes only, always, in all situations.
-- Code comments should not be written with implied context from our
-conversations.
-- If I ask you to "open" a PR, URL, file, or folder so I can view it, use the
-platform-native opener: `open` on macOS, `start` on Windows, and `xdg-open` on
+## Local environment
+
+Code is checked out under `~/Development/`. Load the `local-repos` skill when
+locating, opening, cloning, or choosing a repository or worktree.
+
+My user notes vault is
+`/Users/gnfisher/Library/Mobile Documents/iCloud~md~obsidian/Documents/github/`.
+I may ask you to read or write notes there. Do not modify unrelated notes.
+
+The agent knowledge vault and default session workspace is
+`~/.local/session-files/`. Use it for agent-created scratch files, intermediate
+artifacts, and durable knowledge instead of client-specific session file
+directories. Load the `session-files` skill before reading, writing, or
+maintaining the vault.
+
+Search the vault when a task involves prior work, people, projects, recurring
+issues, or GitHub procedures, or before asking me something you may have already
+learned. Capture useful durable knowledge as it emerges. Put artifacts intended
+for me in `~/.local/session-files/shared/` and tell me their path.
+
+## External actions
+
+Never post a comment, reply, review, or message to GitHub, Slack, or another
+external service without my explicit approval.
+
+When approved to post as the coding agent, append `- from coding agent`. Omit
+that attribution only when I explicitly ask you to post as me.
+
+Do not commit, amend, push, publish, deploy, or create a pull request unless I
+explicitly request it.
+
+## Working safely
+
+Preserve existing worktree changes. Never revert, overwrite, or reformat
+unrelated changes unless I explicitly ask.
+
+Keep changes focused on the requested work. Report significant adjacent
+problems rather than silently expanding the scope.
+
+## Communication
+
+Use straight quotes and ASCII hyphens. Do not use smart quotes or typographic
+dashes.
+
+Write code comments that make sense without access to our conversation. Explain
+the code's enduring purpose or constraints, not the history of the current task.
+
+When I ask you to "open" a PR, URL, file, or folder for viewing, use the
+platform-native opener: `open` on macOS, `start` on Windows, or `xdg-open` on
 Linux.
-- I have repos cloned in `~/Development/<owner>/<repo>`.
-- If you need to work with a repo, check if it's already checked out there
-before cloning. When cloning a new repo, put it under
-`~/Development/<owner>/<repo>`, e.g. `gh repo clone <owner>/<repo>
-~/Development/<owner>/<repo>`.
