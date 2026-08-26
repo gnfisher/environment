@@ -25,6 +25,13 @@
       "type": "remote",
       "url": "https://ai.todoist.net/mcp",
     },
+    "slack": {
+      "type": "remote",
+      "url": "https://mcp.slack.com/mcp",
+      "oauth": {
+        "clientId": "12348411142.11062036567072",
+      },
+    },
     // Requires the local Splunk bridge on 127.0.0.1:8001. Flip to true once it
     // is running, otherwise opencode errors on every startup.
     "splunk": {
