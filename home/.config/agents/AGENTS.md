@@ -7,8 +7,8 @@ My user notes vault is
 `/Users/gnfisher/Library/Mobile Documents/iCloud~md~obsidian/Documents/github/`.
 I may ask you to read or write notes there. Do not modify unrelated notes.
 
-The agent knowledge vault and default session workspace is
-`~/.local/session-files/`. Use it for agent-created scratch files, intermediate
+The agent knowledge vault and default session workspace is `~/.local/Agent/`.
+Use it for agent-created scratch files, intermediate
 artifacts, and durable knowledge instead of client-specific session file
 directories. Load the `session-files` skill before reading, writing, or
 maintaining the vault.
@@ -16,12 +16,16 @@ maintaining the vault.
 Search the vault when a task involves prior work, people, projects, recurring
 issues, or GitHub procedures, or before asking me something you may have already
 learned. Capture useful durable knowledge as it emerges. Put artifacts intended
-for me in `~/.local/session-files/shared/` and tell me their path.
+for me in `~/.local/Agent/shared/` and tell me their path.
 
 ## External actions
 
 Never post a comment, reply, review, or message to GitHub, Slack, or another
 external service without my explicit approval.
+
+Never access, inspect, search, list, or read 1Password or any other password
+manager, keychain, credential store, or secret manager, including item metadata.
+Do not use credential stores for troubleshooting or discovery.
 
 When approved to post as the coding agent, append `- from coding agent`. Omit
 that attribution only when I explicitly ask you to post as me.

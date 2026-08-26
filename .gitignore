@@ -5,6 +5,7 @@ home/.cache/
 home/.local/share/
 home/.local/state/
 home/.local/session-files/
+home/.local/Agent/
 
 # Machine-local credentials and GPG runtime state.
 home/.config/gh/hosts.yml

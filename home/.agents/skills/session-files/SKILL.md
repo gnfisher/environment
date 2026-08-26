@@ -1,11 +1,11 @@
 ---
 name: session-files
-description: "Use the coding agents' persistent vault at ~/.local/session-files for session scratch, intermediate artifacts, durable knowledge, prior work, people and expertise, recurring issues, GitHub procedures, explicit remember or recall requests, and nightly knowledge curation."
+description: "Use the coding agents' persistent vault at ~/.local/Agent/ for session scratch, intermediate artifacts, durable knowledge, prior work, people and expertise, recurring issues, GitHub procedures, explicit remember or recall requests, and nightly knowledge curation."
 ---
 
 # Session files
 
-`~/.local/session-files/` is the agents' persistent working memory and default
+`~/.local/Agent/` is the agents' persistent working memory and default
 workspace for files created during a session. It supports Markdown, Obsidian
 links, and Mermaid.
 
@@ -20,7 +20,7 @@ its own directory.
 Keep temporary workspace separate from durable knowledge:
 
 ```text
-~/.local/session-files/
+~/.local/Agent/
   sessions/       per-session scratch and intermediate artifacts
   shared/         artifacts intended for the user
   ...             durable notes and indexes
@@ -146,5 +146,5 @@ taxonomy.
 
 ## Sharing
 
-Put artifacts intended for the user in `~/.local/session-files/shared/` and
+Put artifacts intended for the user in `~/.local/Agent/shared/` and
 provide the exact path. Everything else is private agent working memory.
