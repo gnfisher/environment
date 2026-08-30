@@ -1,11 +1,12 @@
 # Font
-font-family = Berkeley Mono
+# font-family = Berkeley Mono
 font-size = 16
 
 # Theme
-theme = modus_operandi
+theme = Ayu Mirage
 
 # Terminal
+background-opacity = 0.98
 cursor-style = block
 shell-integration-features = no-cursor
 term = xterm-256color

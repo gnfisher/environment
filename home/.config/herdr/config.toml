@@ -3,6 +3,11 @@ onboarding = false
 [theme]
 name = "terminal"
 
+[theme.custom]
+panel_bg = "reset"
+sidebar_bg = "reset"
+surface_dim = "#1f2430"
+
 [ui]
 agent_panel_sort = "priority"
 

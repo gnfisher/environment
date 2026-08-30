@@ -237,6 +237,11 @@ return {
       })
 
       vim.lsp.config("gopls", {
+        cmd = {
+          "gopls",
+          "-remote=auto",
+          "-remote.listen.timeout=12h",
+        },
         settings = {
           gopls = {
             staticcheck = false,

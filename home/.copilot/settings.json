@@ -52,7 +52,7 @@
   "showReasoning": false,
   "steerableSessions": false,
   "storeSessionsRemotely": false,
-  "theme": "light",
+  "theme": "default",
   "undo_without_confirmation": true,
   "model": "gpt-5.6-sol",
   "effortLevel": "high",

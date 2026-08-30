@@ -1,21 +1,26 @@
-vim.g.legacy_syntax_highlighting = true
-
 return {
   {
-    "miikanissi/modus-themes.nvim",
-    lazy = false,
-    priority = 1001,
-    opts = {
-      style = "modus_operandi",
-      styles = {
-        comments = { italic = false },
-      },
-    },
-  },
-  {
-    "https://gitlab.com/__tpb/acme.nvim.git",
-    name = "acme.nvim",
+    "Shatur/neovim-ayu",
     lazy = false,
     priority = 1000,
+    config = function()
+      require("ayu").setup({
+        mirage = true,
+        overrides = {
+          Comment = { italic = false },
+          Normal = { bg = "None" },
+          NormalNC = { bg = "None" },
+          NormalFloat = { bg = "None" },
+          ColorColumn = { bg = "None" },
+          SignColumn = { bg = "None" },
+          Folded = { bg = "None" },
+          FoldColumn = { bg = "None" },
+          CursorLine = { bg = "None" },
+          CursorColumn = { bg = "None" },
+          VertSplit = { bg = "None" },
+        },
+      })
+      vim.cmd.colorscheme("ayu-mirage")
+    end,
   },
 }
