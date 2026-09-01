@@ -13,6 +13,10 @@ if test -d $HOME/.local/bin
     fish_add_path --global --prepend $HOME/.local/bin
 end
 
+if test -d $HOME/.config/emacs/bin
+    fish_add_path --global --prepend $HOME/.config/emacs/bin
+end
+
 set -gx EDITOR nvim
 set -gx VISUAL nvim
 set -gx GOPATH $HOME/go
@@ -51,6 +55,8 @@ set -g __fish_git_prompt_color_dirtystate red
 set -g __fish_git_prompt_color_untrackedfiles red
 set -g __fish_git_prompt_char_dirtystate '*'
 set -g __fish_git_prompt_char_untrackedfiles '?'
+set -g __fish_git_prompt_shorten_branch_len 24
+set -g __fish_git_prompt_shorten_branch_char_suffix ...
 
 alias ll 'ls -alF'
 alias la 'ls -A'

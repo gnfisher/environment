@@ -1,26 +1,14 @@
 return {
   {
-    "Shatur/neovim-ayu",
+    "sainnhe/everforest",
     lazy = false,
     priority = 1000,
     config = function()
-      require("ayu").setup({
-        mirage = true,
-        overrides = {
-          Comment = { italic = false },
-          Normal = { bg = "None" },
-          NormalNC = { bg = "None" },
-          NormalFloat = { bg = "None" },
-          ColorColumn = { bg = "None" },
-          SignColumn = { bg = "None" },
-          Folded = { bg = "None" },
-          FoldColumn = { bg = "None" },
-          CursorLine = { bg = "None" },
-          CursorColumn = { bg = "None" },
-          VertSplit = { bg = "None" },
-        },
-      })
-      vim.cmd.colorscheme("ayu-mirage")
+      vim.g.everforest_background = "medium"
+      vim.g.everforest_transparent_background = 2
+      vim.g.everforest_disable_italic_comment = 1
+      vim.g.everforest_better_performance = 1
+      vim.cmd.colorscheme("everforest")
     end,
   },
 }

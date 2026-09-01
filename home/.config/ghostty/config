@@ -3,10 +3,10 @@
 font-size = 16
 
 # Theme
-theme = Ayu Mirage
+theme = Everforest Dark Hard
 
 # Terminal
-background-opacity = 0.98
+background-opacity = 0.97
 cursor-style = block
 shell-integration-features = no-cursor
 term = xterm-256color

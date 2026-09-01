@@ -57,7 +57,7 @@
   "model": "gpt-5.6-sol",
   "effortLevel": "high",
   "sandbox": {
-    "enabled": false,
+    "enabled": true,
     "sandboxMcpServers": true,
     "sandboxLspServers": true,
     "allowBypass": true,

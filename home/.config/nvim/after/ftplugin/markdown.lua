@@ -2,6 +2,9 @@ local set = vim.opt_local
 
 set.conceallevel = 2
 set.concealcursor = ""
+set.wrap = true
+set.linebreak = true
+set.breakindent = true
 set.textwidth = 80
 -- Format options:
 -- t = auto-wrap text using textwidth
