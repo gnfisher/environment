@@ -13,10 +13,6 @@ if test -d $HOME/.local/bin
     fish_add_path --global --prepend $HOME/.local/bin
 end
 
-if test -d $HOME/.config/emacs/bin
-    fish_add_path --global --prepend $HOME/.config/emacs/bin
-end
-
 set -gx EDITOR nvim
 set -gx VISUAL nvim
 set -gx GOPATH $HOME/go
