@@ -2,7 +2,9 @@
 **/.DS_Store
 
 home/.cache/
-home/.local/share/
+home/.local/share/*
+!home/.local/share/raycast-scripts/
+!home/.local/share/raycast-scripts/**
 home/.local/state/
 home/.local/session-files/
 home/.local/Agent/

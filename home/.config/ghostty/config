@@ -1,5 +1,5 @@
 # Font
-# font-family = Berkeley Mono
+font-family = Berkeley Mono
 font-size = 16
 
 # Theme
@@ -7,6 +7,7 @@ theme = Everforest Dark Hard
 
 # Terminal
 background-opacity = 0.97
+config-file = ?../../.local/state/environment-theme/ghostty.conf
 cursor-style = block
 shell-integration-features = no-cursor
 term = xterm-256color

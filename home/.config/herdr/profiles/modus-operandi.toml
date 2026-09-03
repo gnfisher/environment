@@ -1,14 +1,14 @@
 onboarding = false
 
 [theme]
-name = "dracula"
+name = "terminal"
 
 [theme.custom]
 panel_bg = "reset"
 sidebar_bg = "reset"
-active_row_bg = "#44475a"
-selection_bg = "#6272a4"
-surface_dim = "#21222c"
+active_row_bg = "#d7d7d7"
+selection_bg = "#bdbdbd"
+surface_dim = "#e0e0e0"
 
 [ui]
 agent_panel_sort = "priority"
@@ -23,12 +23,12 @@ row_gap = 1
 rows = [
   [
     "state_icon",
-    { token = "workspace", fg = "#8be9fd", bold = true },
-    { token = "tab", fg = "#6272a4", dim = true },
+    { token = "workspace", fg = "#0031a9", bold = true },
+    { token = "tab", fg = "#595959", dim = true },
   ],
   [
-    { token = "agent", fg = "#ff79c6" },
-    { token = "state_text", fg = "#6272a4", dim = true },
+    { token = "agent", fg = "#721045" },
+    { token = "state_text", fg = "#595959", dim = true },
   ],
 ]
 
@@ -37,11 +37,11 @@ row_gap = 1
 rows = [
   [
     "state_icon",
-    { token = "workspace", fg = "#8be9fd", bold = true },
+    { token = "workspace", fg = "#0031a9", bold = true },
   ],
   [
-    { token = "branch", fg = "#50fa7b" },
-    { token = "git_status", fg = "#6272a4", dim = true },
+    { token = "branch", fg = "#006800" },
+    { token = "git_status", fg = "#595959", dim = true },
   ],
 ]
 

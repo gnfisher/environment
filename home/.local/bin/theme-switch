@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:${PATH:-}:/usr/bin:/bin:/usr/sbin:/sbin"
+
+readonly theme="${1:-}"
+readonly state_dir="$HOME/.local/state/environment-theme"
+readonly ghostty_state="$state_dir/ghostty.conf"
+readonly herdr_config="$HOME/.config/herdr/config.toml"
+readonly herdr_profiles="$HOME/.config/herdr/profiles"
+
+if ghostty_bin=$(command -v ghostty 2>/dev/null); then
+    readonly ghostty_bin
+elif [[ -x /Applications/Ghostty.app/Contents/MacOS/ghostty ]]; then
+    readonly ghostty_bin="/Applications/Ghostty.app/Contents/MacOS/ghostty"
+else
+    echo "Ghostty CLI was not found in PATH or /Applications/Ghostty.app." >&2
+    exit 1
+fi
+
+case "$theme" in
+    everforest)
+        ghostty_theme="Everforest Dark Hard"
+        opacity="0.97"
+        ;;
+    dracula)
+        ghostty_theme="Dracula"
+        opacity="0.97"
+        ;;
+    modus-operandi)
+        ghostty_theme="Modus Operandi"
+        opacity="1"
+        ;;
+    *)
+        echo "Usage: theme-switch {everforest|dracula|modus-operandi}" >&2
+        exit 2
+        ;;
+esac
+
+profile="$herdr_profiles/$theme.toml"
+if [[ ! -r "$profile" ]]; then
+    echo "Missing Herdr theme profile: $profile" >&2
+    exit 1
+fi
+
+HERDR_CONFIG_PATH="$profile" herdr config check >/dev/null
+
+mkdir -p "$state_dir"
+printf '%s\n' "$theme" > "$state_dir/current"
+cat > "$ghostty_state" <<EOF
+theme = $ghostty_theme
+background-opacity = $opacity
+EOF
+
+herdr_target="$herdr_config"
+if [[ -L "$herdr_config" ]]; then
+    herdr_target=$(realpath "$herdr_config")
+fi
+cp "$profile" "$herdr_target"
+
+"$ghostty_bin" +validate-config >/dev/null
+if herdr_status=$(herdr status server 2>/dev/null) \
+    && grep -q '^status: running$' <<<"$herdr_status"; then
+    herdr server reload-config >/dev/null
+fi
+
+echo "Applied theme: $theme"
