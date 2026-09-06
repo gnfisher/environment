@@ -2,7 +2,7 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title Theme: Everforest
+# @raycast.title Neovim Theme: Everforest
 # @raycast.mode compact
 
 # Optional parameters:
@@ -10,7 +10,7 @@
 # @raycast.packageName Themes
 
 # Documentation:
-# @raycast.description Apply Everforest with transparency
+# @raycast.description Apply Everforest in Neovim
 # @raycast.author gnfisher
 
 set -euo pipefail

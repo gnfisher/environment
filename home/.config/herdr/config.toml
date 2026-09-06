@@ -3,13 +3,6 @@ onboarding = false
 [theme]
 name = "terminal"
 
-[theme.custom]
-panel_bg = "reset"
-sidebar_bg = "reset"
-active_row_bg = "#2c2e33"
-selection_bg = "#0000ff"
-surface_dim = "#072323"
-
 [ui]
 agent_panel_sort = "priority"
 status_indicators = "symbols"
@@ -21,28 +14,15 @@ sidebar_max_width = 38
 [ui.sidebar.agents]
 row_gap = 1
 rows = [
-  [
-    "state_icon",
-    { token = "workspace", fg = "#8cf8f7", bold = true },
-    { token = "tab", fg = "#4f5258", dim = true },
-  ],
-  [
-    { token = "agent", fg = "#ffffff" },
-    { token = "state_text", fg = "#8cde94", dim = true },
-  ],
+  ["state_icon", "workspace", "tab"],
+  ["agent", "state_text"],
 ]
 
 [ui.sidebar.spaces]
 row_gap = 1
 rows = [
-  [
-    "state_icon",
-    { token = "workspace", fg = "#8cf8f7", bold = true },
-  ],
-  [
-    { token = "branch", fg = "#2ec09c" },
-    { token = "git_status", fg = "#fce094", dim = true },
-  ],
+  ["state_icon", "workspace"],
+  ["branch", "git_status"],
 ]
 
 [ui.toast]

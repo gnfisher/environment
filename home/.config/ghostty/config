@@ -3,11 +3,11 @@ font-family = Consolas
 font-size = 16
 
 # Theme
-theme = Everforest Dark Hard
+background = #000000
+foreground = #ffffff
 
 # Terminal
-background-opacity = 0.97
-config-file = ?../../.local/state/environment-theme/ghostty.conf
+background-opacity = 1
 cursor-style = block
 shell-integration-features = no-cursor
 term = xterm-256color

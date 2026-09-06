@@ -2,7 +2,7 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title Theme: Naysayer
+# @raycast.title Neovim Theme: Naysayer
 # @raycast.mode compact
 
 # Optional parameters:
@@ -10,7 +10,7 @@
 # @raycast.packageName Themes
 
 # Documentation:
-# @raycast.description Apply the Jonathan Blow-inspired Naysayer theme
+# @raycast.description Apply the Jonathan Blow-inspired Naysayer theme in Neovim
 # @raycast.author gnfisher
 
 set -euo pipefail
