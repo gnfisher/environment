@@ -43,19 +43,14 @@
   "remoteSessions": false,
   "renderMarkdown": true,
   "screenReader": false,
-  "sessionSync": [
-    {
-      "level": "local",
-      "origin": "*"
-    }
-  ],
   "showReasoning": false,
   "steerableSessions": false,
   "storeSessionsRemotely": false,
   "theme": "default",
   "undo_without_confirmation": true,
-  "model": "gpt-5.6-sol",
+  "model": "gpt-6-astra",
   "effortLevel": "high",
+  "defaultPermissionMode": "allow-all",
   "sandbox": {
     "enabled": true,
     "sandboxMcpServers": true,

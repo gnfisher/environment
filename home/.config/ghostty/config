@@ -2,10 +2,6 @@
 font-family = Consolas
 font-size = 16
 
-# Theme
-background = #000000
-foreground = #ffffff
-
 # Terminal
 background-opacity = 1
 cursor-style = block

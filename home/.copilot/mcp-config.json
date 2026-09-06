@@ -36,25 +36,6 @@
       "type": "http",
       "url": "https://ai.todoist.net/mcp"
     },
-    "apple-notes": {
-      "tools": [
-        "*"
-      ],
-      "type": "local",
-      "command": "mcp-apple-notes",
-      "args": []
-    },
-    "obsidian": {
-      "tools": [
-        "*"
-      ],
-      "type": "local",
-      "command": "obsidian-mcp",
-      "args": [],
-      "env": {
-        "OBSIDIAN_VAULT_PATH": "/Users/gnfisher/Library/Mobile Documents/iCloud~md~obsidian/Documents/github"
-      }
-    },
     "sentry": {
       "tools": [
         "*"

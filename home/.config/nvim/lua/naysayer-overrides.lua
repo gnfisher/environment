@@ -4,6 +4,7 @@ local palette = {
   background = "#092b2b",
   surface = "#2c2e33",
   surface_bright = "#4f5258",
+  cursorline = "#164343",
   foreground = "#d1b897",
   white = "#ffffff",
   teal = "#7ad0c6",
@@ -27,6 +28,7 @@ local groups = {
   SignColumn = { fg = palette.surface_bright, bg = palette.background },
   FoldColumn = { fg = palette.surface_bright, bg = palette.background },
   Folded = { fg = palette.teal, bg = palette.surface },
+  CursorLine = { bg = palette.cursorline },
   CursorLineNr = { fg = palette.foreground, bold = true },
   QuickFixLine = { bg = palette.surface },
   Title = { fg = palette.white, bold = true },
@@ -59,11 +61,15 @@ local groups = {
   ["@diff.delta"] = { fg = palette.yellow },
 
   TelescopeNormal = { fg = palette.foreground, bg = palette.background },
-  TelescopeBorder = { fg = palette.surface_bright, bg = palette.background },
-  TelescopePromptNormal = { fg = palette.foreground, bg = palette.surface },
-  TelescopePromptBorder = { fg = palette.surface_bright, bg = palette.surface },
-  TelescopePromptPrefix = { fg = palette.green_bright, bg = palette.surface },
-  TelescopeSelection = { fg = palette.white, bg = palette.surface },
+  TelescopeBorder = { fg = palette.teal, bg = palette.background },
+  TelescopeTitle = { fg = palette.foreground, bg = palette.background, bold = true },
+  TelescopePromptNormal = { fg = palette.foreground, bg = palette.background },
+  TelescopePromptBorder = { fg = palette.teal, bg = palette.background },
+  TelescopePromptTitle = { fg = palette.green_bright, bg = palette.background, bold = true },
+  TelescopePromptPrefix = { fg = palette.green_bright, bg = palette.background },
+  TelescopePromptCounter = { fg = palette.foreground, bg = palette.background },
+  TelescopeSelection = { link = "Visual" },
+  TelescopeSelectionCaret = { link = "TelescopeSelection" },
   TelescopeMatching = { fg = palette.teal, bold = true },
 
   NvimTreeNormal = { fg = palette.foreground, bg = palette.background },
@@ -97,6 +103,14 @@ local groups = {
   MasonHighlight = { fg = palette.teal },
   MasonHighlightBlock = { fg = palette.background, bg = palette.teal },
 }
+
+function M.blame_hash_color(sha, highlight)
+  local colors = { palette.teal, palette.blue, palette.green_bright, palette.yellow, palette.cyan }
+  local key = sha:sub(1, 1) .. sha:sub(3, 3) .. sha:sub(5, 5)
+  local index = tonumber(key, 16) % #colors + 1
+  -- Gitsigns shares this generated group between the hash and its graph.
+  vim.api.nvim_set_hl(0, highlight, { fg = colors[index] })
+end
 
 function M.apply()
   for name, highlight in pairs(groups) do

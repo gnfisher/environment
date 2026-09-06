@@ -2,6 +2,18 @@ return {
   "lewis6991/gitsigns.nvim",
   event = { "BufReadPre", "BufNewFile" },
   opts = {
+    blame_formatter = function(_, info, context)
+      if vim.g.colors_name == "naysayer" then
+        require("naysayer-overrides").blame_hash_color(info.abbrev_sha, context.hash_hl_group)
+      end
+
+      local padding = context.max_author_width - vim.fn.strdisplaywidth(info.author)
+      return {
+        { info.abbrev_sha, context.hash_hl_group },
+        { " " .. info.author .. string.rep(" ", math.max(0, padding)) .. " " },
+        { os.date("%Y-%m-%d", info.author_time) },
+      }
+    end,
     signs = {
       add = { text = "┃" },
       change = { text = "┃" },
