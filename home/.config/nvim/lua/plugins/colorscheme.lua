@@ -4,6 +4,7 @@ return {
     dependencies = {
       "Mofiqul/dracula.nvim",
       "miikanissi/modus-themes.nvim",
+      "whizikxd/naysayer-colors.nvim",
     },
     lazy = false,
     priority = 1000,

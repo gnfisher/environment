@@ -6,6 +6,7 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:${PATH:-}:/usr/bi
 readonly theme="${1:-}"
 readonly state_dir="$HOME/.local/state/environment-theme"
 readonly ghostty_state="$state_dir/ghostty.conf"
+readonly fish_state="$state_dir/fish.fish"
 readonly herdr_config="$HOME/.config/herdr/config.toml"
 readonly herdr_profiles="$HOME/.config/herdr/profiles"
 
@@ -20,19 +21,100 @@ fi
 
 case "$theme" in
     everforest)
-        ghostty_theme="Everforest Dark Hard"
-        opacity="0.97"
+        ghostty_settings=(
+            "theme = Everforest Dark Hard"
+            "background-opacity = 0.97"
+        )
+        fish_settings=(
+            "set -g __environment_theme_path_background 425047"
+            "set -g __environment_theme_path_foreground d3c6aa"
+            "set -g __environment_theme_git_background a7c080"
+            "set -g __environment_theme_git_foreground 2d353b"
+            "set -g __environment_theme_accent d699b6"
+            "set -g __environment_theme_error e67e80"
+            "set -g __environment_theme_muted 859289"
+            "set -g __fish_git_prompt_color_branch a7c080"
+            "set -g __fish_git_prompt_color_dirtystate e67e80"
+            "set -g __fish_git_prompt_color_untrackedfiles e67e80"
+        )
         ;;
     dracula)
-        ghostty_theme="Dracula"
-        opacity="0.97"
+        ghostty_settings=(
+            "theme = Dracula"
+            "background-opacity = 0.97"
+        )
+        fish_settings=(
+            "set -g __environment_theme_path_background 454758"
+            "set -g __environment_theme_path_foreground ffffff"
+            "set -g __environment_theme_git_background ae8fe7"
+            "set -g __environment_theme_git_foreground 494d64"
+            "set -g __environment_theme_accent dfbfff"
+            "set -g __environment_theme_error f28779"
+            "set -g __environment_theme_muted 707a8c"
+            "set -g __fish_git_prompt_color_branch ae8fe7"
+            "set -g __fish_git_prompt_color_dirtystate f28779"
+            "set -g __fish_git_prompt_color_untrackedfiles f28779"
+        )
         ;;
     modus-operandi)
-        ghostty_theme="Modus Operandi"
-        opacity="1"
+        ghostty_settings=(
+            "theme = Modus Operandi"
+            "background-opacity = 1"
+        )
+        fish_settings=(
+            "set -g __environment_theme_path_background d7d7d7"
+            "set -g __environment_theme_path_foreground 000000"
+            "set -g __environment_theme_git_background 0031a9"
+            "set -g __environment_theme_git_foreground ffffff"
+            "set -g __environment_theme_accent 721045"
+            "set -g __environment_theme_error a60000"
+            "set -g __environment_theme_muted 595959"
+            "set -g __fish_git_prompt_color_branch 0031a9"
+            "set -g __fish_git_prompt_color_dirtystate a60000"
+            "set -g __fish_git_prompt_color_untrackedfiles a60000"
+        )
+        ;;
+    naysayer)
+        ghostty_settings=(
+            "background = #092b2b"
+            "foreground = #d1b897"
+            "cursor-color = #d1b897"
+            "cursor-text = #092b2b"
+            "selection-background = #0000ff"
+            "selection-foreground = #ffffff"
+            "palette = 0=#092b2b"
+            "palette = 1=#d64c42"
+            "palette = 2=#2ec09c"
+            "palette = 3=#fce094"
+            "palette = 4=#add8e6"
+            "palette = 5=#ff008c"
+            "palette = 6=#7ad0c6"
+            "palette = 7=#d1b897"
+            "palette = 8=#4f5258"
+            "palette = 9=#ffbbbb"
+            "palette = 10=#8cde94"
+            "palette = 11=#f9ff54"
+            "palette = 12=#add8e6"
+            "palette = 13=#ff008c"
+            "palette = 14=#8cf8f7"
+            "palette = 15=#ffffff"
+            "background-opacity = 1"
+        )
+        fish_settings=(
+            "set -g __environment_theme_path_background 2c2e33"
+            "set -g __environment_theme_path_foreground d1b897"
+            "set -g __environment_theme_git_background 2ec09c"
+            "set -g __environment_theme_git_foreground 092b2b"
+            "set -g __environment_theme_accent 8cf8f7"
+            "set -g __environment_theme_error d64c42"
+            "set -g __environment_theme_muted 7ad0c6"
+            "set -g __fish_git_prompt_color_branch 8cde94"
+            "set -g __fish_git_prompt_color_dirtystate fce094"
+            "set -g __fish_git_prompt_color_untrackedfiles d64c42"
+        )
         ;;
     *)
-        echo "Usage: theme-switch {everforest|dracula|modus-operandi}" >&2
+        echo "Usage: theme-switch {everforest|dracula|modus-operandi|naysayer}" >&2
         exit 2
         ;;
 esac
@@ -47,10 +129,8 @@ HERDR_CONFIG_PATH="$profile" herdr config check >/dev/null
 
 mkdir -p "$state_dir"
 printf '%s\n' "$theme" > "$state_dir/current"
-cat > "$ghostty_state" <<EOF
-theme = $ghostty_theme
-background-opacity = $opacity
-EOF
+printf '%s\n' "${ghostty_settings[@]}" > "$ghostty_state"
+printf '%s\n' "${fish_settings[@]}" > "$fish_state"
 
 herdr_target="$herdr_config"
 if [[ -L "$herdr_config" ]]; then

@@ -14,6 +14,13 @@ local profiles = {
     background = "light",
     colorscheme = "modus_operandi",
   },
+  naysayer = {
+    background = "dark",
+    colorscheme = "naysayer",
+    after = function()
+      require("naysayer-overrides").apply()
+    end,
+  },
 }
 
 local function current()
@@ -41,6 +48,9 @@ local function apply()
   local profile = profiles[name]
   vim.o.background = profile.background
   vim.cmd.colorscheme(profile.colorscheme)
+  if profile.after then
+    profile.after()
+  end
   vim.g.environment_theme = name
 end
 
